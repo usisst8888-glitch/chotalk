@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 export default function LoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,7 +19,7 @@ export default function LoginForm() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       });
 
       const data = await res.json();
@@ -41,17 +41,17 @@ export default function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-5 w-full">
       <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-          이메일 주소
+        <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-2">
+          아이디
         </label>
         <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          id="username"
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
           required
           className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-          placeholder="you@example.com"
+          placeholder="아이디 입력"
         />
       </div>
 
