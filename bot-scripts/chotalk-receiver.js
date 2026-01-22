@@ -3,21 +3,12 @@
  * 메신저봇R용 - 초톡/도톡방에서 메시지 감지 후 서버에 저장
  *
  * 서버에서 메시지 본문에 등록된 아가씨 닉네임이 포함되어 있는지 확인하여 저장
- *
- * 사용법:
- * 1. 메신저봇R 앱에서 새 봇 생성
- * 2. 이 스크립트 복사하여 붙여넣기
- * 3. SERVER_URL을 실제 배포 URL로 변경
- * 4. 봇 활성화
  */
 
 // ============== 설정 ==============
 var CONFIG = {
-  // 서버 URL
   SERVER_URL: "https://chotalk.vercel.app/api/bot/message",
-
-  // 디버그 모드
-  DEBUG: false
+  DEBUG: true
 };
 
 // ============== 유틸 함수 ==============
@@ -44,10 +35,7 @@ function sendToServer(room, sender, message) {
       .post();
 
     var statusCode = response.statusCode();
-    var responseText = response.text();
-
-    log("서버 응답 [" + statusCode + "]: " + responseText);
-
+    log("서버 응답: " + statusCode);
     return statusCode === 200;
   } catch (e) {
     log("서버 전송 오류: " + e.message);
@@ -55,10 +43,37 @@ function sendToServer(room, sender, message) {
   }
 }
 
-// ============== 메인 응답 함수 ==============
+// ============== API2 리스너 ==============
+var listener = {
+  onMessage: function(msg) {
+    var room = msg.room;
+    var sender = msg.author.name;
+    var message = msg.content;
+
+    log("메시지 감지! [" + room + "] " + sender + ": " + message);
+    sendToServer(room, sender, message);
+  }
+};
+
+function onLoad() {
+  log("Chotalk 봇 로드됨");
+}
+
+// ============== 레거시 API (API1) ==============
 function response(room, msg, sender, isGroupChat, replier, imageDB, packageName) {
   log("메시지 감지! [" + room + "] " + sender + ": " + msg);
-
-  // 서버로 전송 (서버에서 메시지 본문에 아가씨 닉네임 포함 여부 확인)
   sendToServer(room, sender, msg);
+}
+
+// ============== 봇 생명주기 함수 ==============
+function onStartCompile() { log("컴파일 시작"); }
+function onResume() { log("봇 재개"); }
+function onPause() { log("봇 일시정지"); }
+function onCreate(savedInstanceState, activity) { log("봇 생성"); }
+function onDestroy() { log("봇 종료"); }
+
+// API2 등록
+if (typeof Bot !== "undefined") {
+  Bot.setCommandPrefix("/");
+  Bot.addListener(listener);
 }
