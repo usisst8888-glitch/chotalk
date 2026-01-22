@@ -80,6 +80,9 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Bot message error:', error);
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 });
+    return NextResponse.json({
+      error: '서버 오류',
+      detail: error instanceof Error ? error.message : String(error)
+    }, { status: 500 });
   }
 }
