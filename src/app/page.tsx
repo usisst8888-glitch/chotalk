@@ -130,7 +130,7 @@ export default function Home() {
             href="/signup"
             className="inline-block px-8 py-4 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-lg font-semibold transition"
           >
-            무료로 시작하기
+            시작하기
           </Link>
         </div>
       </main>
@@ -138,7 +138,8 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-neutral-800 py-8 px-6">
         <div className="max-w-5xl mx-auto text-center text-neutral-500 text-sm">
-          Chotalk
+          <p>초톡봇</p>
+          <p className="mt-1">개발사: assistsolution</p>
         </div>
       </footer>
     </div>
