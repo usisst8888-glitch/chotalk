@@ -63,10 +63,12 @@ export default function DashboardPage() {
   const [editSlot, setEditSlot] = useState({ girlName: '', shopName: '', customShopName: '', chatRoomType: 'group' as 'group' | 'open', targetRoom: '' });
   const [submitting, setSubmitting] = useState(false);
   const [showSlotPurchaseModal, setShowSlotPurchaseModal] = useState(false);
+  const [showExtendAllModal, setShowExtendAllModal] = useState(false);
   const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
   const [inlineNewSlot, setInlineNewSlot] = useState({ girlName: '', shopName: '도파민', customShopName: '', chatRoomType: 'group' as 'group' | 'open', targetRoom: '' });
   const [purchaseForm, setPurchaseForm] = useState({ depositorName: '', slotCount: 1 });
   const [purchaseSubmitting, setPurchaseSubmitting] = useState(false);
+  const [extendForm, setExtendForm] = useState({ depositorName: '' });
   const [sampleTemplates, setSampleTemplates] = useState<SampleTemplate[]>([]);
   const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<SelectedInfo | null>(null);
@@ -292,7 +294,14 @@ export default function DashboardPage() {
     }
   };
 
-  const toggleSlotActive = async (slotId: string, currentActive: boolean) => {
+  const toggleSlotActive = async (slotId: string, currentActive: boolean, expiresAt: string) => {
+    // 만료된 슬롯은 활성화 불가
+    const isExpired = getDaysRemaining(expiresAt) <= 0;
+    if (!currentActive && isExpired) {
+      alert('결제를 완료 해주셔야 활성화가 가능합니다.');
+      return;
+    }
+
     try {
       const res = await fetch(`/api/slots/${slotId}`, {
         method: 'PATCH',
@@ -586,17 +595,26 @@ export default function DashboardPage() {
               {/* 일반 유저: 데스크톱 한 줄 */}
               <div className="hidden md:flex items-center justify-between">
                 <h2 className="text-xl font-bold text-white">{user?.username}님의 등록 인원</h2>
-                <div className="flex items-center gap-6 text-sm">
+                <div className="flex items-center gap-4 text-sm">
                   <span className="text-neutral-500">등록된 인원: <span className="text-white font-medium">{usedSlots}명</span></span>
                   <span className="text-neutral-500">
                     등록 가능: <span className="text-green-400 font-medium">{slotCount}명</span>
                   </span>
-                  <button
-                    onClick={() => setShowSlotPurchaseModal(true)}
-                    className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded transition"
-                  >
-                    + 추가 구매
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowExtendAllModal(true)}
+                      disabled={slots.length === 0}
+                      className="px-3 py-1 text-xs bg-orange-600 hover:bg-orange-500 disabled:bg-neutral-700 disabled:text-neutral-500 text-white rounded transition"
+                    >
+                      전체 연장
+                    </button>
+                    <button
+                      onClick={() => setShowSlotPurchaseModal(true)}
+                      className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded transition"
+                    >
+                      + 추가 구매
+                    </button>
+                  </div>
                 </div>
               </div>
               {/* 일반 유저: 모바일 두 줄 */}
@@ -606,13 +624,22 @@ export default function DashboardPage() {
                   <span className="text-neutral-500">등록된 인원: <span className="text-white font-medium">{usedSlots}명</span></span>
                   <span className="text-neutral-500">
                     등록 가능: <span className="text-green-400 font-medium">{slotCount}명</span>
-                    <button
-                      onClick={() => setShowSlotPurchaseModal(true)}
-                      className="ml-2 px-2 py-0.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded transition"
-                    >
-                      + 추가 구매
-                    </button>
                   </span>
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={() => setShowExtendAllModal(true)}
+                    disabled={slots.length === 0}
+                    className="px-3 py-1.5 text-xs bg-orange-600 hover:bg-orange-500 disabled:bg-neutral-700 disabled:text-neutral-500 text-white rounded transition"
+                  >
+                    전체 연장
+                  </button>
+                  <button
+                    onClick={() => setShowSlotPurchaseModal(true)}
+                    className="px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded transition"
+                  >
+                    + 추가 구매
+                  </button>
                 </div>
               </div>
             </>
@@ -699,7 +726,7 @@ export default function DashboardPage() {
                     <tr key={slot.id} className={`hover:bg-neutral-800/30 transition ${!slot.is_active ? 'opacity-50' : ''}`}>
                       <td className="px-4 py-3 text-center">
                         <button
-                          onClick={() => toggleSlotActive(slot.id, slot.is_active)}
+                          onClick={() => toggleSlotActive(slot.id, slot.is_active, slot.expires_at)}
                           className={`w-12 h-6 rounded-full transition-colors relative ${
                             slot.is_active ? 'bg-green-500' : 'bg-neutral-700'
                           }`}
@@ -970,7 +997,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => toggleSlotActive(slot.id, slot.is_active)}
+                        onClick={() => toggleSlotActive(slot.id, slot.is_active, slot.expires_at)}
                         className={`w-12 h-6 rounded-full transition-colors relative ${
                           slot.is_active ? 'bg-green-500' : 'bg-neutral-700'
                         }`}
@@ -1614,32 +1641,178 @@ export default function DashboardPage() {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
           <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 w-full max-w-md mx-4">
             <h3 className="text-xl font-bold text-white mb-4">기간 연장</h3>
-            <div className="bg-neutral-800/50 rounded-xl p-4 mb-4">
-              <p className="text-neutral-400 mb-2">
-                <span className="text-neutral-600">인원:</span> {selectedSlot.girl_name}
+
+            {/* 연장 대상 정보 */}
+            <div className="bg-indigo-900/30 border border-indigo-500/30 rounded-xl p-4 mb-4">
+              <p className="text-indigo-300 text-sm mb-2">
+                연장 대상: <span className="text-white font-bold">{selectedSlot.girl_name}</span>
               </p>
-              <p className="text-neutral-400">
-                <span className="text-neutral-600">현재 만료일:</span> {formatDate(selectedSlot.expires_at)}
+              <p className="text-neutral-500 text-xs">
+                현재 만료일: {formatDate(selectedSlot.expires_at)}
               </p>
             </div>
 
-            <div className="bg-indigo-900/30 border border-indigo-500/30 rounded-xl p-4 mb-4">
-              <h4 className="text-indigo-400 font-semibold mb-2">입금 안내</h4>
-              <p className="text-neutral-400 text-sm mb-3">
-                아래 계좌로 연장 비용을 입금해주세요.
-              </p>
-              <div className="bg-neutral-900 rounded-lg p-3 space-y-1">
-                <p className="text-white font-mono">국민은행 123-456-789012</p>
-                <p className="text-neutral-500 text-sm">예금주: 홍길동</p>
-                <p className="text-indigo-400 font-semibold">30일 연장: 50,000원</p>
+            {/* 입금 안내 */}
+            <div className="bg-yellow-900/40 border border-yellow-500/50 rounded-xl p-4 mb-4">
+              <p className="text-yellow-400 font-bold mb-3 text-center">입금 안내</p>
+              <div className="bg-neutral-900 rounded-lg p-3 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-neutral-500 text-sm">은행</span>
+                  <span className="text-white font-medium">카카오뱅크</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-neutral-500 text-sm">계좌번호</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-mono font-bold">3333-34-5184801</span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard('3333345184801')}
+                      className="px-2 py-1 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded transition"
+                    >
+                      복사
+                    </button>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-neutral-500 text-sm">예금주</span>
+                  <span className="text-white font-medium">어시스트솔루션</span>
+                </div>
+                <div className="border-t border-neutral-700 my-2 pt-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-neutral-500 text-sm">30일 연장</span>
+                    <span className="text-yellow-400 font-bold">50,000원</span>
+                  </div>
+                </div>
               </div>
-              <p className="text-yellow-400 text-xs mt-3">
-                * 입금 후 관리자 확인 후 연장됩니다.
+            </div>
+
+            {/* 경고 문구 */}
+            <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-4 mb-4">
+              <p className="text-red-400 text-sm font-medium">
+                ⚠️ 입금자명이 정확해야 입금 확인이 가능합니다!
               </p>
+              <p className="text-red-300 text-xs mt-1">
+                입금 후 관리자 확인 후 연장됩니다.
+              </p>
+            </div>
+
+            {/* 입금자명 입력 */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-neutral-400 mb-2">
+                입금자명 <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={extendForm.depositorName}
+                onChange={(e) => setExtendForm({ ...extendForm, depositorName: e.target.value })}
+                placeholder="실제 입금하실 이름을 입력해주세요"
+                className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+              />
             </div>
 
             <button
-              onClick={() => setShowExtendModal(false)}
+              onClick={() => {
+                setShowExtendModal(false);
+                setExtendForm({ depositorName: '' });
+              }}
+              className="w-full py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 전체 연장 모달 */}
+      {showExtendAllModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 w-full max-w-md mx-4">
+            <h3 className="text-xl font-bold text-white mb-4">전체 기간 연장</h3>
+
+            {/* 연장 대상 정보 */}
+            <div className="bg-indigo-900/30 border border-indigo-500/30 rounded-xl p-4 mb-4">
+              <p className="text-indigo-300 text-sm mb-2">
+                연장 대상: <span className="text-white font-bold">전체 인원 ({slots.length}명)</span>
+              </p>
+              <div className="mt-3 max-h-32 overflow-y-auto space-y-1">
+                {slots.map((slot) => (
+                  <div key={slot.id} className="flex justify-between text-sm">
+                    <span className="text-white">{slot.girl_name}</span>
+                    <span className={`${getDaysRemaining(slot.expires_at) <= 0 ? 'text-red-400' : getDaysRemaining(slot.expires_at) <= 7 ? 'text-yellow-400' : 'text-neutral-500'}`}>
+                      {formatDate(slot.expires_at)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 입금 안내 */}
+            <div className="bg-yellow-900/40 border border-yellow-500/50 rounded-xl p-4 mb-4">
+              <p className="text-yellow-400 font-bold mb-3 text-center">입금 안내</p>
+              <div className="bg-neutral-900 rounded-lg p-3 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-neutral-500 text-sm">은행</span>
+                  <span className="text-white font-medium">카카오뱅크</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-neutral-500 text-sm">계좌번호</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-mono font-bold">3333-34-5184801</span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard('3333345184801')}
+                      className="px-2 py-1 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded transition"
+                    >
+                      복사
+                    </button>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-neutral-500 text-sm">예금주</span>
+                  <span className="text-white font-medium">어시스트솔루션</span>
+                </div>
+                <div className="border-t border-neutral-700 my-2 pt-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-neutral-500 text-sm">30일 연장 (1인당)</span>
+                    <span className="text-neutral-400">50,000원</span>
+                  </div>
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-yellow-400 font-medium">총 금액</span>
+                    <span className="text-yellow-400 font-bold text-lg">{(slots.length * 50000).toLocaleString()}원</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 경고 문구 */}
+            <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-4 mb-4">
+              <p className="text-red-400 text-sm font-medium">
+                ⚠️ 입금자명이 정확해야 입금 확인이 가능합니다!
+              </p>
+              <p className="text-red-300 text-xs mt-1">
+                입금 후 관리자 확인 후 전체 연장됩니다.
+              </p>
+            </div>
+
+            {/* 입금자명 입력 */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-neutral-400 mb-2">
+                입금자명 <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={extendForm.depositorName}
+                onChange={(e) => setExtendForm({ ...extendForm, depositorName: e.target.value })}
+                placeholder="실제 입금하실 이름을 입력해주세요"
+                className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+              />
+            </div>
+
+            <button
+              onClick={() => {
+                setShowExtendAllModal(false);
+                setExtendForm({ depositorName: '' });
+              }}
               className="w-full py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
             >
               닫기
