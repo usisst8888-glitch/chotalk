@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     // 사용자 조회
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, phone, username, password')
+      .select('id, username, password, role')
       .eq('username', username)
       .single();
 
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({
       message: '로그인되었습니다.',
-      user: { id: user.id, phone: user.phone, username: user.username },
+      user: { id: user.id, username: user.username, role: user.role },
     });
 
     // 쿠키에 토큰 저장

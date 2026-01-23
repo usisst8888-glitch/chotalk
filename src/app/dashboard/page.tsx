@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 
 interface User {
   id: string;
-  phone: string;
   username: string;
+  role: 'user' | 'admin';
   created_at: string;
 }
 
@@ -75,7 +75,10 @@ export default function DashboardPage() {
   const [showEditTemplateModal, setShowEditTemplateModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<CustomTemplate | null>(null);
   const [newTemplate, setNewTemplate] = useState({ name: '', template: '' });
-  const [activeTab, setActiveTab] = useState<'slots' | 'templates'>('slots');
+  const [activeTab, setActiveTab] = useState<'slots' | 'templates' | 'users'>('slots');
+  // 관리자용 회원관리
+  const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; role: string; slot_count: number; created_at: string }>>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
 
   useEffect(() => {
     fetchUser();
@@ -108,6 +111,21 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error('Failed to fetch slots:', error);
+    }
+  };
+
+  const fetchAllUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const res = await fetch('/api/admin/users');
+      if (res.ok) {
+        const data = await res.json();
+        setAllUsers(data.users);
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    } finally {
+      setUsersLoading(false);
     }
   };
 
@@ -497,6 +515,21 @@ export default function DashboardPage() {
             >
               발송 템플릿
             </button>
+            {user?.role === 'admin' && (
+              <button
+                onClick={() => {
+                  setActiveTab('users');
+                  fetchAllUsers();
+                }}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  activeTab === 'users'
+                    ? 'bg-red-600 text-white'
+                    : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
+                }`}
+              >
+                회원 관리
+              </button>
+            )}
           </div>
           <a
             href="https://open.kakao.com/o/sWYX3Yci"
@@ -1121,6 +1154,77 @@ export default function DashboardPage() {
                 <p className="text-neutral-500 italic">[추가 안내 메시지 자동 삽입]</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* 회원관리 탭 (관리자 전용) */}
+        {activeTab === 'users' && user?.role === 'admin' && (
+          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
+            <h2 className="text-xl font-bold text-white mb-6">회원 관리</h2>
+            {usersLoading ? (
+              <div className="text-center py-12 text-neutral-400">로딩 중...</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-neutral-800">
+                      <th className="text-left px-4 py-3 text-neutral-500 font-medium">아이디</th>
+                      <th className="text-center px-4 py-3 text-neutral-500 font-medium">등급</th>
+                      <th className="text-center px-4 py-3 text-neutral-500 font-medium">등록 가능 인원</th>
+                      <th className="text-center px-4 py-3 text-neutral-500 font-medium">가입일</th>
+                      <th className="text-center px-4 py-3 text-neutral-500 font-medium">관리</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allUsers.map((u) => (
+                      <tr key={u.id} className="border-b border-neutral-800 hover:bg-neutral-800/50">
+                        <td className="px-4 py-3 text-white">{u.username}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            u.role === 'admin'
+                              ? 'bg-red-600/20 text-red-400'
+                              : 'bg-neutral-700 text-neutral-400'
+                          }`}>
+                            {u.role === 'admin' ? '관리자' : '일반회원'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center text-neutral-400">{u.slot_count}명</td>
+                        <td className="px-4 py-3 text-center text-neutral-500 text-sm">
+                          {new Date(u.created_at).toLocaleDateString('ko-KR')}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={async () => {
+                              const newCount = prompt('새로운 등록 가능 인원 수를 입력하세요:', String(u.slot_count));
+                              if (newCount && !isNaN(Number(newCount))) {
+                                const res = await fetch('/api/admin/users', {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ userId: u.id, slotCount: Number(newCount) }),
+                                });
+                                if (res.ok) {
+                                  fetchAllUsers();
+                                } else {
+                                  alert('수정에 실패했습니다.');
+                                }
+                              }
+                            }}
+                            className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded transition"
+                          >
+                            인원수정
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {allUsers.length === 0 && (
+                  <div className="text-center py-12 text-neutral-600">
+                    회원이 없습니다.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </main>

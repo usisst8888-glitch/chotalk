@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     // 사용자 정보 조회
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, phone, username, slot_count, created_at')
+      .select('id, username, role, slot_count, created_at')
       .eq('id', payload.userId)
       .single();
 
