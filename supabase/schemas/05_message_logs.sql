@@ -4,12 +4,14 @@ CREATE TABLE IF NOT EXISTS message_logs (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   slot_id UUID NOT NULL REFERENCES slots(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  user_template_id UUID REFERENCES user_templates(id) ON DELETE SET NULL, -- 사용자 템플릿 ID
-  room_name VARCHAR(255) NOT NULL,           -- 초톡방 이름 (슬롯의 chat_room_name)
-  sender_name VARCHAR(100) NOT NULL,         -- 발신자 이름 (아가씨 닉네임)
-  message TEXT NOT NULL,                     -- 메시지 전체 내용
-  message_type VARCHAR(20) DEFAULT 'chotalk', -- 'chotalk' | 'dotalk'
-  is_processed BOOLEAN DEFAULT FALSE,        -- 처리 여부
+  user_template_id UUID REFERENCES user_templates(id) ON DELETE SET NULL,
+  source_room VARCHAR(255) NOT NULL,           -- 메시지 감지된 방 (초톡방)
+  target_room VARCHAR(255),                    -- 발송할 채팅방 (슬롯에서 가져옴)
+  sender_name VARCHAR(100) NOT NULL,           -- 발신자 이름
+  message TEXT NOT NULL,                       -- 메시지 전체 내용
+  message_type VARCHAR(20) DEFAULT 'chotalk',  -- 'chotalk' | 'dotalk'
+  is_processed BOOLEAN DEFAULT FALSE,          -- 처리 여부
+  received_at TIMESTAMP WITH TIME ZONE,        -- 알림 수신 시간 (폰에서 감지된 시간)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

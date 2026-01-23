@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS slots (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   girl_name VARCHAR(100) NOT NULL,
-  chat_room_name VARCHAR(100) NOT NULL,
+  target_room VARCHAR(100) NOT NULL,           -- 발송할 채팅방 이름
   kakao_id VARCHAR(100) NOT NULL DEFAULT 'test_kakao_id',
   is_active BOOLEAN DEFAULT TRUE,
   expires_at TIMESTAMP WITH TIME ZONE NOT NULL,

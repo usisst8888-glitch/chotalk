@@ -13,7 +13,7 @@ interface User {
 interface Slot {
   id: string;
   girl_name: string;
-  chat_room_name: string;
+  target_room: string;  // 발송할 채팅방
   chat_room_type: 'group' | 'open';
   kakao_id: string;
   is_active: boolean;
@@ -33,12 +33,12 @@ export default function DashboardPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showExtendModal, setShowExtendModal] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
-  const [newSlot, setNewSlot] = useState({ girlName: '', chatRoomName: '', chatRoomType: 'group' as 'group' | 'open' });
-  const [editSlot, setEditSlot] = useState({ girlName: '', chatRoomName: '', chatRoomType: 'group' as 'group' | 'open' });
+  const [newSlot, setNewSlot] = useState({ girlName: '', targetRoom: '', chatRoomType: 'group' as 'group' | 'open' });
+  const [editSlot, setEditSlot] = useState({ girlName: '', targetRoom: '', chatRoomType: 'group' as 'group' | 'open' });
   const [submitting, setSubmitting] = useState(false);
   const [showSlotPurchaseModal, setShowSlotPurchaseModal] = useState(false);
   const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
-  const [inlineNewSlot, setInlineNewSlot] = useState({ girlName: '', chatRoomName: '', chatRoomType: 'group' as 'group' | 'open' });
+  const [inlineNewSlot, setInlineNewSlot] = useState({ girlName: '', targetRoom: '', chatRoomType: 'group' as 'group' | 'open' });
   const [purchaseForm, setPurchaseForm] = useState({ depositorName: '', slotCount: 1 });
   const [purchaseSubmitting, setPurchaseSubmitting] = useState(false);
   const [messageTemplate, setMessageTemplate] = useState('');
@@ -111,7 +111,7 @@ export default function DashboardPage() {
 
       if (res.ok) {
         setShowAddModal(false);
-        setNewSlot({ girlName: '', chatRoomName: '', chatRoomType: 'group' });
+        setNewSlot({ girlName: '', targetRoom: '', chatRoomType: 'group' });
         fetchSlots();
       } else {
         const data = await res.json();
@@ -139,7 +139,7 @@ export default function DashboardPage() {
 
   const openEditModal = (slot: Slot) => {
     setSelectedSlot(slot);
-    setEditSlot({ girlName: slot.girl_name, chatRoomName: slot.chat_room_name, chatRoomType: slot.chat_room_type || 'group' });
+    setEditSlot({ girlName: slot.girl_name, targetRoom: slot.target_room, chatRoomType: slot.chat_room_type || 'group' });
     setShowEditModal(true);
   };
 
@@ -157,7 +157,7 @@ export default function DashboardPage() {
       const res = await fetch(`/api/slots/${selectedSlot.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ girlName: editSlot.girlName, chatRoomName: editSlot.chatRoomName, chatRoomType: editSlot.chatRoomType }),
+        body: JSON.stringify({ girlName: editSlot.girlName, targetRoom: editSlot.targetRoom, chatRoomType: editSlot.chatRoomType }),
       });
 
       if (res.ok) {
@@ -221,7 +221,7 @@ export default function DashboardPage() {
   };
 
   const handleInlineAddSlot = async (index: number) => {
-    if (!inlineNewSlot.girlName || !inlineNewSlot.chatRoomName) {
+    if (!inlineNewSlot.girlName || !inlineNewSlot.targetRoom) {
       alert('아가씨 닉네임과 채팅방 이름을 모두 입력해주세요.');
       return;
     }
@@ -236,7 +236,7 @@ export default function DashboardPage() {
 
       if (res.ok) {
         setEditingSlotIndex(null);
-        setInlineNewSlot({ girlName: '', chatRoomName: '', chatRoomType: 'group' });
+        setInlineNewSlot({ girlName: '', targetRoom: '', chatRoomType: 'group' });
         fetchSlots();
       } else {
         const data = await res.json();
@@ -251,7 +251,7 @@ export default function DashboardPage() {
 
   const cancelInlineEdit = () => {
     setEditingSlotIndex(null);
-    setInlineNewSlot({ girlName: '', chatRoomName: '', chatRoomType: 'group' });
+    setInlineNewSlot({ girlName: '', targetRoom: '', chatRoomType: 'group' });
   };
 
   const handleSlotPurchase = async () => {
@@ -454,7 +454,7 @@ export default function DashboardPage() {
                         </button>
                       </td>
                       <td className="px-4 py-3 text-center text-white font-medium">{slot.girl_name}</td>
-                      <td className="px-4 py-3 text-center text-neutral-500">{slot.chat_room_name}</td>
+                      <td className="px-4 py-3 text-center text-neutral-500">{slot.target_room}</td>
                       <td className="px-4 py-3 text-center">
                         <span className={`px-2 py-1 text-xs rounded-full ${
                           slot.chat_room_type === 'open'
@@ -533,8 +533,8 @@ export default function DashboardPage() {
                         <td className="px-4 py-3">
                           <input
                             type="text"
-                            value={inlineNewSlot.chatRoomName}
-                            onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, chatRoomName: e.target.value })}
+                            value={inlineNewSlot.targetRoom}
+                            onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, targetRoom: e.target.value })}
                             placeholder="채팅방 이름"
                             className="w-full px-2 py-1 bg-neutral-800 border border-neutral-700 rounded text-white text-sm focus:outline-none focus:border-indigo-500"
                           />
@@ -648,7 +648,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex border-b border-neutral-800 pb-2">
                       <span className="text-neutral-600 w-28 flex-shrink-0">채팅방</span>
-                      <span className="text-neutral-400">{slot.chat_room_name}</span>
+                      <span className="text-neutral-400">{slot.target_room}</span>
                     </div>
                     <div className="flex border-b border-neutral-800 pb-2 items-center">
                       <span className="text-neutral-600 w-28 flex-shrink-0">채팅방 타입</span>
@@ -723,8 +723,8 @@ export default function DashboardPage() {
                     />
                     <input
                       type="text"
-                      value={inlineNewSlot.chatRoomName}
-                      onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, chatRoomName: e.target.value })}
+                      value={inlineNewSlot.targetRoom}
+                      onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, targetRoom: e.target.value })}
                       placeholder="채팅방 이름"
                       className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
                     />
@@ -888,8 +888,8 @@ export default function DashboardPage() {
                 </label>
                 <input
                   type="text"
-                  value={newSlot.chatRoomName}
-                  onChange={(e) => setNewSlot({ ...newSlot, chatRoomName: e.target.value })}
+                  value={newSlot.targetRoom}
+                  onChange={(e) => setNewSlot({ ...newSlot, targetRoom: e.target.value })}
                   required
                   className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
                   placeholder="채팅방 이름 입력"
@@ -946,8 +946,8 @@ export default function DashboardPage() {
                 </label>
                 <input
                   type="text"
-                  value={editSlot.chatRoomName}
-                  onChange={(e) => setEditSlot({ ...editSlot, chatRoomName: e.target.value })}
+                  value={editSlot.targetRoom}
+                  onChange={(e) => setEditSlot({ ...editSlot, targetRoom: e.target.value })}
                   required
                   className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
                   placeholder="채팅방 이름 입력"
