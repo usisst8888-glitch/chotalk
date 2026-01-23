@@ -9,7 +9,7 @@ export default function AuthButton({ loading, loadingText, children }: AuthButto
     <button
       type="submit"
       disabled={loading}
-      className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition"
+      className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white font-semibold rounded-xl transition"
     >
       {loading ? loadingText : children}
     </button>
