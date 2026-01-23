@@ -79,12 +79,22 @@ export default function DashboardPage() {
   // 관리자용 회원관리
   const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; role: string; slot_count: number; created_at: string }>>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  // 관리자용 전체 인원관리
+  const [allSlots, setAllSlots] = useState<Array<Slot & { username: string }>>([]);
+  const [allSlotsLoading, setAllSlotsLoading] = useState(false);
 
   useEffect(() => {
     fetchUser();
     fetchSlots();
     fetchTemplates();
   }, []);
+
+  // 관리자용: 전체 슬롯 로드
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      fetchAllSlots();
+    }
+  }, [user]);
 
   const fetchUser = async () => {
     try {
@@ -126,6 +136,21 @@ export default function DashboardPage() {
       console.error('Failed to fetch users:', error);
     } finally {
       setUsersLoading(false);
+    }
+  };
+
+  const fetchAllSlots = async () => {
+    setAllSlotsLoading(true);
+    try {
+      const res = await fetch('/api/admin/slots');
+      if (res.ok) {
+        const data = await res.json();
+        setAllSlots(data.slots);
+      }
+    } catch (error) {
+      console.error('Failed to fetch all slots:', error);
+    } finally {
+      setAllSlotsLoading(false);
     }
   };
 
@@ -548,38 +573,50 @@ export default function DashboardPage() {
         <>
         {/* 슬롯 현황 */}
         <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 mb-6">
-          {/* 데스크톱: 한 줄 */}
-          <div className="hidden md:flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white">{user?.username}님의 등록 인원</h2>
-            <div className="flex items-center gap-6 text-sm">
-              <span className="text-neutral-500">등록된 인원: <span className="text-white font-medium">{usedSlots}명</span></span>
+          {user?.role === 'admin' ? (
+            // 관리자: 전체 인원 표시
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white">전체 인원 관리</h2>
               <span className="text-neutral-500">
-                등록 가능: <span className="text-green-400 font-medium">{slotCount}명</span>
-              </span>
-              <button
-                onClick={() => setShowSlotPurchaseModal(true)}
-                className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded transition"
-              >
-                + 추가 구매
-              </button>
-            </div>
-          </div>
-          {/* 모바일: 두 줄 */}
-          <div className="md:hidden">
-            <h2 className="text-xl font-bold text-white">{user?.username}님의 등록 인원</h2>
-            <div className="flex flex-wrap gap-4 mt-2 text-sm">
-              <span className="text-neutral-500">등록된 인원: <span className="text-white font-medium">{usedSlots}명</span></span>
-              <span className="text-neutral-500">
-                등록 가능: <span className="text-green-400 font-medium">{slotCount}명</span>
-                <button
-                  onClick={() => setShowSlotPurchaseModal(true)}
-                  className="ml-2 px-2 py-0.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded transition"
-                >
-                  + 추가 구매
-                </button>
+                총 <span className="text-orange-400 font-medium">{allSlots.length}명</span> 등록됨
               </span>
             </div>
-          </div>
+          ) : (
+            <>
+              {/* 일반 유저: 데스크톱 한 줄 */}
+              <div className="hidden md:flex items-center justify-between">
+                <h2 className="text-xl font-bold text-white">{user?.username}님의 등록 인원</h2>
+                <div className="flex items-center gap-6 text-sm">
+                  <span className="text-neutral-500">등록된 인원: <span className="text-white font-medium">{usedSlots}명</span></span>
+                  <span className="text-neutral-500">
+                    등록 가능: <span className="text-green-400 font-medium">{slotCount}명</span>
+                  </span>
+                  <button
+                    onClick={() => setShowSlotPurchaseModal(true)}
+                    className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded transition"
+                  >
+                    + 추가 구매
+                  </button>
+                </div>
+              </div>
+              {/* 일반 유저: 모바일 두 줄 */}
+              <div className="md:hidden">
+                <h2 className="text-xl font-bold text-white">{user?.username}님의 등록 인원</h2>
+                <div className="flex flex-wrap gap-4 mt-2 text-sm">
+                  <span className="text-neutral-500">등록된 인원: <span className="text-white font-medium">{usedSlots}명</span></span>
+                  <span className="text-neutral-500">
+                    등록 가능: <span className="text-green-400 font-medium">{slotCount}명</span>
+                    <button
+                      onClick={() => setShowSlotPurchaseModal(true)}
+                      className="ml-2 px-2 py-0.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded transition"
+                    >
+                      + 추가 구매
+                    </button>
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* 슬롯 목록 - 데스크톱 테이블 */}
@@ -589,17 +626,71 @@ export default function DashboardPage() {
               <thead className="bg-neutral-800/50">
                 <tr>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">활성화</th>
+                  {user?.role === 'admin' && (
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">회원</th>
+                  )}
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">아가씨 닉네임</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">가게명</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">채팅방</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">채팅방 타입</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">초대할 ID</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">만료일</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">관리</th>
+                  {user?.role !== 'admin' && (
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">관리</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-800">
-                {slots.map((slot) => {
+                {/* 관리자: 전체 슬롯 표시 */}
+                {user?.role === 'admin' && allSlots.map((slot) => {
+                  const daysRemaining = getDaysRemaining(slot.expires_at);
+                  const isExpiringSoon = daysRemaining <= 7;
+                  const isExpired = daysRemaining <= 0;
+
+                  return (
+                    <tr key={slot.id} className={`hover:bg-neutral-800/30 transition ${!slot.is_active ? 'opacity-50' : ''}`}>
+                      <td className="px-4 py-3 text-center">
+                        <div className={`w-12 h-6 rounded-full mx-auto ${
+                          slot.is_active ? 'bg-green-500' : 'bg-neutral-700'
+                        }`}>
+                          <span
+                            className={`block w-4 h-4 bg-white rounded-full relative top-1 transition-transform ${
+                              slot.is_active ? 'ml-auto mr-1' : 'ml-1'
+                            }`}
+                          />
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center text-orange-400 font-medium">{slot.username}</td>
+                      <td className="px-4 py-3 text-center text-white font-medium">{slot.girl_name}</td>
+                      <td className="px-4 py-3 text-center text-neutral-400">{slot.shop_name || '-'}</td>
+                      <td className="px-4 py-3 text-center text-neutral-500">{slot.target_room}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          slot.chat_room_type === 'open'
+                            ? 'bg-purple-600/20 text-purple-400'
+                            : 'bg-blue-600/20 text-blue-400'
+                        }`}>
+                          {slot.chat_room_type === 'open' ? '오픈채팅' : '그룹채팅'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span
+                          onClick={() => copyToClipboard(slot.kakao_id)}
+                          className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
+                          title="클릭하여 복사"
+                        >
+                          {slot.kakao_id}
+                        </span>
+                      </td>
+                      <td className={`px-4 py-3 text-center ${isExpired ? 'text-red-400' : isExpiringSoon ? 'text-yellow-400' : 'text-neutral-500'}`}>
+                        {formatDate(slot.expires_at)}
+                        {isExpired ? ' (만료됨)' : isExpiringSoon ? ` (${daysRemaining}일)` : ''}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {/* 일반 유저: 자신의 슬롯만 표시 */}
+                {user?.role !== 'admin' && slots.map((slot) => {
                   const daysRemaining = getDaysRemaining(slot.expires_at);
                   const isExpiringSoon = daysRemaining <= 7;
                   const isExpired = daysRemaining <= 0;
@@ -685,8 +776,8 @@ export default function DashboardPage() {
                     </tr>
                   );
                 })}
-                {/* 빈 슬롯 행들 */}
-                {emptySlots.map((index) => (
+                {/* 빈 슬롯 행들 (일반 유저만) */}
+                {user?.role !== 'admin' && emptySlots.map((index) => (
                   <tr key={`empty-${index}`} className="hover:bg-neutral-800/30 transition bg-neutral-900/50">
                     <td className="px-4 py-3 text-center">
                       <div className="flex justify-center">
@@ -792,7 +883,12 @@ export default function DashboardPage() {
                 ))}
               </tbody>
             </table>
-            {slots.length === 0 && emptySlots.length === 0 && (
+            {user?.role === 'admin' && allSlots.length === 0 && (
+              <div className="text-center py-12 text-neutral-600">
+                등록된 인원이 없습니다.
+              </div>
+            )}
+            {user?.role !== 'admin' && slots.length === 0 && emptySlots.length === 0 && (
               <div className="text-center py-12 text-neutral-600">
                 등록 가능한 인원이 없습니다. 인원을 추가 구매해주세요.
               </div>
@@ -802,7 +898,68 @@ export default function DashboardPage() {
 
         {/* 모바일 리스트 */}
         <div className="block md:hidden space-y-4">
-            {slots.map((slot) => {
+            {/* 관리자: 전체 슬롯 */}
+            {user?.role === 'admin' && allSlots.map((slot) => {
+              const daysRemaining = getDaysRemaining(slot.expires_at);
+              const isExpiringSoon = daysRemaining <= 7;
+              const isExpired = daysRemaining <= 0;
+
+              return (
+                <div key={slot.id} className={`bg-neutral-900 border border-neutral-800 rounded-2xl p-4 ${!slot.is_active ? 'opacity-50' : ''}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-12 h-6 rounded-full ${slot.is_active ? 'bg-green-500' : 'bg-neutral-700'}`}>
+                        <span className={`block w-4 h-4 bg-white rounded-full relative top-1 ${slot.is_active ? 'ml-auto mr-1' : 'ml-1'}`} />
+                      </div>
+                      <span className="text-sm text-neutral-500">{slot.is_active ? '활성화' : '비활성화'}</span>
+                    </div>
+                    {(isExpired || isExpiringSoon) && (
+                      <span className={`text-xs px-2 py-1 rounded-full ${isExpired ? 'bg-red-600/20 text-red-400' : 'bg-yellow-600/20 text-yellow-400'}`}>
+                        {isExpired ? '만료됨' : `${daysRemaining}일 남음`}
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex border-b border-neutral-800 pb-2">
+                      <span className="text-neutral-600 w-28 flex-shrink-0">회원</span>
+                      <span className="text-orange-400 font-semibold">{slot.username}</span>
+                    </div>
+                    <div className="flex border-b border-neutral-800 pb-2">
+                      <span className="text-neutral-600 w-28 flex-shrink-0">아가씨 닉네임</span>
+                      <span className="text-white font-semibold">{slot.girl_name}</span>
+                    </div>
+                    <div className="flex border-b border-neutral-800 pb-2">
+                      <span className="text-neutral-600 w-28 flex-shrink-0">가게명</span>
+                      <span className="text-neutral-400">{slot.shop_name || '-'}</span>
+                    </div>
+                    <div className="flex border-b border-neutral-800 pb-2">
+                      <span className="text-neutral-600 w-28 flex-shrink-0">채팅방</span>
+                      <span className="text-neutral-400">{slot.target_room}</span>
+                    </div>
+                    <div className="flex border-b border-neutral-800 pb-2 items-center">
+                      <span className="text-neutral-600 w-28 flex-shrink-0">채팅방 타입</span>
+                      <span className={`px-2 py-1 text-xs rounded-full ${slot.chat_room_type === 'open' ? 'bg-purple-600/20 text-purple-400' : 'bg-blue-600/20 text-blue-400'}`}>
+                        {slot.chat_room_type === 'open' ? '오픈채팅' : '그룹채팅'}
+                      </span>
+                    </div>
+                    <div className="flex border-b border-neutral-800 pb-2 items-center">
+                      <span className="text-neutral-600 w-28 flex-shrink-0">초대할 ID</span>
+                      <span onClick={() => copyToClipboard(slot.kakao_id)} className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition">
+                        {slot.kakao_id}
+                      </span>
+                    </div>
+                    <div className="flex">
+                      <span className="text-neutral-600 w-28 flex-shrink-0">만료일</span>
+                      <span className={isExpired ? 'text-red-400' : isExpiringSoon ? 'text-yellow-400' : 'text-neutral-400'}>
+                        {formatDate(slot.expires_at)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {/* 일반 유저: 자신의 슬롯만 */}
+            {user?.role !== 'admin' && slots.map((slot) => {
               const daysRemaining = getDaysRemaining(slot.expires_at);
               const isExpiringSoon = daysRemaining <= 7;
               const isExpired = daysRemaining <= 0;
@@ -909,8 +1066,8 @@ export default function DashboardPage() {
                 </div>
               );
             })}
-            {/* 모바일 빈 슬롯 */}
-            {emptySlots.map((index) => (
+            {/* 모바일 빈 슬롯 (일반 유저만) */}
+            {user?.role !== 'admin' && emptySlots.map((index) => (
               <div key={`empty-mobile-${index}`} className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-4">
                 {editingSlotIndex === index ? (
                   <div className="space-y-3">
@@ -1006,7 +1163,12 @@ export default function DashboardPage() {
                 )}
               </div>
             ))}
-            {slots.length === 0 && emptySlots.length === 0 && (
+            {user?.role === 'admin' && allSlots.length === 0 && (
+              <div className="text-center py-12 text-neutral-600 bg-neutral-900 border border-neutral-800 rounded-2xl">
+                등록된 인원이 없습니다.
+              </div>
+            )}
+            {user?.role !== 'admin' && slots.length === 0 && emptySlots.length === 0 && (
               <div className="text-center py-12 text-neutral-600 bg-neutral-900 border border-neutral-800 rounded-2xl">
                 등록 가능한 인원이 없습니다. 인원을 추가 구매해주세요.
               </div>
