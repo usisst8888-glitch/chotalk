@@ -56,11 +56,14 @@ export async function GET(request: NextRequest) {
     }
 
     // users 객체를 평탄화
-    const formattedSlots = slots?.map(slot => ({
-      ...slot,
-      username: (slot.users as { username: string } | null)?.username || '알 수 없음',
-      users: undefined
-    }));
+    const formattedSlots = slots?.map(slot => {
+      const userInfo = slot.users as unknown as { username: string } | null;
+      return {
+        ...slot,
+        username: userInfo?.username || '알 수 없음',
+        users: undefined
+      };
+    });
 
     return NextResponse.json({ slots: formattedSlots });
   } catch {
