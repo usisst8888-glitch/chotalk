@@ -4,7 +4,8 @@ CREATE TABLE IF NOT EXISTS message_logs (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   slot_id UUID NOT NULL REFERENCES slots(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  room_name VARCHAR(255) NOT NULL,           -- 초톡방 이름
+  user_template_id UUID REFERENCES user_templates(id) ON DELETE SET NULL, -- 사용자 템플릿 ID
+  room_name VARCHAR(255) NOT NULL,           -- 초톡방 이름 (슬롯의 chat_room_name)
   sender_name VARCHAR(100) NOT NULL,         -- 발신자 이름 (아가씨 닉네임)
   message TEXT NOT NULL,                     -- 메시지 전체 내용
   message_type VARCHAR(20) DEFAULT 'chotalk', -- 'chotalk' | 'dotalk'
@@ -15,6 +16,7 @@ CREATE TABLE IF NOT EXISTS message_logs (
 -- 인덱스
 CREATE INDEX IF NOT EXISTS idx_message_logs_slot_id ON message_logs(slot_id);
 CREATE INDEX IF NOT EXISTS idx_message_logs_user_id ON message_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_message_logs_user_template_id ON message_logs(user_template_id);
 CREATE INDEX IF NOT EXISTS idx_message_logs_sender_name ON message_logs(sender_name);
 CREATE INDEX IF NOT EXISTS idx_message_logs_is_processed ON message_logs(is_processed);
 CREATE INDEX IF NOT EXISTS idx_message_logs_created_at ON message_logs(created_at DESC);

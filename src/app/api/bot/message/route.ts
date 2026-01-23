@@ -50,14 +50,22 @@ export async function POST(request: NextRequest) {
     // 매칭된 슬롯들에 대해 메시지 로그 저장
     const savedLogs = [];
     for (const slot of matchedSlots) {
+      // 해당 user_id의 템플릿 찾기
+      const { data: template } = await supabase
+        .from('user_templates')
+        .select('id')
+        .eq('user_id', slot.user_id)
+        .single();
+
       const { data: log, error: logError } = await supabase
         .from('message_logs')
         .insert({
           slot_id: slot.id,
           user_id: slot.user_id,
-          room_name: room,
+          room_name: slot.chat_room_name,  // 슬롯의 채팅방 이름 사용
           sender_name: sender,
           message: message,
+          user_template_id: template?.id || null,  // 템플릿 ID 저장
           is_processed: false,
         })
         .select()
@@ -67,7 +75,9 @@ export async function POST(request: NextRequest) {
         savedLogs.push({
           logId: log.id,
           slotId: slot.id,
-          girlName: slot.girl_name
+          girlName: slot.girl_name,
+          chatRoomName: slot.chat_room_name,
+          templateId: template?.id || null
         });
       }
     }
