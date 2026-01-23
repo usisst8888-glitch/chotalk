@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Chotalk - 초톡, 도촉 자동 카카오톡 발송기",
+  title: "초톡봇 - 초톡, 도촉 자동 카카오톡 발송기",
   description: "초톡, 도촉 자동 카카오톡 발송기",
 };
 
