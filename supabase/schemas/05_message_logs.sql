@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS message_logs (
   user_template_id UUID REFERENCES user_templates(id) ON DELETE SET NULL,
   source_room VARCHAR(255) NOT NULL,           -- 메시지 감지된 방 (초톡방)
   target_room VARCHAR(255),                    -- 발송할 채팅방 (슬롯에서 가져옴)
+  kakao_id VARCHAR(100),                       -- 발송할 카카오톡 ID (어떤 폰이 발송할지)
   sender_name VARCHAR(100) NOT NULL,           -- 발신자 이름
   message TEXT NOT NULL,                       -- 메시지 전체 내용
   message_type VARCHAR(20) DEFAULT 'chotalk',  -- 'chotalk' | 'dotalk'

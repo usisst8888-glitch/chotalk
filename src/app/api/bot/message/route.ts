@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     // 활성화된 모든 슬롯 가져오기
     const { data: slots, error: slotsError } = await supabase
       .from('slots')
-      .select('id, user_id, girl_name, target_room, is_active, expires_at')
+      .select('id, user_id, girl_name, target_room, kakao_id, is_active, expires_at')
       .eq('is_active', true);
 
     if (slotsError || !slots || slots.length === 0) {
@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
           user_id: slot.user_id,
           source_room: room,             // 메시지 감지된 방 (초톡방)
           target_room: slot.target_room, // 발송할 채팅방
+          kakao_id: slot.kakao_id,       // 발송할 카카오톡 ID (어떤 폰이 발송할지)
           sender_name: sender,
           message: message,
           user_template_id: template?.id || null,
@@ -79,6 +80,7 @@ export async function POST(request: NextRequest) {
           slotId: slot.id,
           girlName: slot.girl_name,
           targetRoom: slot.target_room,
+          kakaoId: slot.kakao_id,
           templateId: template?.id || null
         });
       }
