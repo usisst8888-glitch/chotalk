@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS slots (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   girl_name VARCHAR(100) NOT NULL,
+  shop_name VARCHAR(100),                      -- 가게명 (도파민, 유앤미, 달토, 퍼펙트, 엘리트 등)
   target_room VARCHAR(100) NOT NULL,           -- 발송할 채팅방 이름
   kakao_id VARCHAR(100) NOT NULL DEFAULT 'test_kakao_id',
   is_active BOOLEAN DEFAULT TRUE,

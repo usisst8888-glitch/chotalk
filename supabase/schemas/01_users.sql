@@ -2,7 +2,6 @@
 
 CREATE TABLE IF NOT EXISTS users (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  phone VARCHAR(20) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
   username VARCHAR(100) UNIQUE NOT NULL,
   slot_count INTEGER DEFAULT 3,
@@ -11,7 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- 인덱스
-CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 
 -- 트리거
 CREATE TRIGGER update_users_updated_at

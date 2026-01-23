@@ -5,9 +5,9 @@ import { signToken } from '@/lib/jwt';
 
 export async function POST(request: NextRequest) {
   try {
-    const { phone, password, username } = await request.json();
+    const { password, username } = await request.json();
 
-    if (!phone || !password || !username) {
+    if (!password || !username) {
       return NextResponse.json(
         { error: '모든 필드를 입력해주세요.' },
         { status: 400 }
@@ -30,20 +30,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 연락처 중복 확인
-    const { data: existingPhone } = await supabase
-      .from('users')
-      .select('id')
-      .eq('phone', phone)
-      .single();
-
-    if (existingPhone) {
-      return NextResponse.json(
-        { error: '이미 사용 중인 연락처입니다.' },
-        { status: 400 }
-      );
-    }
-
     // 비밀번호 해싱
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -51,11 +37,10 @@ export async function POST(request: NextRequest) {
     const { data: newUser, error } = await supabase
       .from('users')
       .insert({
-        phone,
         password: hashedPassword,
         username,
       })
-      .select('id, phone, username')
+      .select('id, username')
       .single();
 
     if (error) {
@@ -71,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({
       message: '회원가입이 완료되었습니다.',
-      user: { id: newUser.id, phone: newUser.phone, username: newUser.username },
+      user: { id: newUser.id, username: newUser.username },
     });
 
     // 쿠키에 토큰 저장

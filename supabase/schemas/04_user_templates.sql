@@ -1,9 +1,11 @@
--- user_templates 테이블 (사용자별 단일 발송 템플릿)
+-- user_templates 테이블 (유저당 하나의 선택된 템플릿만 저장)
 
 CREATE TABLE IF NOT EXISTS user_templates (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
-  template TEXT NOT NULL,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,  -- 유저당 하나만!
+  template TEXT NOT NULL,                    -- 선택된 템플릿 내용
+  source_type VARCHAR(20) NOT NULL DEFAULT 'sample',  -- 'sample' 또는 'custom'
+  source_id UUID,                            -- custom_templates의 id (custom인 경우)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
