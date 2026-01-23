@@ -136,10 +136,14 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-neutral-800 py-8 px-6">
-        <div className="max-w-5xl mx-auto text-center text-neutral-500 text-sm">
-          <p>초톡봇</p>
-          <p className="mt-1">개발사: assistsolution</p>
+      <footer className="border-t border-neutral-800 py-10 px-6">
+        <div className="max-w-5xl mx-auto flex flex-col items-center gap-3">
+          <p className="text-white font-bold text-lg tracking-wide">초톡봇</p>
+          <div className="flex items-center gap-2 text-neutral-500 text-sm">
+            <span>Developed by</span>
+            <span className="text-indigo-400 font-medium">AssistSolution</span>
+          </div>
+          <p className="text-neutral-600 text-xs mt-2">© 2025 All rights reserved.</p>
         </div>
       </footer>
     </div>
