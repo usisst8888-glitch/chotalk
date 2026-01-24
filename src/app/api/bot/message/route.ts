@@ -182,14 +182,14 @@ async function handleSessionEnd(
   receivedAt: string,
   logId: string | undefined
 ) {
-  // 해당 방의 진행 중인 세션 찾기 (가장 최근)
+  // 해당 방의 진행 중인 세션 찾기 (가장 오래된 것 먼저 - FIFO)
   const { data: activeSession } = await supabase
     .from('sender_logs')
     .select('*')
     .eq('slot_id', slot.id)
     .eq('room_number', parsed.roomNumber)
     .eq('is_completed', false)
-    .order('start_time', { ascending: false })
+    .order('start_time', { ascending: true })
     .limit(1)
     .single();
 
