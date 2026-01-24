@@ -59,13 +59,14 @@ export default function DashboardPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showExtendModal, setShowExtendModal] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
-  const [newSlot, setNewSlot] = useState({ girlName: '', shopName: '도파민', customShopName: '', chatRoomType: 'group' as 'group' | 'open', targetRoom: '' });
-  const [editSlot, setEditSlot] = useState({ girlName: '', shopName: '', customShopName: '', chatRoomType: 'group' as 'group' | 'open', targetRoom: '' });
+  const [newSlot, setNewSlot] = useState({ girlName: '', shopName: '', customShopName: '', customClosingTime: '', chatRoomType: 'group' as 'group' | 'open', targetRoom: '' });
+  const [editSlot, setEditSlot] = useState({ girlName: '', shopName: '', customShopName: '', customClosingTime: '', chatRoomType: 'group' as 'group' | 'open', targetRoom: '' });
+  const [shops, setShops] = useState<Array<{ id: string; shop_name: string; closing_time: string }>>([]);
   const [submitting, setSubmitting] = useState(false);
   const [showSlotPurchaseModal, setShowSlotPurchaseModal] = useState(false);
   const [showExtendAllModal, setShowExtendAllModal] = useState(false);
   const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
-  const [inlineNewSlot, setInlineNewSlot] = useState({ girlName: '', shopName: '도파민', customShopName: '', chatRoomType: 'group' as 'group' | 'open', targetRoom: '' });
+  const [inlineNewSlot, setInlineNewSlot] = useState({ girlName: '', shopName: '', customShopName: '', customClosingTime: '', chatRoomType: 'group' as 'group' | 'open', targetRoom: '' });
   const [purchaseForm, setPurchaseForm] = useState({ depositorName: '', slotCount: 1 });
   const [purchaseSubmitting, setPurchaseSubmitting] = useState(false);
   const [extendForm, setExtendForm] = useState({ depositorName: '' });
@@ -77,24 +78,38 @@ export default function DashboardPage() {
   const [showEditTemplateModal, setShowEditTemplateModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<CustomTemplate | null>(null);
   const [newTemplate, setNewTemplate] = useState({ name: '', template: '' });
-  const [activeTab, setActiveTab] = useState<'slots' | 'templates' | 'users'>('slots');
+  const [activeTab, setActiveTab] = useState<'slots' | 'templates' | 'users' | 'kakaoIds' | 'closingTimes'>('slots');
   // 관리자용 회원관리
   const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; role: string; slot_count: number; created_at: string }>>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   // 관리자용 전체 인원관리
   const [allSlots, setAllSlots] = useState<Array<Slot & { username: string }>>([]);
   const [allSlotsLoading, setAllSlotsLoading] = useState(false);
+  // 관리자용 카카오 초대 아이디 관리
+  const [kakaoInviteIds, setKakaoInviteIds] = useState<Array<{ id: string; kakao_id: string; description: string | null; is_active: boolean; created_at: string; slot_count: number }>>([]);
+  const [kakaoIdsLoading, setKakaoIdsLoading] = useState(false);
+  const [showAddKakaoIdModal, setShowAddKakaoIdModal] = useState(false);
+  const [newKakaoId, setNewKakaoId] = useState({ kakaoId: '', description: '' });
+  const [editingSlotKakaoId, setEditingSlotKakaoId] = useState<string | null>(null);
+  const [editingKakaoIdDescription, setEditingKakaoIdDescription] = useState<string | null>(null);
+  const [editDescriptionValue, setEditDescriptionValue] = useState('');
+  // 관리자용 마감시간 관리
+  const [closingTimes, setClosingTimes] = useState<Array<{ id: string; shop_name: string; closing_time: string; is_active: boolean }>>([]);
+  const [closingTimesLoading, setClosingTimesLoading] = useState(false);
+  const [editingClosingTime, setEditingClosingTime] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUser();
     fetchSlots();
     fetchTemplates();
+    fetchShops();
   }, []);
 
-  // 관리자용: 전체 슬롯 로드
+  // 관리자용: 전체 슬롯 로드 + 카카오 아이디 목록 로드
   useEffect(() => {
     if (user?.role === 'admin') {
       fetchAllSlots();
+      fetchKakaoInviteIds();
     }
   }, [user]);
 
@@ -156,6 +171,152 @@ export default function DashboardPage() {
     }
   };
 
+  const fetchKakaoInviteIds = async () => {
+    setKakaoIdsLoading(true);
+    try {
+      const res = await fetch('/api/admin/kakao-ids');
+      if (res.ok) {
+        const data = await res.json();
+        setKakaoInviteIds(data.kakaoIds);
+      }
+    } catch (error) {
+      console.error('Failed to fetch kakao invite ids:', error);
+    } finally {
+      setKakaoIdsLoading(false);
+    }
+  };
+
+  const handleAddKakaoId = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/admin/kakao-ids', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kakaoId: newKakaoId.kakaoId,
+          description: newKakaoId.description || null,
+        }),
+      });
+      if (res.ok) {
+        setShowAddKakaoIdModal(false);
+        setNewKakaoId({ kakaoId: '', description: '' });
+        fetchKakaoInviteIds();
+      } else {
+        const data = await res.json();
+        alert(data.error || '추가에 실패했습니다.');
+      }
+    } catch {
+      alert('서버 오류가 발생했습니다.');
+    }
+  };
+
+  const handleDeleteKakaoId = async (id: string) => {
+    if (!confirm('정말 삭제하시겠습니까?')) return;
+    try {
+      const res = await fetch(`/api/admin/kakao-ids?id=${id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        fetchKakaoInviteIds();
+      } else {
+        alert('삭제에 실패했습니다.');
+      }
+    } catch {
+      alert('서버 오류가 발생했습니다.');
+    }
+  };
+
+  const handleToggleKakaoIdActive = async (id: string, currentActive: boolean) => {
+    try {
+      const res = await fetch('/api/admin/kakao-ids', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, isActive: !currentActive }),
+      });
+      if (res.ok) {
+        fetchKakaoInviteIds();
+      } else {
+        alert('수정에 실패했습니다.');
+      }
+    } catch {
+      alert('서버 오류가 발생했습니다.');
+    }
+  };
+
+  // 관리자용: 카카오 아이디 설명 수정
+  const handleUpdateKakaoIdDescription = async (id: string, description: string) => {
+    try {
+      const res = await fetch('/api/admin/kakao-ids', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, description: description || null }),
+      });
+      if (res.ok) {
+        setEditingKakaoIdDescription(null);
+        fetchKakaoInviteIds();
+      } else {
+        alert('수정에 실패했습니다.');
+      }
+    } catch {
+      alert('서버 오류가 발생했습니다.');
+    }
+  };
+
+  // 관리자용: 마감시간 목록 조회
+  const fetchClosingTimes = async () => {
+    setClosingTimesLoading(true);
+    try {
+      const res = await fetch('/api/admin/closing-times');
+      if (res.ok) {
+        const data = await res.json();
+        setClosingTimes(data.closingTimes);
+      }
+    } catch (error) {
+      console.error('Failed to fetch closing times:', error);
+    } finally {
+      setClosingTimesLoading(false);
+    }
+  };
+
+  // 관리자용: 마감시간 수정
+  const handleUpdateClosingTime = async (id: string, closingTime: string) => {
+    try {
+      const res = await fetch('/api/admin/closing-times', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, closingTime }),
+      });
+      if (res.ok) {
+        setEditingClosingTime(null);
+        fetchClosingTimes();
+      } else {
+        alert('수정에 실패했습니다.');
+      }
+    } catch {
+      alert('서버 오류가 발생했습니다.');
+    }
+  };
+
+  // 관리자용: 슬롯의 카카오 ID 변경
+  const handleChangeSlotKakaoId = async (slotId: string, newKakaoId: string) => {
+    try {
+      const res = await fetch(`/api/admin/slots/${slotId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kakaoId: newKakaoId }),
+      });
+      if (res.ok) {
+        setEditingSlotKakaoId(null);
+        fetchAllSlots();
+        fetchKakaoInviteIds(); // 등록 수 업데이트
+      } else {
+        alert('수정에 실패했습니다.');
+      }
+    } catch {
+      alert('서버 오류가 발생했습니다.');
+    }
+  };
+
   const fetchTemplates = async () => {
     try {
       const res = await fetch('/api/template');
@@ -170,6 +331,22 @@ export default function DashboardPage() {
     }
   };
 
+  const fetchShops = async () => {
+    try {
+      const res = await fetch('/api/shops');
+      if (res.ok) {
+        const data = await res.json();
+        setShops(data.shops || []);
+        // 첫 번째 가게를 기본값으로 설정
+        if (data.shops?.length > 0 && !newSlot.shopName) {
+          setNewSlot(prev => ({ ...prev, shopName: data.shops[0].shop_name }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch shops:', error);
+    }
+  };
+
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/login');
@@ -179,10 +356,18 @@ export default function DashboardPage() {
   const handleAddSlot = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitting) return;
+
+    // 기타 선택 시 마감시간 필수 체크
+    if (newSlot.shopName === '기타' && newSlot.customShopName && !newSlot.customClosingTime) {
+      alert('기타 가게의 마감시간을 입력해주세요.');
+      return;
+    }
+
     setSubmitting(true);
 
     try {
       const shopNameValue = newSlot.shopName === '기타' ? newSlot.customShopName : newSlot.shopName;
+      const closingTimeValue = newSlot.shopName === '기타' ? newSlot.customClosingTime : null;
       const res = await fetch('/api/slots', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -191,13 +376,15 @@ export default function DashboardPage() {
           shopName: shopNameValue || null,
           targetRoom: newSlot.targetRoom,
           chatRoomType: newSlot.chatRoomType,
+          closingTime: closingTimeValue,
         }),
       });
 
       if (res.ok) {
         setShowAddModal(false);
-        setNewSlot({ girlName: '', shopName: '도파민', customShopName: '', chatRoomType: 'group', targetRoom: '' });
+        setNewSlot({ girlName: '', shopName: shops[0]?.shop_name || '', customShopName: '', customClosingTime: '', chatRoomType: 'group', targetRoom: '' });
         fetchSlots();
+        fetchShops(); // 새 가게가 추가됐을 수 있으므로 목록 새로고침
       } else {
         const data = await res.json();
         alert(data.error);
@@ -224,9 +411,10 @@ export default function DashboardPage() {
 
   const openEditModal = (slot: Slot) => {
     setSelectedSlot(slot);
-    const shopName = slot.shop_name && SHOP_NAMES.includes(slot.shop_name) ? slot.shop_name : (slot.shop_name ? '기타' : '도파민');
-    const customShopName = slot.shop_name && !SHOP_NAMES.includes(slot.shop_name) ? slot.shop_name : '';
-    setEditSlot({ girlName: slot.girl_name, shopName, customShopName, chatRoomType: slot.chat_room_type || 'group', targetRoom: slot.target_room });
+    const shopNames = shops.map(s => s.shop_name);
+    const shopName = slot.shop_name && shopNames.includes(slot.shop_name) ? slot.shop_name : (slot.shop_name ? '기타' : (shops[0]?.shop_name || ''));
+    const customShopName = slot.shop_name && !shopNames.includes(slot.shop_name) ? slot.shop_name : '';
+    setEditSlot({ girlName: slot.girl_name, shopName, customShopName, customClosingTime: '', chatRoomType: slot.chat_room_type || 'group', targetRoom: slot.target_room });
     setShowEditModal(true);
   };
 
@@ -342,8 +530,9 @@ export default function DashboardPage() {
 
       if (res.ok) {
         setEditingSlotIndex(null);
-        setInlineNewSlot({ girlName: '', shopName: '도파민', customShopName: '', chatRoomType: 'group', targetRoom: '' });
+        setInlineNewSlot({ girlName: '', shopName: shops[0]?.shop_name || '', customShopName: '', customClosingTime: '', chatRoomType: 'group', targetRoom: '' });
         fetchSlots();
+        fetchShops();
       } else {
         const data = await res.json();
         alert(data.error);
@@ -357,7 +546,7 @@ export default function DashboardPage() {
 
   const cancelInlineEdit = () => {
     setEditingSlotIndex(null);
-    setInlineNewSlot({ girlName: '', shopName: '도파민', customShopName: '', chatRoomType: 'group', targetRoom: '' });
+    setInlineNewSlot({ girlName: '', shopName: shops[0]?.shop_name || '', customShopName: '', customClosingTime: '', chatRoomType: 'group', targetRoom: '' });
   };
 
   const handleSlotPurchase = async () => {
@@ -550,19 +739,47 @@ export default function DashboardPage() {
               발송 템플릿
             </button>
             {user?.role === 'admin' && (
-              <button
-                onClick={() => {
-                  setActiveTab('users');
-                  fetchAllUsers();
-                }}
-                className={`px-4 py-2 rounded-lg font-medium transition ${
-                  activeTab === 'users'
-                    ? 'bg-red-600 text-white'
-                    : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
-                }`}
-              >
-                회원 관리
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    setActiveTab('users');
+                    fetchAllUsers();
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    activeTab === 'users'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
+                  }`}
+                >
+                  회원 관리
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('kakaoIds');
+                    fetchKakaoInviteIds();
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    activeTab === 'kakaoIds'
+                      ? 'bg-yellow-600 text-white'
+                      : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
+                  }`}
+                >
+                  초대 아이디
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('closingTimes');
+                    fetchClosingTimes();
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    activeTab === 'closingTimes'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
+                  }`}
+                >
+                  마감시간
+                </button>
+              </>
             )}
           </div>
           <a
@@ -701,13 +918,32 @@ export default function DashboardPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span
-                          onClick={() => copyToClipboard(slot.kakao_id)}
-                          className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
-                          title="클릭하여 복사"
-                        >
-                          {slot.kakao_id}
-                        </span>
+                        {editingSlotKakaoId === slot.id ? (
+                          <select
+                            defaultValue={slot.kakao_id}
+                            onChange={(e) => handleChangeSlotKakaoId(slot.id, e.target.value)}
+                            onBlur={() => setEditingSlotKakaoId(null)}
+                            autoFocus
+                            className="px-2 py-1 bg-neutral-800 border border-yellow-500 rounded text-white text-sm focus:outline-none"
+                          >
+                            <option value={slot.kakao_id}>{slot.kakao_id}</option>
+                            {kakaoInviteIds
+                              .filter((k) => k.is_active && k.kakao_id !== slot.kakao_id)
+                              .map((k) => (
+                                <option key={k.id} value={k.kakao_id}>
+                                  {k.kakao_id} {k.description ? `(${k.description})` : ''}
+                                </option>
+                              ))}
+                          </select>
+                        ) : (
+                          <span
+                            onClick={() => setEditingSlotKakaoId(slot.id)}
+                            className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
+                            title="클릭하여 수정"
+                          >
+                            {slot.kakao_id}
+                          </span>
+                        )}
                       </td>
                       <td className={`px-4 py-3 text-center ${isExpired ? 'text-red-400' : isExpiringSoon ? 'text-yellow-400' : 'text-neutral-500'}`}>
                         {formatDate(slot.expires_at)}
@@ -971,9 +1207,32 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex border-b border-neutral-800 pb-2 items-center">
                       <span className="text-neutral-600 w-28 flex-shrink-0">초대할 ID</span>
-                      <span onClick={() => copyToClipboard(slot.kakao_id)} className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition">
-                        {slot.kakao_id}
-                      </span>
+                      {editingSlotKakaoId === slot.id ? (
+                        <select
+                          defaultValue={slot.kakao_id}
+                          onChange={(e) => handleChangeSlotKakaoId(slot.id, e.target.value)}
+                          onBlur={() => setEditingSlotKakaoId(null)}
+                          autoFocus
+                          className="px-2 py-1 bg-neutral-800 border border-yellow-500 rounded text-white text-sm focus:outline-none"
+                        >
+                          <option value={slot.kakao_id}>{slot.kakao_id}</option>
+                          {kakaoInviteIds
+                            .filter((k) => k.is_active && k.kakao_id !== slot.kakao_id)
+                            .map((k) => (
+                              <option key={k.id} value={k.kakao_id}>
+                                {k.kakao_id} {k.description ? `(${k.description})` : ''}
+                              </option>
+                            ))}
+                        </select>
+                      ) : (
+                        <span
+                          onClick={() => setEditingSlotKakaoId(slot.id)}
+                          className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
+                          title="클릭하여 수정"
+                        >
+                          {slot.kakao_id}
+                        </span>
+                      )}
                     </div>
                     <div className="flex">
                       <span className="text-neutral-600 w-28 flex-shrink-0">만료일</span>
@@ -1117,19 +1376,28 @@ export default function DashboardPage() {
                         onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, shopName: e.target.value, customShopName: '' })}
                         className="w-full px-3 py-2 pr-10 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500 appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%239ca3af%22%20d%3D%22M2%204l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.75rem_center]"
                       >
-                        {SHOP_NAMES.map((name) => (
-                          <option key={name} value={name}>{name}</option>
+                        {shops.map((shop) => (
+                          <option key={shop.id} value={shop.shop_name}>{shop.shop_name} ({shop.closing_time.slice(0, 5)})</option>
                         ))}
                         <option value="기타">기타 (직접입력)</option>
                       </select>
                       {inlineNewSlot.shopName === '기타' && (
-                        <input
-                          type="text"
-                          value={inlineNewSlot.customShopName}
-                          onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, customShopName: e.target.value })}
-                          placeholder="가게명 직접 입력"
-                          className="w-full mt-2 px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
-                        />
+                        <>
+                          <input
+                            type="text"
+                            value={inlineNewSlot.customShopName}
+                            onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, customShopName: e.target.value })}
+                            placeholder="가게명 직접 입력"
+                            className="w-full mt-2 px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+                          />
+                          <input
+                            type="text"
+                            value={inlineNewSlot.customClosingTime || ''}
+                            onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, customClosingTime: e.target.value })}
+                            placeholder="24시간 기준으로 작성 (예: 14:00)"
+                            className="w-full mt-2 px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+                          />
+                        </>
                       )}
                     </div>
                     <input
@@ -1416,7 +1684,228 @@ export default function DashboardPage() {
             )}
           </div>
         )}
+
+        {/* 카카오 초대 아이디 관리 탭 (관리자 전용) */}
+        {activeTab === 'kakaoIds' && user?.role === 'admin' && (
+          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">초대 카카오 아이디 관리</h2>
+              <button
+                onClick={() => setShowAddKakaoIdModal(true)}
+                className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg font-medium transition"
+              >
+                + 아이디 추가
+              </button>
+            </div>
+            {kakaoIdsLoading ? (
+              <div className="text-center py-12 text-neutral-400">로딩 중...</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-neutral-800">
+                      <th className="text-left px-4 py-3 text-neutral-500 font-medium">카카오 아이디</th>
+                      <th className="text-left px-4 py-3 text-neutral-500 font-medium">설명</th>
+                      <th className="text-center px-4 py-3 text-neutral-500 font-medium">등록 수</th>
+                      <th className="text-center px-4 py-3 text-neutral-500 font-medium">상태</th>
+                      <th className="text-center px-4 py-3 text-neutral-500 font-medium">등록일</th>
+                      <th className="text-center px-4 py-3 text-neutral-500 font-medium">관리</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {kakaoInviteIds.map((item) => (
+                      <tr key={item.id} className="border-b border-neutral-800 hover:bg-neutral-800/50">
+                        <td className="px-4 py-3 text-white font-medium">{item.kakao_id}</td>
+                        <td className="px-4 py-3">
+                          {editingKakaoIdDescription === item.id ? (
+                            <input
+                              type="text"
+                              value={editDescriptionValue}
+                              onChange={(e) => setEditDescriptionValue(e.target.value)}
+                              onBlur={() => {
+                                handleUpdateKakaoIdDescription(item.id, editDescriptionValue);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleUpdateKakaoIdDescription(item.id, editDescriptionValue);
+                                } else if (e.key === 'Escape') {
+                                  setEditingKakaoIdDescription(null);
+                                }
+                              }}
+                              autoFocus
+                              className="px-2 py-1 bg-neutral-800 border border-yellow-500 rounded text-white text-sm focus:outline-none"
+                              placeholder="설명 입력"
+                            />
+                          ) : (
+                            <span
+                              onClick={() => {
+                                setEditingKakaoIdDescription(item.id);
+                                setEditDescriptionValue(item.description || '');
+                              }}
+                              className="text-neutral-400 cursor-pointer hover:text-white transition"
+                              title="클릭하여 수정"
+                            >
+                              {item.description || '-'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            item.slot_count > 0
+                              ? 'bg-indigo-600/20 text-indigo-400'
+                              : 'bg-neutral-700 text-neutral-500'
+                          }`}>
+                            {item.slot_count}명
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => handleToggleKakaoIdActive(item.id, item.is_active)}
+                            className={`px-2 py-1 text-xs rounded-full ${
+                              item.is_active
+                                ? 'bg-green-600/20 text-green-400'
+                                : 'bg-neutral-700 text-neutral-400'
+                            }`}
+                          >
+                            {item.is_active ? '활성' : '비활성'}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-center text-neutral-500 text-sm">
+                          {new Date(item.created_at).toLocaleDateString('ko-KR')}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => handleDeleteKakaoId(item.id)}
+                            className="px-3 py-1 text-xs bg-red-600 hover:bg-red-500 text-white rounded transition"
+                          >
+                            삭제
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {kakaoInviteIds.length === 0 && (
+                  <div className="text-center py-12 text-neutral-600">
+                    등록된 카카오 아이디가 없습니다.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 마감시간 관리 탭 (관리자 전용) */}
+        {activeTab === 'closingTimes' && user?.role === 'admin' && (
+          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
+            <h2 className="text-xl font-bold text-white mb-6">가게별 마감시간 관리</h2>
+            {closingTimesLoading ? (
+              <div className="text-center py-12 text-neutral-400">로딩 중...</div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                {closingTimes.map((item) => (
+                  <div key={item.id} className="flex flex-col items-center p-4 bg-neutral-800 rounded-xl">
+                    <span className="text-white font-medium mb-2">{item.shop_name}</span>
+                    {editingClosingTime === item.id ? (
+                      <input
+                        type="text"
+                        defaultValue={item.closing_time.slice(0, 5)}
+                        onBlur={(e) => {
+                          const val = e.target.value;
+                          if (/^\d{1,2}:\d{2}$/.test(val)) {
+                            handleUpdateClosingTime(item.id, val);
+                          } else {
+                            setEditingClosingTime(null);
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const val = (e.target as HTMLInputElement).value;
+                            if (/^\d{1,2}:\d{2}$/.test(val)) {
+                              handleUpdateClosingTime(item.id, val);
+                            }
+                          } else if (e.key === 'Escape') {
+                            setEditingClosingTime(null);
+                          }
+                        }}
+                        autoFocus
+                        placeholder="00:00"
+                        className="w-20 px-2 py-1 bg-neutral-700 border border-purple-500 rounded text-white text-center focus:outline-none"
+                      />
+                    ) : (
+                      <button
+                        onClick={() => setEditingClosingTime(item.id)}
+                        className="px-3 py-1 bg-purple-600/20 hover:bg-purple-600/40 rounded text-purple-400 font-medium transition"
+                      >
+                        {item.closing_time.slice(0, 5)}
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {closingTimes.length === 0 && (
+                  <div className="col-span-full text-center py-12 text-neutral-600">
+                    등록된 가게가 없습니다.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </main>
+
+      {/* 카카오 아이디 추가 모달 */}
+      {showAddKakaoIdModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 w-full max-w-md mx-4">
+            <h3 className="text-xl font-bold text-white mb-4">초대 카카오 아이디 추가</h3>
+            <form onSubmit={handleAddKakaoId} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-400 mb-2">
+                  카카오 아이디
+                </label>
+                <input
+                  type="text"
+                  value={newKakaoId.kakaoId}
+                  onChange={(e) => setNewKakaoId({ ...newKakaoId, kakaoId: e.target.value })}
+                  required
+                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none transition"
+                  placeholder="카카오톡 아이디 입력"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-400 mb-2">
+                  설명 (선택사항)
+                </label>
+                <input
+                  type="text"
+                  value={newKakaoId.description}
+                  onChange={(e) => setNewKakaoId({ ...newKakaoId, description: e.target.value })}
+                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none transition"
+                  placeholder="메모 또는 설명"
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddKakaoIdModal(false);
+                    setNewKakaoId({ kakaoId: '', description: '' });
+                  }}
+                  className="flex-1 px-4 py-3 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl transition"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-3 bg-yellow-600 hover:bg-yellow-500 text-white rounded-xl transition"
+                >
+                  추가
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* 슬롯 추가 모달 */}
       {showAddModal && (
@@ -1448,22 +1937,31 @@ export default function DashboardPage() {
                 </label>
                 <select
                   value={newSlot.shopName}
-                  onChange={(e) => setNewSlot({ ...newSlot, shopName: e.target.value, customShopName: '' })}
+                  onChange={(e) => setNewSlot({ ...newSlot, shopName: e.target.value, customShopName: '', customClosingTime: '' })}
                   className="w-full px-4 py-3 pr-10 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%239ca3af%22%20d%3D%22M2%204l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.75rem_center]"
                 >
-                  {SHOP_NAMES.map((name) => (
-                    <option key={name} value={name}>{name}</option>
+                  {shops.map((shop) => (
+                    <option key={shop.id} value={shop.shop_name}>{shop.shop_name} ({shop.closing_time.slice(0, 5)})</option>
                   ))}
                   <option value="기타">기타 (직접입력)</option>
                 </select>
                 {newSlot.shopName === '기타' && (
-                  <input
-                    type="text"
-                    value={newSlot.customShopName}
-                    onChange={(e) => setNewSlot({ ...newSlot, customShopName: e.target.value })}
-                    placeholder="가게명 직접 입력"
-                    className="w-full mt-2 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                  />
+                  <>
+                    <input
+                      type="text"
+                      value={newSlot.customShopName}
+                      onChange={(e) => setNewSlot({ ...newSlot, customShopName: e.target.value })}
+                      placeholder="가게명 직접 입력"
+                      className="w-full mt-2 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+                    />
+                    <input
+                      type="text"
+                      value={newSlot.customClosingTime}
+                      onChange={(e) => setNewSlot({ ...newSlot, customClosingTime: e.target.value })}
+                      placeholder="24시간 기준으로 작성 (예: 14:00)"
+                      className="w-full mt-2 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+                    />
+                  </>
                 )}
               </div>
               <div>
@@ -1557,22 +2055,31 @@ export default function DashboardPage() {
                 </label>
                 <select
                   value={editSlot.shopName}
-                  onChange={(e) => setEditSlot({ ...editSlot, shopName: e.target.value, customShopName: '' })}
+                  onChange={(e) => setEditSlot({ ...editSlot, shopName: e.target.value, customShopName: '', customClosingTime: '' })}
                   className="w-full px-4 py-3 pr-10 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%239ca3af%22%20d%3D%22M2%204l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.75rem_center]"
                 >
-                  {SHOP_NAMES.map((name) => (
-                    <option key={name} value={name}>{name}</option>
+                  {shops.map((shop) => (
+                    <option key={shop.id} value={shop.shop_name}>{shop.shop_name} ({shop.closing_time.slice(0, 5)})</option>
                   ))}
                   <option value="기타">기타 (직접입력)</option>
                 </select>
                 {editSlot.shopName === '기타' && (
-                  <input
-                    type="text"
-                    value={editSlot.customShopName}
-                    onChange={(e) => setEditSlot({ ...editSlot, customShopName: e.target.value })}
-                    placeholder="가게명 직접 입력"
-                    className="w-full mt-2 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                  />
+                  <>
+                    <input
+                      type="text"
+                      value={editSlot.customShopName}
+                      onChange={(e) => setEditSlot({ ...editSlot, customShopName: e.target.value })}
+                      placeholder="가게명 직접 입력"
+                      className="w-full mt-2 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+                    />
+                    <input
+                      type="text"
+                      value={editSlot.customClosingTime}
+                      onChange={(e) => setEditSlot({ ...editSlot, customClosingTime: e.target.value })}
+                      placeholder="24시간 기준으로 작성 (예: 14:00)"
+                      className="w-full mt-2 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+                    />
+                  </>
                 )}
               </div>
               <div>
