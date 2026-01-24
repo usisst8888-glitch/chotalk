@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
 
 async function handleSessionStart(
   supabase: ReturnType<typeof getSupabase>,
-  slot: { id: string; user_id: string; girl_name: string; shop_name: string | null },
+  slot: { id: string; user_id: string; girl_name: string; shop_name: string | null; kakao_id: string | null; target_room: string | null },
   parsed: ReturnType<typeof parseMessage>,
   receivedAt: string,
   logId: string | undefined
@@ -145,6 +145,8 @@ async function handleSessionStart(
       room_number: parsed.roomNumber,
       girl_name: slot.girl_name,
       shop_name: slot.shop_name,
+      kakao_id: slot.kakao_id,
+      target_room: slot.target_room,
       start_time: receivedAt,
       is_completed: false,
       has_fare: parsed.fareAmount > 0,
@@ -175,7 +177,7 @@ async function handleSessionStart(
 
 async function handleSessionEnd(
   supabase: ReturnType<typeof getSupabase>,
-  slot: { id: string; user_id: string; girl_name: string; shop_name: string | null },
+  slot: { id: string; user_id: string; girl_name: string; shop_name: string | null; kakao_id: string | null; target_room: string | null },
   parsed: ReturnType<typeof parseMessage>,
   receivedAt: string,
   logId: string | undefined
@@ -201,6 +203,8 @@ async function handleSessionEnd(
         room_number: parsed.roomNumber,
         girl_name: slot.girl_name,
         shop_name: slot.shop_name,
+        kakao_id: slot.kakao_id,
+        target_room: slot.target_room,
         start_time: receivedAt,
         end_time: receivedAt,
         duration_minutes: 0,
