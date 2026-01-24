@@ -136,9 +136,9 @@ async function handleSessionStart(
   receivedAt: string,
   logId: string | undefined
 ) {
-  // sessions 테이블에 새 세션 생성
+  // sender_logs 테이블에 새 세션 생성
   const { data: session, error } = await supabase
-    .from('sessions')
+    .from('sender_logs')
     .insert({
       slot_id: slot.id,
       user_id: slot.user_id,
@@ -182,7 +182,7 @@ async function handleSessionEnd(
 ) {
   // 해당 방의 진행 중인 세션 찾기 (가장 최근)
   const { data: activeSession } = await supabase
-    .from('sessions')
+    .from('sender_logs')
     .select('*')
     .eq('slot_id', slot.id)
     .eq('room_number', parsed.roomNumber)
@@ -194,7 +194,7 @@ async function handleSessionEnd(
   if (!activeSession) {
     // 활성 세션 없으면 새로 생성하고 바로 종료
     const { data: newSession, error } = await supabase
-      .from('sessions')
+      .from('sender_logs')
       .insert({
         slot_id: slot.id,
         user_id: slot.user_id,
@@ -242,7 +242,7 @@ async function handleSessionEnd(
 
   // 세션 업데이트
   const { data: updatedSession, error } = await supabase
-    .from('sessions')
+    .from('sender_logs')
     .update({
       end_time: receivedAt,
       duration_minutes: durationMinutes,

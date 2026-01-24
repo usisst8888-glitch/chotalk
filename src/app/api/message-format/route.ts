@@ -43,9 +43,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 2. 완료된 세션 가져오기 (sessions 테이블)
+    // 2. 완료된 세션 가져오기 (sender_logs 테이블)
     let query = supabase
-      .from('sessions')
+      .from('sender_logs')
       .select('*')
       .eq('user_id', payload.userId)
       .eq('is_completed', true)
