@@ -168,7 +168,7 @@ async function handleSessionStart(
     shopName: slot.shop_name,
     roomNumber: parsed.roomNumber!,
     girlName: slot.girl_name,
-    isStarted: true,
+    isInProgress: true,
     startTime: receivedAt,
     endTime: null,
     sourceLogId: logId,
@@ -243,7 +243,7 @@ async function handleSessionEnd(
       shopName: slot.shop_name,
       roomNumber: parsed.roomNumber!,
       girlName: slot.girl_name,
-      isStarted: false,
+      isInProgress: false,
       startTime: receivedAt,
       endTime: receivedAt,
       sourceLogId: logId,
@@ -300,7 +300,7 @@ async function handleSessionEnd(
     shopName: slot.shop_name,
     roomNumber: parsed.roomNumber!,
     girlName: slot.girl_name,
-    isStarted: false,
+    isInProgress: false,
     startTime: activeSession.start_time,
     endTime: receivedAt,
     sourceLogId: logId,
@@ -333,7 +333,7 @@ async function updateStatusBoard(
     shopName: string | null;
     roomNumber: string;
     girlName: string;
-    isStarted: boolean;
+    isInProgress: boolean;
     startTime: string;
     endTime: string | null;
     sourceLogId: string | undefined;
@@ -353,7 +353,7 @@ async function updateStatusBoard(
       await supabase
         .from('status_board')
         .update({
-          is_started: data.isStarted,
+          is_in_progress: data.isInProgress,
           start_time: data.startTime,
           end_time: data.endTime,
           source_log_id: data.sourceLogId || null,
@@ -370,7 +370,7 @@ async function updateStatusBoard(
           shop_name: data.shopName,
           room_number: data.roomNumber,
           girl_name: data.girlName,
-          is_started: data.isStarted,
+          is_in_progress: data.isInProgress,
           start_time: data.startTime,
           end_time: data.endTime,
           source_log_id: data.sourceLogId || null,
