@@ -113,6 +113,20 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
+    // 사용 가능한 카카오 초대 ID 가져오기 (사용 횟수가 적은 것부터, 최대 50개 제한)
+    const { data: availableKakaoId, error: kakaoIdError } = await supabase
+      .from('kakao_invite_ids')
+      .select('id, kakao_id, usage_count')
+      .eq('is_active', true)
+      .lt('usage_count', 50)  // 50개 미만인 것만
+      .order('usage_count', { ascending: true })  // 사용 횟수 적은 것부터
+      .limit(1)
+      .single();
+
+    if (kakaoIdError || !availableKakaoId) {
+      return NextResponse.json({ error: '사용 가능한 카카오 초대 ID가 없습니다. 관리자에게 문의해주세요.' }, { status: 400 });
+    }
+
     // 슬롯 생성
     const { data: newSlot, error } = await supabase
       .from('slots')
@@ -122,11 +136,19 @@ export async function POST(request: NextRequest) {
         shop_name: shopName || null,
         target_room: targetRoom,
         chat_room_type: validChatRoomType,
-        kakao_id: 'test_kakao_id_123', // 하드코딩된 테스트 값
+        kakao_id: availableKakaoId.kakao_id,
         expires_at: expiresAt.toISOString(),
       })
       .select()
       .single();
+
+    // 슬롯 생성 성공 시 카카오 ID 사용 횟수 증가
+    if (!error && newSlot) {
+      await supabase
+        .from('kakao_invite_ids')
+        .update({ usage_count: (availableKakaoId.usage_count || 0) + 1 })
+        .eq('id', availableKakaoId.id);
+    }
 
     if (error) {
       console.error('Slot creation error:', error);
