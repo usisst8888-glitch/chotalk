@@ -1,18 +1,17 @@
 // 메시지 파싱 유틸리티
 // 설정은 ticket-config.ts에서 관리합니다.
 //
-// 메시지 형식 예시: "703 이승기 도아 ㅃ2"
+// 메시지 형식 예시: "703 이승기 도아 1.5ㄲ"
 // - 703 = 방 번호
 // - 이승기 = 담당자 이름
 // - 도아 = 아가씨 이름 (트리거)
-// - ㅃ2 = 차비 정보
-// - ㄲ = 종료 신호
+// - 1.5ㄲ = 종료 신호 + 이용시간
+// - ㅈㅈ = 수정 신호
 
 import {
   MESSAGE_SIGNALS,
   PARSING_PATTERNS,
   hasSignal,
-  extractFare,
 } from './ticket-config';
 
 // ============================================================
@@ -24,8 +23,8 @@ export interface ParsedMessage {
   managerName: string | null;      // 담당자 이름
   girlName: string | null;         // 아가씨 이름 (매칭된)
   isEnd: boolean;                  // ㄲ이 포함되어 있으면 종료
-  fareInfo: string | null;         // 차비 정보 (ㅃ 뒤의 숫자)
-  fareAmount: number;              // 차비 금액
+  isCorrection: boolean;           // ㅈㅈ이 포함되어 있으면 수정
+  usageDuration: number | null;    // 이용시간 (ㄲ 앞의 숫자, 분 단위)
   rawMessage: string;              // 원본 메시지
   // 확장용 필드 (새로운 신호 추가시)
   signals: {
@@ -69,17 +68,23 @@ export function isEndSignal(message: string): boolean {
 }
 
 /**
- * 차비 정보 추출 (ㅃ 뒤의 숫자)
+ * 수정 신호(ㅈㅈ) 확인
  */
-export function extractFareInfo(message: string): { fareInfo: string | null; fareAmount: number } {
-  const result = extractFare(message);
-  if (result.hasFare) {
-    return {
-      fareInfo: `ㅃ${result.amount}`,
-      fareAmount: result.amount,
-    };
+export function isCorrectionSignal(message: string): boolean {
+  return hasSignal(message, MESSAGE_SIGNALS.CORRECTION.code);
+}
+
+/**
+ * 이용시간 추출 (ㄲ 앞의 숫자)
+ * 예: "1ㄲ" → 1, "1.5ㄲ" → 1.5, "2.5 ㄲ" → 2.5
+ */
+export function extractUsageDuration(message: string): number | null {
+  // 패턴: 숫자(소수점 포함) + 공백(선택) + ㄲ
+  const match = message.match(/(\d+(?:\.\d+)?)\s*ㄲ/);
+  if (match) {
+    return parseFloat(match[1]);
   }
-  return { fareInfo: null, fareAmount: 0 };
+  return null;
 }
 
 /**
@@ -163,7 +168,8 @@ export function parseMessage(message: string, girlNames: string[]): ParsedMessag
   const girlName = findGirlName(message, girlNames);
   const managerName = extractManagerName(message, roomNumber, girlName);
   const isEnd = isEndSignal(message);
-  const { fareInfo, fareAmount } = extractFareInfo(message);
+  const isCorrection = isCorrectionSignal(message);
+  const usageDuration = isEnd ? extractUsageDuration(message) : null;
   const signals = checkAllSignals(message);
 
   return {
@@ -171,8 +177,8 @@ export function parseMessage(message: string, girlNames: string[]): ParsedMessag
     managerName,
     girlName,
     isEnd,
-    fareInfo,
-    fareAmount,
+    isCorrection,
+    usageDuration,
     rawMessage: message,
     signals,
   };
@@ -192,7 +198,8 @@ export function formatParsedMessage(parsed: ParsedMessage): string {
   if (parsed.managerName) parts.push(`담당자: ${parsed.managerName}`);
   if (parsed.girlName) parts.push(`아가씨: ${parsed.girlName}`);
   if (parsed.isEnd) parts.push('종료');
-  if (parsed.fareAmount > 0) parts.push(`차비: ${parsed.fareAmount}`);
+  if (parsed.isCorrection) parts.push('수정');
+  if (parsed.usageDuration) parts.push(`이용시간: ${parsed.usageDuration}`);
 
   return parts.join(' | ');
 }

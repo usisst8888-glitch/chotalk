@@ -111,7 +111,8 @@ export async function POST(request: NextRequest) {
       parsed: {
         roomNumber: parsed.roomNumber,
         isEnd: parsed.isEnd,
-        fareAmount: parsed.fareAmount,
+        isCorrection: parsed.isCorrection,
+        usageDuration: parsed.usageDuration,
       },
       results,
     });
@@ -149,8 +150,6 @@ async function handleSessionStart(
       target_room: slot.target_room,
       start_time: receivedAt,
       is_completed: false,
-      has_fare: parsed.fareAmount > 0,
-      fare_amount: parsed.fareAmount,
       start_log_id: logId || null,
     })
     .select()
@@ -171,6 +170,8 @@ async function handleSessionStart(
     isInProgress: true,
     startTime: receivedAt,
     endTime: null,
+    usageDuration: null,
+    isCorrection: parsed.isCorrection,
     sourceLogId: logId,
   });
 
@@ -224,8 +225,6 @@ async function handleSessionEnd(
         half_tickets: 0,
         full_tickets: 0,
         is_completed: true,
-        has_fare: parsed.fareAmount > 0,
-        fare_amount: parsed.fareAmount,
         start_log_id: logId,
         end_log_id: logId,
       })
@@ -246,6 +245,8 @@ async function handleSessionEnd(
       isInProgress: false,
       startTime: receivedAt,
       endTime: receivedAt,
+      usageDuration: parsed.usageDuration,
+      isCorrection: parsed.isCorrection,
       sourceLogId: logId,
     });
 
@@ -267,9 +268,6 @@ async function handleSessionEnd(
   // 티켓 계산
   const ticketResult = calculateTicketType(durationMinutes);
 
-  // 차비 합산
-  const totalFare = (activeSession.fare_amount || 0) + parsed.fareAmount;
-
   // 세션 업데이트
   const { data: updatedSession, error } = await supabase
     .from('sender_logs')
@@ -279,8 +277,6 @@ async function handleSessionEnd(
       half_tickets: ticketResult.halfTickets,
       full_tickets: ticketResult.fullTickets,
       is_completed: true,
-      has_fare: totalFare > 0,
-      fare_amount: totalFare,
       end_log_id: logId,
       updated_at: new Date().toISOString(),
     })
@@ -303,6 +299,8 @@ async function handleSessionEnd(
     isInProgress: false,
     startTime: activeSession.start_time,
     endTime: receivedAt,
+    usageDuration: parsed.usageDuration,
+    isCorrection: parsed.isCorrection,
     sourceLogId: logId,
   });
 
@@ -317,7 +315,6 @@ async function handleSessionEnd(
     durationMinutes,
     halfTickets: ticketResult.halfTickets,
     fullTickets: ticketResult.fullTickets,
-    fareAmount: totalFare,
   };
 }
 
@@ -336,6 +333,8 @@ async function updateStatusBoard(
     isInProgress: boolean;
     startTime: string;
     endTime: string | null;
+    usageDuration: number | null;
+    isCorrection: boolean;
     sourceLogId: string | undefined;
   }
 ) {
@@ -349,19 +348,25 @@ async function updateStatusBoard(
       .single();
 
     if (existing) {
-      // 기존 레코드 업데이트
-      await supabase
-        .from('status_board')
-        .update({
-          is_in_progress: data.isInProgress,
-          start_time: data.startTime,
-          end_time: data.endTime,
-          source_log_id: data.sourceLogId || null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', existing.id);
+      // 기존 레코드가 있으면:
+      // 1. usageDuration이 있을 때 업데이트
+      // 2. 수정(ㅈㅈ) 신호가 있을 때 업데이트
+      if (data.usageDuration !== null || data.isCorrection) {
+        await supabase
+          .from('status_board')
+          .update({
+            is_in_progress: data.isInProgress,
+            start_time: data.startTime,
+            end_time: data.endTime,
+            usage_duration: data.usageDuration,
+            source_log_id: data.sourceLogId || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id);
+      }
+      // usageDuration이 없고 수정 신호도 없으면 업데이트 안 함
     } else {
-      // 새 레코드 생성
+      // 새 레코드 생성 (첫 진입)
       await supabase
         .from('status_board')
         .insert({
@@ -373,6 +378,7 @@ async function updateStatusBoard(
           is_in_progress: data.isInProgress,
           start_time: data.startTime,
           end_time: data.endTime,
+          usage_duration: data.usageDuration,
           source_log_id: data.sourceLogId || null,
         });
     }

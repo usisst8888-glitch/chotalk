@@ -66,12 +66,11 @@ export const MESSAGE_SIGNALS = {
     description: '세션 종료',
   },
 
-  // 차비 신호 (ㅃ + 숫자)
-  FARE: {
-    code: 'ㅃ',
-    type: 'fare',
-    description: '차비',
-    pattern: /ㅃ\s*(\d+)/,  // ㅃ2, ㅃ 3 등
+  // 수정 신호
+  CORRECTION: {
+    code: 'ㅈㅈ',
+    type: 'correction',
+    description: '수정 (방번호 또는 이용시간 변경)',
   },
 
   // 추가 신호 예시:
@@ -88,30 +87,7 @@ export const MESSAGE_SIGNALS = {
 } as const;
 
 // ============================================================
-// 3. 연장 차비 규칙
-// ============================================================
-export interface ExtensionFareRule {
-  name: string;
-  minMinutes: number;     // 연장 시간 최소
-  fareAmount: number;     // 차비 금액
-}
-
-export const EXTENSION_FARE_RULES: ExtensionFareRule[] = [
-  {
-    name: '연장째 6분 초과',
-    minMinutes: 6,
-    fareAmount: 2,
-  },
-  // 새로운 규칙 추가 예시:
-  // {
-  //   name: '연장째 15분 초과',
-  //   minMinutes: 15,
-  //   fareAmount: 3,
-  // },
-];
-
-// ============================================================
-// 4. 메시지 파싱 패턴
+// 3. 메시지 파싱 패턴
 // ============================================================
 export const PARSING_PATTERNS = {
   // 방 번호 패턴 (숫자로 시작, 호 옵션)
@@ -162,13 +138,3 @@ export function hasSignal(message: string, signalCode: string): boolean {
   return message.includes(signalCode);
 }
 
-/**
- * 메시지에서 차비 추출
- */
-export function extractFare(message: string): { hasFare: boolean; amount: number } {
-  const match = message.match(MESSAGE_SIGNALS.FARE.pattern);
-  if (match) {
-    return { hasFare: true, amount: parseInt(match[1], 10) };
-  }
-  return { hasFare: false, amount: 0 };
-}
