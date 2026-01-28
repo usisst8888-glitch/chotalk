@@ -161,6 +161,19 @@ async function handleSessionStart(
     return { type: 'error', error: error.message };
   }
 
+  // 상황판 업데이트 (스타트)
+  await updateStatusBoard(supabase, {
+    slotId: slot.id,
+    userId: slot.user_id,
+    shopName: slot.shop_name,
+    roomNumber: parsed.roomNumber!,
+    girlName: slot.girl_name,
+    isStarted: true,
+    startTime: receivedAt,
+    endTime: null,
+    sourceLogId: logId,
+  });
+
   return {
     type: 'start',
     sessionId: session.id,
@@ -223,6 +236,19 @@ async function handleSessionEnd(
       return { type: 'error', error: error.message };
     }
 
+    // 상황판 업데이트 (즉시 종료)
+    await updateStatusBoard(supabase, {
+      slotId: slot.id,
+      userId: slot.user_id,
+      shopName: slot.shop_name,
+      roomNumber: parsed.roomNumber!,
+      girlName: slot.girl_name,
+      isStarted: false,
+      startTime: receivedAt,
+      endTime: receivedAt,
+      sourceLogId: logId,
+    });
+
     return {
       type: 'end',
       sessionId: newSession.id,
@@ -267,6 +293,19 @@ async function handleSessionEnd(
     return { type: 'error', error: error.message };
   }
 
+  // 상황판 업데이트 (종료)
+  await updateStatusBoard(supabase, {
+    slotId: slot.id,
+    userId: slot.user_id,
+    shopName: slot.shop_name,
+    roomNumber: parsed.roomNumber!,
+    girlName: slot.girl_name,
+    isStarted: false,
+    startTime: activeSession.start_time,
+    endTime: receivedAt,
+    sourceLogId: logId,
+  });
+
   return {
     type: 'end',
     sessionId: updatedSession.id,
@@ -280,4 +319,64 @@ async function handleSessionEnd(
     fullTickets: ticketResult.fullTickets,
     fareAmount: totalFare,
   };
+}
+
+// ============================================================
+// 상황판 업데이트 (정제된 현재 상황)
+// ============================================================
+
+async function updateStatusBoard(
+  supabase: ReturnType<typeof getSupabase>,
+  data: {
+    slotId: string;
+    userId: string;
+    shopName: string | null;
+    roomNumber: string;
+    girlName: string;
+    isStarted: boolean;
+    startTime: string;
+    endTime: string | null;
+    sourceLogId: string | undefined;
+  }
+) {
+  try {
+    // 같은 slot + room_number 조합으로 기존 레코드 찾기
+    const { data: existing } = await supabase
+      .from('status_board')
+      .select('id')
+      .eq('slot_id', data.slotId)
+      .eq('room_number', data.roomNumber)
+      .single();
+
+    if (existing) {
+      // 기존 레코드 업데이트
+      await supabase
+        .from('status_board')
+        .update({
+          is_started: data.isStarted,
+          start_time: data.startTime,
+          end_time: data.endTime,
+          source_log_id: data.sourceLogId || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id);
+    } else {
+      // 새 레코드 생성
+      await supabase
+        .from('status_board')
+        .insert({
+          slot_id: data.slotId,
+          user_id: data.userId,
+          shop_name: data.shopName,
+          room_number: data.roomNumber,
+          girl_name: data.girlName,
+          is_started: data.isStarted,
+          start_time: data.startTime,
+          end_time: data.endTime,
+          source_log_id: data.sourceLogId || null,
+        });
+    }
+  } catch (error) {
+    console.error('Status board update error:', error);
+  }
 }
