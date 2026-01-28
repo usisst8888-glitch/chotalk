@@ -68,8 +68,6 @@ export async function POST(request: NextRequest) {
           slot_id: slot.id,
           user_id: slot.user_id,
           source_room: room,
-          target_room: slot.target_room,
-          kakao_id: slot.kakao_id,
           sender_name: sender,
           message: message,
           user_template_id: template?.id || null,
@@ -171,6 +169,8 @@ async function handleSessionStart(
     shopName: slot.shop_name,
     roomNumber: parsed.roomNumber!,
     girlName: slot.girl_name,
+    kakaoId: slot.kakao_id,
+    targetRoom: slot.target_room,
     isInProgress: true,
     startTime: receivedAt,
     endTime: null,
@@ -247,6 +247,8 @@ async function handleSessionEnd(
       shopName: slot.shop_name,
       roomNumber: parsed.roomNumber!,
       girlName: slot.girl_name,
+      kakaoId: slot.kakao_id,
+      targetRoom: slot.target_room,
       isInProgress: false,
       startTime: receivedAt,
       endTime: receivedAt,
@@ -301,6 +303,8 @@ async function handleSessionEnd(
     shopName: slot.shop_name,
     roomNumber: parsed.roomNumber!,
     girlName: slot.girl_name,
+    kakaoId: slot.kakao_id,
+    targetRoom: slot.target_room,
     isInProgress: false,
     startTime: activeSession.start_time,
     endTime: receivedAt,
@@ -335,6 +339,8 @@ async function updateStatusBoard(
     shopName: string | null;
     roomNumber: string;
     girlName: string;
+    kakaoId: string | null;
+    targetRoom: string | null;
     isInProgress: boolean;
     startTime: string;
     endTime: string | null;
@@ -407,6 +413,8 @@ async function updateStatusBoard(
           shop_name: data.shopName,
           room_number: data.roomNumber,
           girl_name: data.girlName,
+          kakao_id: data.kakaoId,
+          target_room: data.targetRoom,
           is_in_progress: data.isInProgress,
           start_time: data.startTime,
           end_time: data.endTime,
