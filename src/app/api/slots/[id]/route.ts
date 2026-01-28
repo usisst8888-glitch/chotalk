@@ -24,14 +24,6 @@ export async function DELETE(
     const { id } = await params;
     const supabase = getSupabase();
 
-    // 삭제 전 슬롯의 kakao_id 가져오기
-    const { data: slot } = await supabase
-      .from('slots')
-      .select('kakao_id')
-      .eq('id', id)
-      .eq('user_id', payload.userId)
-      .single();
-
     const { error } = await supabase
       .from('slots')
       .delete()
@@ -40,22 +32,6 @@ export async function DELETE(
 
     if (error) {
       return NextResponse.json({ error: '슬롯 삭제 실패' }, { status: 500 });
-    }
-
-    // 삭제 성공 시 카카오 ID 사용 횟수 감소
-    if (slot?.kakao_id) {
-      const { data: kakaoInvite } = await supabase
-        .from('kakao_invite_ids')
-        .select('id, usage_count')
-        .eq('kakao_id', slot.kakao_id)
-        .single();
-
-      if (kakaoInvite && kakaoInvite.usage_count > 0) {
-        await supabase
-          .from('kakao_invite_ids')
-          .update({ usage_count: kakaoInvite.usage_count - 1 })
-          .eq('id', kakaoInvite.id);
-      }
     }
 
     return NextResponse.json({ message: '슬롯이 삭제되었습니다.' });

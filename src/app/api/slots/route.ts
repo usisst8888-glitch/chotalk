@@ -113,18 +113,34 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
-    // 사용 가능한 카카오 초대 ID 가져오기 (사용 횟수가 적은 것부터, 최대 50개 제한)
-    const { data: availableKakaoId, error: kakaoIdError } = await supabase
+    // 활성화된 카카오 초대 ID 목록 가져오기
+    const { data: kakaoIds, error: kakaoIdError } = await supabase
       .from('kakao_invite_ids')
-      .select('id, kakao_id, usage_count')
-      .eq('is_active', true)
-      .lt('usage_count', 50)  // 50개 미만인 것만
-      .order('usage_count', { ascending: true })  // 사용 횟수 적은 것부터
-      .limit(1)
-      .single();
+      .select('id, kakao_id')
+      .eq('is_active', true);
 
-    if (kakaoIdError || !availableKakaoId) {
+    if (kakaoIdError || !kakaoIds || kakaoIds.length === 0) {
       return NextResponse.json({ error: '사용 가능한 카카오 초대 ID가 없습니다. 관리자에게 문의해주세요.' }, { status: 400 });
+    }
+
+    // 각 카카오 ID별 slots 사용 개수 카운트
+    const kakaoIdUsage = await Promise.all(
+      kakaoIds.map(async (k) => {
+        const { count } = await supabase
+          .from('slots')
+          .select('*', { count: 'exact', head: true })
+          .eq('kakao_id', k.kakao_id);
+        return { ...k, usageCount: count || 0 };
+      })
+    );
+
+    // 50개 미만이면서 사용 횟수가 가장 적은 ID 선택
+    const availableKakaoId = kakaoIdUsage
+      .filter((k) => k.usageCount < 50)
+      .sort((a, b) => a.usageCount - b.usageCount)[0];
+
+    if (!availableKakaoId) {
+      return NextResponse.json({ error: '모든 카카오 초대 ID가 최대 사용량(50개)에 도달했습니다. 관리자에게 문의해주세요.' }, { status: 400 });
     }
 
     // 슬롯 생성
@@ -141,14 +157,6 @@ export async function POST(request: NextRequest) {
       })
       .select()
       .single();
-
-    // 슬롯 생성 성공 시 카카오 ID 사용 횟수 증가
-    if (!error && newSlot) {
-      await supabase
-        .from('kakao_invite_ids')
-        .update({ usage_count: (availableKakaoId.usage_count || 0) + 1 })
-        .eq('id', availableKakaoId.id);
-    }
 
     if (error) {
       console.error('Slot creation error:', error);
