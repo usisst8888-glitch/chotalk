@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
-import { parseMessage } from '@/lib/message-parser';
+import { parseMessage, parseGirlSignals } from '@/lib/message-parser';
 import { calculateTicketType } from '@/lib/ticket';
 
 // ============================================================
@@ -51,6 +51,9 @@ export async function POST(request: NextRequest) {
     const results = [];
 
     for (const slot of matchedSlots) {
+      // 해당 아가씨에게 해당하는 신호만 파싱
+      const girlSignals = parseGirlSignals(message, slot.girl_name, girlNames);
+
       // 템플릿 조회
       const { data: template } = await supabase
         .from('user_templates')
@@ -77,20 +80,20 @@ export async function POST(request: NextRequest) {
 
       // ====================================================
       // 2. sessions 테이블 처리
-      // 핵심 조건: 방번호 + 아가씨이름 + 시간 + ㄲ(종료)
+      // 핵심 조건: 방번호 + 아가씨이름 뒤에 ㄲ(종료) 있을 때만 종료
       // ====================================================
 
-      if (parsed.isEnd && parsed.roomNumber) {
-        // ㄲ 있음 → 세션 종료 처리
+      if (girlSignals.isEnd && parsed.roomNumber) {
+        // 해당 아가씨 뒤에 ㄲ 있음 → 세션 종료 처리
         const result = await handleSessionEnd(
-          supabase, slot, parsed, messageReceivedAt, log?.id
+          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id
         );
         results.push({ ...result, logId: log?.id });
 
       } else if (parsed.roomNumber) {
         // ㄲ 없음 + 방번호 있음 → 세션 시작 처리
         const result = await handleSessionStart(
-          supabase, slot, parsed, messageReceivedAt, log?.id
+          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id
         );
         results.push({ ...result, logId: log?.id });
 
@@ -134,6 +137,7 @@ async function handleSessionStart(
   supabase: ReturnType<typeof getSupabase>,
   slot: { id: string; user_id: string; girl_name: string; shop_name: string | null; kakao_id: string | null; target_room: string | null },
   parsed: ReturnType<typeof parseMessage>,
+  girlSignals: { isEnd: boolean; isCorrection: boolean; usageDuration: number | null },
   receivedAt: string,
   logId: string | undefined
 ) {
@@ -171,7 +175,7 @@ async function handleSessionStart(
     startTime: receivedAt,
     endTime: null,
     usageDuration: null,
-    isCorrection: parsed.isCorrection,
+    isCorrection: girlSignals.isCorrection,
     sourceLogId: logId,
   });
 
@@ -193,6 +197,7 @@ async function handleSessionEnd(
   supabase: ReturnType<typeof getSupabase>,
   slot: { id: string; user_id: string; girl_name: string; shop_name: string | null; kakao_id: string | null; target_room: string | null },
   parsed: ReturnType<typeof parseMessage>,
+  girlSignals: { isEnd: boolean; isCorrection: boolean; usageDuration: number | null },
   receivedAt: string,
   logId: string | undefined
 ) {
@@ -245,8 +250,8 @@ async function handleSessionEnd(
       isInProgress: false,
       startTime: receivedAt,
       endTime: receivedAt,
-      usageDuration: parsed.usageDuration,
-      isCorrection: parsed.isCorrection,
+      usageDuration: girlSignals.usageDuration,
+      isCorrection: girlSignals.isCorrection,
       sourceLogId: logId,
     });
 
@@ -299,8 +304,8 @@ async function handleSessionEnd(
     isInProgress: false,
     startTime: activeSession.start_time,
     endTime: receivedAt,
-    usageDuration: parsed.usageDuration,
-    isCorrection: parsed.isCorrection,
+    usageDuration: girlSignals.usageDuration,
+    isCorrection: girlSignals.isCorrection,
     sourceLogId: logId,
   });
 

@@ -185,6 +185,76 @@ export function parseMessage(message: string, girlNames: string[]): ParsedMessag
 }
 
 // ============================================================
+// 아가씨별 신호 파싱
+// ============================================================
+
+export interface GirlSignalResult {
+  girlName: string;
+  isEnd: boolean;                  // 해당 아가씨 뒤에 ㄲ이 있는지
+  isCorrection: boolean;           // 해당 아가씨 뒤에 ㅈㅈ이 있는지
+  usageDuration: number | null;    // 해당 아가씨의 이용시간 (ㄲ 앞 숫자)
+}
+
+/**
+ * 특정 아가씨 이름 뒤에 오는 신호 파싱
+ *
+ * @example
+ * parseGirlSignals("103 이승기 채빈 영미 2ㅇㅈ 라율 1ㄲ", "라율", ["채빈", "영미", "라율"])
+ * // → { girlName: "라율", isEnd: true, isCorrection: false, usageDuration: 1 }
+ */
+export function parseGirlSignals(
+  message: string,
+  targetGirlName: string,
+  allGirlNames: string[]
+): GirlSignalResult {
+  const result: GirlSignalResult = {
+    girlName: targetGirlName,
+    isEnd: false,
+    isCorrection: false,
+    usageDuration: null,
+  };
+
+  // 해당 아가씨 이름의 위치 찾기
+  const girlIndex = message.indexOf(targetGirlName);
+  if (girlIndex === -1) {
+    return result;
+  }
+
+  // 아가씨 이름 뒤의 텍스트 추출
+  const afterGirl = message.substring(girlIndex + targetGirlName.length);
+
+  // 다음 아가씨 이름이 나오는 위치 찾기 (해당 아가씨의 신호 범위 결정)
+  let nextGirlIndex = afterGirl.length;
+  for (const otherGirl of allGirlNames) {
+    if (otherGirl === targetGirlName) continue;
+    const idx = afterGirl.indexOf(otherGirl);
+    if (idx !== -1 && idx < nextGirlIndex) {
+      nextGirlIndex = idx;
+    }
+  }
+
+  // 해당 아가씨에게 해당하는 부분만 추출
+  const girlSection = afterGirl.substring(0, nextGirlIndex);
+
+  // ㄲ (종료) 신호 확인
+  if (hasSignal(girlSection, MESSAGE_SIGNALS.END.code)) {
+    result.isEnd = true;
+    // 이용시간 추출 (ㄲ 앞의 숫자)
+    const match = girlSection.match(/(\d+(?:\.\d+)?)\s*ㄲ/);
+    if (match) {
+      result.usageDuration = parseFloat(match[1]);
+    }
+  }
+
+  // ㅈㅈ (수정) 신호 확인
+  if (hasSignal(girlSection, MESSAGE_SIGNALS.CORRECTION.code)) {
+    result.isCorrection = true;
+  }
+
+  return result;
+}
+
+// ============================================================
 // 디버깅용 헬퍼
 // ============================================================
 
