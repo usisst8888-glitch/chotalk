@@ -3,7 +3,6 @@
 
 import {
   TICKET_RULES,
-  EXTENSION_FARE_RULES,
   NUMBER_EMOJIS,
   findTicketRule,
 } from './ticket-config';
@@ -103,35 +102,6 @@ export function calculateTicketType(durationMinutes: number): TicketResult {
 }
 
 // ============================================================
-// 연장 차비 계산
-// ============================================================
-
-export interface FareResult {
-  hasFare: boolean;
-  fareAmount: number;
-  ruleName: string;
-}
-
-/**
- * 연장 시 차비 계산
- *
- * 기본 규칙 (ticket-config.ts에서 수정 가능):
- * - 연장째 6분 초과시 차비2
- */
-export function calculateFare(extensionMinutes: number): FareResult {
-  for (const rule of EXTENSION_FARE_RULES) {
-    if (extensionMinutes > rule.minMinutes) {
-      return {
-        hasFare: true,
-        fareAmount: rule.fareAmount,
-        ruleName: rule.name,
-      };
-    }
-  }
-  return { hasFare: false, fareAmount: 0, ruleName: '' };
-}
-
-// ============================================================
 // 세션 합계 계산
 // ============================================================
 
@@ -220,11 +190,4 @@ export function formatMessageFooter(sessions: SessionForFooter[]): string {
  */
 export function getAllTicketRules() {
   return TICKET_RULES;
-}
-
-/**
- * 현재 설정된 모든 연장 차비 규칙 조회
- */
-export function getAllFareRules() {
-  return EXTENSION_FARE_RULES;
 }
