@@ -1925,7 +1925,10 @@ export default function DashboardPage() {
                 <input
                   type="text"
                   value={newSlot.girlName}
-                  onChange={(e) => setNewSlot({ ...newSlot, girlName: e.target.value })}
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    setNewSlot({ ...newSlot, girlName: name, targetRoom: name ? `${name} 방` : '' });
+                  }}
                   required
                   className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
                   placeholder="이름 입력"
@@ -1966,7 +1969,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-neutral-400 mb-2">
-                  채팅방 이름
+                  채팅방 이름 <span className="text-neutral-600 text-xs">(자동 생성)</span>
                 </label>
                 <input
                   type="text"
@@ -1974,7 +1977,7 @@ export default function DashboardPage() {
                   onChange={(e) => setNewSlot({ ...newSlot, targetRoom: e.target.value })}
                   required
                   className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                  placeholder="채팅방 이름 입력"
+                  placeholder="아가씨 이름 입력 시 자동 생성"
                 />
               </div>
               <div>
