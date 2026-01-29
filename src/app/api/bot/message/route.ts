@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     // 활성화된 슬롯 가져오기
     const { data: slots, error: slotsError } = await supabase
       .from('slots')
-      .select('id, user_id, girl_name, target_room, kakao_id, is_active, expires_at, shop_name')
+      .select('id, user_id, girl_name, target_room, kakao_id, is_active, expires_at, shop_name, user_template_id')
       .eq('is_active', true);
 
     if (slotsError || !slots || slots.length === 0) {
@@ -53,13 +53,6 @@ export async function POST(request: NextRequest) {
       // 해당 아가씨에게 해당하는 신호만 파싱
       const girlSignals = parseGirlSignals(message, slot.girl_name, girlNames);
 
-      // 템플릿 조회
-      const { data: template } = await supabase
-        .from('user_templates')
-        .select('id')
-        .eq('user_id', slot.user_id)
-        .single();
-
       // 1. message_logs에 원본 메시지 저장 (항상)
       const { data: log } = await supabase
         .from('message_logs')
@@ -69,7 +62,7 @@ export async function POST(request: NextRequest) {
           source_room: room,
           sender_name: sender,
           message: message,
-          user_template_id: template?.id || null,
+          user_template_id: slot.user_template_id || null,
           received_at: messageReceivedAt,
         })
         .select()
@@ -83,14 +76,14 @@ export async function POST(request: NextRequest) {
       if (girlSignals.isEnd && parsed.roomNumber) {
         // 해당 아가씨 뒤에 ㄲ 있음 → 세션 종료 처리
         const result = await handleSessionEnd(
-          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id
+          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id, slot.user_template_id || null
         );
         results.push({ ...result, logId: log?.id });
 
       } else if (parsed.roomNumber) {
         // ㄲ 없음 + 방번호 있음 → 세션 시작 처리
         const result = await handleSessionStart(
-          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id
+          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id, slot.user_template_id || null
         );
         results.push({ ...result, logId: log?.id });
 
@@ -132,11 +125,12 @@ export async function POST(request: NextRequest) {
 
 async function handleSessionStart(
   supabase: ReturnType<typeof getSupabase>,
-  slot: { id: string; user_id: string; girl_name: string; shop_name: string | null; kakao_id: string | null; target_room: string | null },
+  slot: { id: string; user_id: string; girl_name: string; shop_name: string | null; kakao_id: string | null; target_room: string | null; user_template_id: string | null },
   parsed: ReturnType<typeof parseMessage>,
   girlSignals: { isEnd: boolean; isCorrection: boolean; usageDuration: number | null },
   receivedAt: string,
-  logId: string | undefined
+  logId: string | undefined,
+  userTemplateId: string | null
 ) {
   console.log('handleSessionStart called for:', slot.girl_name, 'roomNumber:', parsed.roomNumber);
   // 상황판에만 저장 (sender_logs 필요없음)
@@ -154,6 +148,7 @@ async function handleSessionStart(
     usageDuration: null,
     isCorrection: girlSignals.isCorrection,
     sourceLogId: logId,
+    userTemplateId: userTemplateId,
   });
 
   return {
@@ -171,11 +166,12 @@ async function handleSessionStart(
 
 async function handleSessionEnd(
   supabase: ReturnType<typeof getSupabase>,
-  slot: { id: string; user_id: string; girl_name: string; shop_name: string | null; kakao_id: string | null; target_room: string | null },
+  slot: { id: string; user_id: string; girl_name: string; shop_name: string | null; kakao_id: string | null; target_room: string | null; user_template_id: string | null },
   parsed: ReturnType<typeof parseMessage>,
   girlSignals: { isEnd: boolean; isCorrection: boolean; usageDuration: number | null },
   receivedAt: string,
-  logId: string | undefined
+  logId: string | undefined,
+  userTemplateId: string | null
 ) {
   // 상황판에만 저장 (sender_logs 필요없음)
   await updateStatusBoard(supabase, {
@@ -192,6 +188,7 @@ async function handleSessionEnd(
     usageDuration: girlSignals.usageDuration,
     isCorrection: girlSignals.isCorrection,
     sourceLogId: logId,
+    userTemplateId: userTemplateId,
   });
 
   return {
@@ -224,6 +221,7 @@ async function updateStatusBoard(
     usageDuration: number | null;
     isCorrection: boolean;
     sourceLogId: string | undefined;
+    userTemplateId: string | null;
   }
 ) {
   console.log('updateStatusBoard called:', {
@@ -259,6 +257,7 @@ async function updateStatusBoard(
             end_time: data.endTime,
             usage_duration: data.usageDuration,
             source_log_id: data.sourceLogId || null,
+            user_template_id: data.userTemplateId,
             updated_at: new Date().toISOString(),
           })
           .eq('id', existingBySlot.id);
@@ -292,6 +291,7 @@ async function updateStatusBoard(
             end_time: data.endTime,
             usage_duration: data.usageDuration,
             source_log_id: data.sourceLogId || null,
+            user_template_id: data.userTemplateId,
             updated_at: new Date().toISOString(),
           })
           .eq('id', existing.id);
@@ -319,6 +319,7 @@ async function updateStatusBoard(
           end_time: data.endTime,
           usage_duration: data.usageDuration,
           source_log_id: data.sourceLogId || null,
+          user_template_id: data.userTemplateId,
         });
 
       if (insertError) {
