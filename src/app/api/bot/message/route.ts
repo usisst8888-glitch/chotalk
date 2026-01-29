@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
 import { parseMessage, parseGirlSignals } from '@/lib/message-parser';
-import { calculateTicketType } from '@/lib/ticket';
 
 // ============================================================
 // 메신저봇R에서 메시지 수신
@@ -139,30 +138,7 @@ async function handleSessionStart(
   receivedAt: string,
   logId: string | undefined
 ) {
-  // sender_logs 테이블에 새 세션 생성
-  const { data: session, error } = await supabase
-    .from('sender_logs')
-    .insert({
-      slot_id: slot.id,
-      user_id: slot.user_id,
-      room_number: parsed.roomNumber,
-      girl_name: slot.girl_name,
-      shop_name: slot.shop_name,
-      kakao_id: slot.kakao_id,
-      target_room: slot.target_room,
-      start_time: receivedAt,
-      is_completed: false,
-      start_log_id: logId || null,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Session start error:', error);
-    return { type: 'error', error: error.message };
-  }
-
-  // 상황판 업데이트 (스타트)
+  // 상황판에만 저장 (sender_logs 필요없음)
   await updateStatusBoard(supabase, {
     slotId: slot.id,
     userId: slot.user_id,
@@ -181,7 +157,6 @@ async function handleSessionStart(
 
   return {
     type: 'start',
-    sessionId: session.id,
     slotId: slot.id,
     girlName: slot.girl_name,
     roomNumber: parsed.roomNumber,
@@ -190,7 +165,7 @@ async function handleSessionStart(
 }
 
 // ============================================================
-// 세션 종료 처리 (sessions 테이블 업데이트)
+// 세션 종료 처리 (상황판만 업데이트)
 // ============================================================
 
 async function handleSessionEnd(
@@ -201,102 +176,7 @@ async function handleSessionEnd(
   receivedAt: string,
   logId: string | undefined
 ) {
-  // 해당 방의 진행 중인 세션 찾기 (가장 오래된 것 먼저 - FIFO)
-  const { data: activeSession } = await supabase
-    .from('sender_logs')
-    .select('*')
-    .eq('slot_id', slot.id)
-    .eq('room_number', parsed.roomNumber)
-    .eq('is_completed', false)
-    .order('start_time', { ascending: true })
-    .limit(1)
-    .single();
-
-  if (!activeSession) {
-    // 활성 세션 없으면 새로 생성하고 바로 종료
-    const { data: newSession, error } = await supabase
-      .from('sender_logs')
-      .insert({
-        slot_id: slot.id,
-        user_id: slot.user_id,
-        room_number: parsed.roomNumber,
-        girl_name: slot.girl_name,
-        shop_name: slot.shop_name,
-        kakao_id: slot.kakao_id,
-        target_room: slot.target_room,
-        start_time: receivedAt,
-        end_time: receivedAt,
-        duration_minutes: 0,
-        half_tickets: 0,
-        full_tickets: 0,
-        is_completed: true,
-        start_log_id: logId,
-        end_log_id: logId,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      return { type: 'error', error: error.message };
-    }
-
-    // 상황판 업데이트 (즉시 종료)
-    await updateStatusBoard(supabase, {
-      slotId: slot.id,
-      userId: slot.user_id,
-      shopName: slot.shop_name,
-      roomNumber: parsed.roomNumber!,
-      girlName: slot.girl_name,
-      kakaoId: slot.kakao_id,
-      targetRoom: slot.target_room,
-      isInProgress: false,
-      startTime: receivedAt,
-      endTime: receivedAt,
-      usageDuration: girlSignals.usageDuration,
-      isCorrection: girlSignals.isCorrection,
-      sourceLogId: logId,
-    });
-
-    return {
-      type: 'end',
-      sessionId: newSession.id,
-      slotId: slot.id,
-      girlName: slot.girl_name,
-      roomNumber: parsed.roomNumber,
-      note: '활성 세션 없음, 즉시 종료',
-    };
-  }
-
-  // 시간 계산
-  const startTime = new Date(activeSession.start_time);
-  const endTime = new Date(receivedAt);
-  const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
-
-  // 티켓 계산
-  const ticketResult = calculateTicketType(durationMinutes);
-
-  // 세션 업데이트
-  const { data: updatedSession, error } = await supabase
-    .from('sender_logs')
-    .update({
-      end_time: receivedAt,
-      duration_minutes: durationMinutes,
-      half_tickets: ticketResult.halfTickets,
-      full_tickets: ticketResult.fullTickets,
-      is_completed: true,
-      end_log_id: logId,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', activeSession.id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Session end error:', error);
-    return { type: 'error', error: error.message };
-  }
-
-  // 상황판 업데이트 (종료)
+  // 상황판에만 저장 (sender_logs 필요없음)
   await updateStatusBoard(supabase, {
     slotId: slot.id,
     userId: slot.user_id,
@@ -306,7 +186,7 @@ async function handleSessionEnd(
     kakaoId: slot.kakao_id,
     targetRoom: slot.target_room,
     isInProgress: false,
-    startTime: activeSession.start_time,
+    startTime: receivedAt,
     endTime: receivedAt,
     usageDuration: girlSignals.usageDuration,
     isCorrection: girlSignals.isCorrection,
@@ -315,15 +195,11 @@ async function handleSessionEnd(
 
   return {
     type: 'end',
-    sessionId: updatedSession.id,
     slotId: slot.id,
     girlName: slot.girl_name,
     roomNumber: parsed.roomNumber,
-    startTime: activeSession.start_time,
     endTime: receivedAt,
-    durationMinutes,
-    halfTickets: ticketResult.halfTickets,
-    fullTickets: ticketResult.fullTickets,
+    usageDuration: girlSignals.usageDuration,
   };
 }
 
