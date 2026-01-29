@@ -189,6 +189,9 @@ async function handleSessionStart(
       kakaoId: slot.kakao_id,
       triggerType: 'start',
       scheduledAt: new Date().toISOString(),
+      roomNumber: parsed.roomNumber!,
+      startTime: receivedAt,
+      endTime: null,
     });
 
     // 1시간 후 발송 예약
@@ -199,6 +202,9 @@ async function handleSessionStart(
       kakaoId: slot.kakao_id,
       triggerType: 'hourly',
       scheduledAt: oneHourLater,
+      roomNumber: parsed.roomNumber!,
+      startTime: receivedAt,
+      endTime: null,
     });
   }
 
@@ -250,6 +256,9 @@ async function handleSessionEnd(
       kakaoId: slot.kakao_id,
       triggerType: 'end',
       scheduledAt: new Date().toISOString(),
+      roomNumber: parsed.roomNumber!,
+      startTime: receivedAt,
+      endTime: receivedAt,
     });
   }
 
@@ -275,6 +284,9 @@ async function addToSendQueue(
     kakaoId: string;
     triggerType: 'start' | 'end' | 'hourly';
     scheduledAt: string;
+    roomNumber: string;
+    startTime: string;
+    endTime: string | null;
   }
 ) {
   const { error } = await supabase
@@ -285,6 +297,9 @@ async function addToSendQueue(
       kakao_id: data.kakaoId,
       trigger_type: data.triggerType,
       scheduled_at: data.scheduledAt,
+      room_number: data.roomNumber,
+      start_time: data.startTime,
+      end_time: data.endTime,
     });
 
   if (error) {
