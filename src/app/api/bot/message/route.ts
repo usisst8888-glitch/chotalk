@@ -405,7 +405,7 @@ async function updateStatusBoard(
       // usageDuration이 없으면 업데이트 안 함
     } else {
       // 새 레코드 생성 (첫 진입)
-      await supabase
+      const { error: insertError } = await supabase
         .from('status_board')
         .insert({
           slot_id: data.slotId,
@@ -421,6 +421,10 @@ async function updateStatusBoard(
           usage_duration: data.usageDuration,
           source_log_id: data.sourceLogId || null,
         });
+
+      if (insertError) {
+        console.error('Status board insert error:', insertError);
+      }
     }
   } catch (error) {
     console.error('Status board update error:', error);
