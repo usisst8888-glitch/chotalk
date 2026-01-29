@@ -25,12 +25,19 @@ export async function POST(request: NextRequest) {
     // 활성화된 슬롯 가져오기
     const { data: slots, error: slotsError } = await supabase
       .from('slots')
-      .select('id, user_id, girl_name, target_room, kakao_id, is_active, expires_at, shop_name, user_template_id')
+      .select('id, user_id, girl_name, target_room, kakao_id, is_active, expires_at, shop_name')
       .eq('is_active', true);
 
-    if (slotsError || !slots || slots.length === 0) {
+    if (slotsError) {
+      console.error('Slots query error:', slotsError);
+      return NextResponse.json({ success: false, message: '슬롯 조회 오류', error: slotsError.message });
+    }
+
+    if (!slots || slots.length === 0) {
       return NextResponse.json({ success: false, message: '활성화된 슬롯 없음' });
     }
+
+    console.log('Active slots found:', slots.length, 'names:', slots.map(s => s.girl_name));
 
     // 메시지 파싱
     const girlNames = slots.map(slot => slot.girl_name);
@@ -43,6 +50,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (matchedSlots.length === 0) {
+      console.log('No matched slots. Message:', message, 'Available girls:', girlNames);
+      // 만료 체크 로그
+      slots.forEach(slot => {
+        const isExpired = new Date(slot.expires_at) < new Date();
+        const isInMessage = message.includes(slot.girl_name);
+        console.log(`Slot ${slot.girl_name}: expired=${isExpired}, inMessage=${isInMessage}, expires_at=${slot.expires_at}`);
+      });
       return NextResponse.json({ success: false, message: '매칭된 아가씨 없음' });
     }
 
@@ -53,8 +67,17 @@ export async function POST(request: NextRequest) {
       // 해당 아가씨에게 해당하는 신호만 파싱
       const girlSignals = parseGirlSignals(message, slot.girl_name, girlNames);
 
+      // 템플릿 조회 (user_id로)
+      const { data: template } = await supabase
+        .from('user_templates')
+        .select('id')
+        .eq('user_id', slot.user_id)
+        .single();
+
+      const userTemplateId = template?.id || null;
+
       // 1. message_logs에 원본 메시지 저장 (항상)
-      const { data: log } = await supabase
+      const { data: log, error: logError } = await supabase
         .from('message_logs')
         .insert({
           slot_id: slot.id,
@@ -62,11 +85,17 @@ export async function POST(request: NextRequest) {
           source_room: room,
           sender_name: sender,
           message: message,
-          user_template_id: slot.user_template_id || null,
+          user_template_id: userTemplateId,
           received_at: messageReceivedAt,
         })
         .select()
         .single();
+
+      if (logError) {
+        console.error('message_logs insert error:', logError);
+      } else {
+        console.log('message_logs inserted:', log?.id);
+      }
 
       // ====================================================
       // 2. sessions 테이블 처리
@@ -76,14 +105,14 @@ export async function POST(request: NextRequest) {
       if (girlSignals.isEnd && parsed.roomNumber) {
         // 해당 아가씨 뒤에 ㄲ 있음 → 세션 종료 처리
         const result = await handleSessionEnd(
-          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id, slot.user_template_id || null
+          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id, userTemplateId
         );
         results.push({ ...result, logId: log?.id });
 
       } else if (parsed.roomNumber) {
         // ㄲ 없음 + 방번호 있음 → 세션 시작 처리
         const result = await handleSessionStart(
-          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id, slot.user_template_id || null
+          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id, userTemplateId
         );
         results.push({ ...result, logId: log?.id });
 
@@ -125,7 +154,7 @@ export async function POST(request: NextRequest) {
 
 async function handleSessionStart(
   supabase: ReturnType<typeof getSupabase>,
-  slot: { id: string; user_id: string; girl_name: string; shop_name: string | null; kakao_id: string | null; target_room: string | null; user_template_id: string | null },
+  slot: { id: string; user_id: string; girl_name: string; shop_name: string | null; kakao_id: string | null; target_room: string | null },
   parsed: ReturnType<typeof parseMessage>,
   girlSignals: { isEnd: boolean; isCorrection: boolean; usageDuration: number | null },
   receivedAt: string,
@@ -166,7 +195,7 @@ async function handleSessionStart(
 
 async function handleSessionEnd(
   supabase: ReturnType<typeof getSupabase>,
-  slot: { id: string; user_id: string; girl_name: string; shop_name: string | null; kakao_id: string | null; target_room: string | null; user_template_id: string | null },
+  slot: { id: string; user_id: string; girl_name: string; shop_name: string | null; kakao_id: string | null; target_room: string | null },
   parsed: ReturnType<typeof parseMessage>,
   girlSignals: { isEnd: boolean; isCorrection: boolean; usageDuration: number | null },
   receivedAt: string,
