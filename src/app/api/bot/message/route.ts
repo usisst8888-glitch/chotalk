@@ -138,6 +138,7 @@ async function handleSessionStart(
   receivedAt: string,
   logId: string | undefined
 ) {
+  console.log('handleSessionStart called for:', slot.girl_name, 'roomNumber:', parsed.roomNumber);
   // 상황판에만 저장 (sender_logs 필요없음)
   await updateStatusBoard(supabase, {
     slotId: slot.id,
@@ -225,10 +226,19 @@ async function updateStatusBoard(
     sourceLogId: string | undefined;
   }
 ) {
+  console.log('updateStatusBoard called:', {
+    slotId: data.slotId,
+    roomNumber: data.roomNumber,
+    girlName: data.girlName,
+    isInProgress: data.isInProgress,
+    isCorrection: data.isCorrection,
+    usageDuration: data.usageDuration,
+  });
+
   try {
     // ㅈㅈ(수정) 신호일 때: slot_id(아가씨)로만 찾아서 기존 레코드 수정
     if (data.isCorrection) {
-      const { data: existingBySlot } = await supabase
+      const { data: existingBySlot, error: findError } = await supabase
         .from('status_board')
         .select('id')
         .eq('slot_id', data.slotId)
@@ -236,9 +246,11 @@ async function updateStatusBoard(
         .limit(1)
         .single();
 
+      console.log('Correction mode - existingBySlot:', existingBySlot, 'error:', findError);
+
       if (existingBySlot) {
         // 기존 레코드 수정 (방번호도 업데이트)
-        await supabase
+        const { error: updateError } = await supabase
           .from('status_board')
           .update({
             room_number: data.roomNumber,
@@ -250,23 +262,29 @@ async function updateStatusBoard(
             updated_at: new Date().toISOString(),
           })
           .eq('id', existingBySlot.id);
+
+        if (updateError) {
+          console.error('Status board correction update error:', updateError);
+        }
         return; // 수정 완료
       }
       // 수정할 레코드가 없으면 아래에서 새로 생성
     }
 
     // 일반 흐름: slot + room_number 조합으로 기존 레코드 찾기
-    const { data: existing } = await supabase
+    const { data: existing, error: findError } = await supabase
       .from('status_board')
       .select('id')
       .eq('slot_id', data.slotId)
       .eq('room_number', data.roomNumber)
       .single();
 
+    console.log('Normal mode - existing:', existing, 'error:', findError);
+
     if (existing) {
       // 기존 레코드가 있고 usageDuration이 있을 때만 업데이트
       if (data.usageDuration !== null) {
-        await supabase
+        const { error: updateError } = await supabase
           .from('status_board')
           .update({
             is_in_progress: data.isInProgress,
@@ -277,10 +295,15 @@ async function updateStatusBoard(
             updated_at: new Date().toISOString(),
           })
           .eq('id', existing.id);
+
+        if (updateError) {
+          console.error('Status board update error:', updateError);
+        }
       }
       // usageDuration이 없으면 업데이트 안 함
     } else {
       // 새 레코드 생성 (첫 진입)
+      console.log('Inserting new status_board record...');
       const { error: insertError } = await supabase
         .from('status_board')
         .insert({
@@ -300,6 +323,8 @@ async function updateStatusBoard(
 
       if (insertError) {
         console.error('Status board insert error:', insertError);
+      } else {
+        console.log('Status board insert success!');
       }
     }
   } catch (error) {
