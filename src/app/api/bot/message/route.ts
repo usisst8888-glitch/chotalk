@@ -180,6 +180,28 @@ async function handleSessionStart(
     userTemplateId: userTemplateId,
   });
 
+  // 발송 큐에 추가 (즉시 발송 + 1시간 후 발송)
+  if (userTemplateId && slot.target_room && slot.kakao_id) {
+    // 즉시 발송
+    await addToSendQueue(supabase, {
+      userTemplateId,
+      targetRoom: slot.target_room,
+      kakaoId: slot.kakao_id,
+      triggerType: 'start',
+      scheduledAt: new Date().toISOString(),
+    });
+
+    // 1시간 후 발송 예약
+    const oneHourLater = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    await addToSendQueue(supabase, {
+      userTemplateId,
+      targetRoom: slot.target_room,
+      kakaoId: slot.kakao_id,
+      triggerType: 'hourly',
+      scheduledAt: oneHourLater,
+    });
+  }
+
   return {
     type: 'start',
     slotId: slot.id,
@@ -220,6 +242,17 @@ async function handleSessionEnd(
     userTemplateId: userTemplateId,
   });
 
+  // 발송 큐에 추가 (종료 시 즉시 발송)
+  if (userTemplateId && slot.target_room && slot.kakao_id) {
+    await addToSendQueue(supabase, {
+      userTemplateId,
+      targetRoom: slot.target_room,
+      kakaoId: slot.kakao_id,
+      triggerType: 'end',
+      scheduledAt: new Date().toISOString(),
+    });
+  }
+
   return {
     type: 'end',
     slotId: slot.id,
@@ -228,6 +261,37 @@ async function handleSessionEnd(
     endTime: receivedAt,
     usageDuration: girlSignals.usageDuration,
   };
+}
+
+// ============================================================
+// 발송 큐에 추가
+// ============================================================
+
+async function addToSendQueue(
+  supabase: ReturnType<typeof getSupabase>,
+  data: {
+    userTemplateId: string;
+    targetRoom: string;
+    kakaoId: string;
+    triggerType: 'start' | 'end' | 'hourly';
+    scheduledAt: string;
+  }
+) {
+  const { error } = await supabase
+    .from('send_queue')
+    .insert({
+      user_template_id: data.userTemplateId,
+      target_room: data.targetRoom,
+      kakao_id: data.kakaoId,
+      trigger_type: data.triggerType,
+      scheduled_at: data.scheduledAt,
+    });
+
+  if (error) {
+    console.error('send_queue insert error:', error);
+  } else {
+    console.log('send_queue added:', data.triggerType, 'scheduled_at:', data.scheduledAt);
+  }
 }
 
 // ============================================================
