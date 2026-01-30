@@ -97,6 +97,13 @@ export const MESSAGE_SIGNALS = {
     description: '지명 (손님이 특정 아가씨를 지명)',
   },
 
+  // 취소 신호 (세션 삭제)
+  CANCEL: {
+    code: 'ㄱㅌ',
+    type: 'cancel',
+    description: '취소 (해당 세션을 status_board에서 삭제)',
+  },
+
   // 추가 신호 예시:
   // EXTENSION: {
   //   code: 'ㅇㅈ',

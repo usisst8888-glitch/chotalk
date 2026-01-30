@@ -110,13 +110,19 @@ export async function POST(request: NextRequest) {
       // ====================================================
       // 2. status_board 테이블 처리
       // 우선순위:
+      // 0. ㄱㅌ(취소) → 해당 세션 DELETE
       // 1. ㅎㅅㄱㅈㅈㅎ/현시간재진행 → 새 세션 INSERT
       // 2. ㅈㅈㅎ/재진행 → 가장 최근 종료 레코드를 시작으로 UPDATE
       // 3. ㄲ(종료) → 세션 종료 처리
       // 4. 방번호만 → 세션 시작 처리
       // ====================================================
 
-      if (girlSignals.isNewSession && parsed.roomNumber) {
+      if (girlSignals.isCancel) {
+        // ㄱㅌ(취소) → 해당 세션 삭제
+        const result = await handleCancel(supabase, slot, log?.id);
+        results.push({ ...result, logId: log?.id });
+
+      } else if (girlSignals.isNewSession && parsed.roomNumber) {
         // ㅎㅅㄱㅈㅈㅎ/현시간재진행 → 새 세션 시작 (INSERT)
         const result = await handleNewSession(
           supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id, userTemplateId
@@ -279,6 +285,63 @@ async function handleResume(
     slotId: slot.id,
     girlName: slot.girl_name,
     roomNumber: endedRecord.room_number,
+  };
+}
+
+// ============================================================
+// 취소 처리 (ㄱㅌ) - 해당 세션 DELETE
+// ============================================================
+
+async function handleCancel(
+  supabase: ReturnType<typeof getSupabase>,
+  slot: { id: string; user_id: string; girl_name: string },
+  logId: string | undefined
+) {
+  console.log('handleCancel called for:', slot.girl_name);
+
+  // 가장 최근 레코드 찾아서 삭제
+  const { data: recentRecord, error: findError } = await supabase
+    .from('status_board')
+    .select('id, room_number')
+    .eq('slot_id', slot.id)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (findError || !recentRecord) {
+    console.log('handleCancel - no record found:', findError);
+    return {
+      type: 'cancel_failed',
+      slotId: slot.id,
+      girlName: slot.girl_name,
+      reason: '삭제할 레코드 없음',
+    };
+  }
+
+  // 레코드 삭제
+  const { error: deleteError } = await supabase
+    .from('status_board')
+    .delete()
+    .eq('id', recentRecord.id);
+
+  if (deleteError) {
+    console.error('handleCancel delete error:', deleteError);
+    return {
+      type: 'cancel_failed',
+      slotId: slot.id,
+      girlName: slot.girl_name,
+      reason: '삭제 실패',
+    };
+  }
+
+  console.log('handleCancel success - deleted record:', recentRecord.id, 'room:', recentRecord.room_number);
+
+  return {
+    type: 'cancel',
+    slotId: slot.id,
+    girlName: slot.girl_name,
+    roomNumber: recentRecord.room_number,
+    deletedRecordId: recentRecord.id,
   };
 }
 

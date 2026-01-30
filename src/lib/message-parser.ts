@@ -196,6 +196,7 @@ export interface GirlSignalResult {
   isResume: boolean;               // 해당 아가씨 뒤에 ㅈㅈㅎ/재진행이 있는지
   isNewSession: boolean;           // 해당 아가씨 뒤에 ㅎㅅㄱㅈㅈㅎ/현시간재진행이 있는지
   isDesignated: boolean;           // 해당 아가씨 뒤에 ㅈㅁ(지명)이 있는지
+  isCancel: boolean;               // 해당 아가씨 뒤에 ㄱㅌ(취소)이 있는지
   usageDuration: number | null;    // 해당 아가씨의 이용시간 (ㄲ 앞 숫자)
 }
 
@@ -218,6 +219,7 @@ export function parseGirlSignals(
     isResume: false,
     isNewSession: false,
     isDesignated: false,
+    isCancel: false,
     usageDuration: null,
   };
 
@@ -243,7 +245,14 @@ export function parseGirlSignals(
   // 해당 아가씨에게 해당하는 부분만 추출
   const girlSection = afterGirl.substring(0, nextGirlIndex);
 
-  // ㅎㅅㄱㅈㅈㅎ/현시간재진행 (새 세션) 신호 확인 - 가장 먼저 체크 (가장 긴 패턴)
+  // ㄱㅌ (취소) 신호 확인 - 가장 먼저 체크 (세션 삭제)
+  if (hasSignal(girlSection, MESSAGE_SIGNALS.CANCEL.code)) {
+    result.isCancel = true;
+    // 취소면 다른 신호는 무시
+    return result;
+  }
+
+  // ㅎㅅㄱㅈㅈㅎ/현시간재진행 (새 세션) 신호 확인 - 가장 긴 패턴
   if (hasSignalWithAliases(girlSection, MESSAGE_SIGNALS.NEW_SESSION)) {
     result.isNewSession = true;
     // 새 세션이면 다른 신호는 무시
