@@ -3,6 +3,16 @@ import { getSupabase } from '@/lib/supabase';
 import { parseMessage, parseGirlSignals } from '@/lib/message-parser';
 
 // ============================================================
+// 한국 시간 (KST) 헬퍼 함수
+// ============================================================
+
+function getKoreanTime(): string {
+  const now = new Date();
+  const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+  return koreaTime.toISOString().replace('Z', '+09:00');
+}
+
+// ============================================================
 // 메신저봇R에서 메시지 수신
 // ============================================================
 
@@ -20,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = getSupabase();
-    const messageReceivedAt = receivedAt || new Date().toISOString();
+    const messageReceivedAt = receivedAt || getKoreanTime();
 
     // 활성화된 슬롯 가져오기
     const { data: slots, error: slotsError } = await supabase
@@ -378,7 +388,7 @@ async function updateStatusBoard(
             usage_duration: data.usageDuration,
             source_log_id: data.sourceLogId || null,
             user_template_id: data.userTemplateId,
-            updated_at: new Date().toISOString(),
+            updated_at: getKoreanTime(),
           })
           .eq('id', existingBySlot.id);
 
@@ -412,7 +422,7 @@ async function updateStatusBoard(
             usage_duration: data.usageDuration,
             source_log_id: data.sourceLogId || null,
             user_template_id: data.userTemplateId,
-            updated_at: new Date().toISOString(),
+            updated_at: getKoreanTime(),
           })
           .eq('id', existing.id);
 
