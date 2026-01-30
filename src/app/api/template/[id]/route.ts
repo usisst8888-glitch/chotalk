@@ -7,7 +7,7 @@ import { SAMPLE_TEMPLATES } from '../route';
 function getKoreanTime(): string {
   const now = new Date();
   const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
-  return koreaTime.toISOString().replace('Z', '+09:00');
+  return koreaTime.toISOString().slice(0, -1);
 }
 
 // 템플릿 선택 또는 커스텀 템플릿 수정

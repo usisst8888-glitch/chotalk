@@ -5,7 +5,7 @@ import { verifyToken } from '@/lib/jwt';
 function getKoreanTime(): string {
   const now = new Date();
   const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
-  return koreaTime.toISOString().replace('Z', '+09:00');
+  return koreaTime.toISOString().slice(0, -1);
 }
 
 // 관리자 권한 확인 헬퍼

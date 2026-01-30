@@ -9,7 +9,7 @@ import { parseMessage, parseGirlSignals } from '@/lib/message-parser';
 function getKoreanTime(): string {
   const now = new Date();
   const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
-  return koreaTime.toISOString().replace('Z', '+09:00');
+  return koreaTime.toISOString().slice(0, -1); // 'Z' 제거하여 2026-01-30T14:59:21.000 형식
 }
 
 // ============================================================
