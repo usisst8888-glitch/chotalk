@@ -190,20 +190,6 @@ async function handleSessionStart(
     userTemplateId: userTemplateId,
   });
 
-  // 발송 큐에 추가 (세션 시작)
-  if (userTemplateId && slot.target_room && slot.kakao_id) {
-    await upsertSendQueue(supabase, {
-      slotId: slot.id,
-      userTemplateId,
-      targetRoom: slot.target_room,
-      kakaoId: slot.kakao_id,
-      triggerType: 'start',
-      roomNumber: parsed.roomNumber!,
-      startTime: receivedAt,
-      endTime: null,
-    });
-  }
-
   return {
     type: 'start',
     slotId: slot.id,
@@ -244,20 +230,6 @@ async function handleSessionEnd(
     userTemplateId: userTemplateId,
   });
 
-  // 발송 큐 업데이트 (세션 종료)
-  if (userTemplateId && slot.target_room && slot.kakao_id) {
-    await upsertSendQueue(supabase, {
-      slotId: slot.id,
-      userTemplateId,
-      targetRoom: slot.target_room,
-      kakaoId: slot.kakao_id,
-      triggerType: 'end',
-      roomNumber: parsed.roomNumber!,
-      startTime: receivedAt,
-      endTime: receivedAt,
-    });
-  }
-
   return {
     type: 'end',
     slotId: slot.id,
@@ -269,70 +241,7 @@ async function handleSessionEnd(
 }
 
 // ============================================================
-// 발송 큐에 추가/업데이트 (세션당 한 줄)
-// ============================================================
-
-async function upsertSendQueue(
-  supabase: ReturnType<typeof getSupabase>,
-  data: {
-    slotId: string;
-    userTemplateId: string;
-    targetRoom: string;
-    kakaoId: string;
-    triggerType: 'start' | 'end' | 'hourly';
-    roomNumber: string;
-    startTime: string;
-    endTime: string | null;
-  }
-) {
-  // 기존 레코드 찾기 (slot_id + room_number로 세션 식별)
-  const { data: existing } = await supabase
-    .from('send_queue')
-    .select('id')
-    .eq('slot_id', data.slotId)
-    .eq('room_number', data.roomNumber)
-    .single();
-
-  if (existing) {
-    // 기존 레코드 업데이트 (종료 시)
-    const { error } = await supabase
-      .from('send_queue')
-      .update({
-        trigger_type: data.triggerType,
-        end_time: data.endTime,
-      })
-      .eq('id', existing.id);
-
-    if (error) {
-      console.error('send_queue update error:', error);
-    } else {
-      console.log('send_queue updated to:', data.triggerType);
-    }
-  } else {
-    // 새 레코드 생성 (시작 시)
-    const { error } = await supabase
-      .from('send_queue')
-      .insert({
-        slot_id: data.slotId,
-        user_template_id: data.userTemplateId,
-        target_room: data.targetRoom,
-        kakao_id: data.kakaoId,
-        trigger_type: data.triggerType,
-        room_number: data.roomNumber,
-        start_time: data.startTime,
-        end_time: data.endTime,
-      });
-
-    if (error) {
-      console.error('send_queue insert error:', error);
-    } else {
-      console.log('send_queue created with:', data.triggerType);
-    }
-  }
-}
-
-// ============================================================
-// 상황판 업데이트 (정제된 현재 상황)
+// 상황판 업데이트 (정제된 현재 상황 + 발송 상태 관리)
 // ============================================================
 
 async function updateStatusBoard(
@@ -386,6 +295,7 @@ async function updateStatusBoard(
             start_time: data.startTime,
             end_time: data.endTime,
             usage_duration: data.usageDuration,
+            trigger_type: data.isInProgress ? 'start' : 'end',
             source_log_id: data.sourceLogId || null,
             user_template_id: data.userTemplateId,
             updated_at: getKoreanTime(),
@@ -420,6 +330,7 @@ async function updateStatusBoard(
             start_time: data.startTime,
             end_time: data.endTime,
             usage_duration: data.usageDuration,
+            trigger_type: 'end',
             source_log_id: data.sourceLogId || null,
             user_template_id: data.userTemplateId,
             updated_at: getKoreanTime(),
@@ -448,6 +359,7 @@ async function updateStatusBoard(
           start_time: data.startTime,
           end_time: data.endTime,
           usage_duration: data.usageDuration,
+          trigger_type: 'start',
           source_log_id: data.sourceLogId || null,
           user_template_id: data.userTemplateId,
         });
