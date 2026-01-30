@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/jwt';
 
+function getKoreanTime(): string {
+  const now = new Date();
+  const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+  return koreaTime.toISOString().replace('Z', '+09:00');
+}
+
 // 관리자 권한 확인 헬퍼
 async function checkAdmin(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
@@ -61,7 +67,7 @@ export async function PATCH(request: NextRequest) {
 
     const supabase = getSupabase();
 
-    const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    const updateData: Record<string, unknown> = { updated_at: getKoreanTime() };
     if (closingTime !== undefined) updateData.closing_time = closingTime;
     if (isActive !== undefined) updateData.is_active = isActive;
 

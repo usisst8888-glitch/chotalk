@@ -4,6 +4,12 @@ import { verifyToken } from '@/lib/jwt';
 import { cookies } from 'next/headers';
 import { SAMPLE_TEMPLATES } from '../route';
 
+function getKoreanTime(): string {
+  const now = new Date();
+  const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+  return koreaTime.toISOString().replace('Z', '+09:00');
+}
+
 // 템플릿 선택 또는 커스텀 템플릿 수정
 export async function PATCH(
   request: NextRequest,
@@ -65,7 +71,7 @@ export async function PATCH(
           template: templateContent,
           source_type: sourceType,
           source_id: sourceId,
-          updated_at: new Date().toISOString(),
+          updated_at: getKoreanTime(),
         }, {
           onConflict: 'user_id',
         });
@@ -94,7 +100,7 @@ export async function PATCH(
 
     // 템플릿 내용 수정
     const updateData: { name?: string; template?: string; updated_at: string } = {
-      updated_at: new Date().toISOString(),
+      updated_at: getKoreanTime(),
     };
 
     if (name) updateData.name = name;
@@ -113,7 +119,7 @@ export async function PATCH(
     if (template) {
       await supabase
         .from('user_templates')
-        .update({ template, updated_at: new Date().toISOString() })
+        .update({ template, updated_at: getKoreanTime() })
         .eq('user_id', payload.userId)
         .eq('source_id', id);
     }
@@ -190,7 +196,7 @@ export async function DELETE(
           template: firstSample.template,
           source_type: 'sample',
           source_id: null,
-          updated_at: new Date().toISOString(),
+          updated_at: getKoreanTime(),
         })
         .eq('user_id', payload.userId);
     }

@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/jwt';
 
+function getKoreanTime(): string {
+  const now = new Date();
+  const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+  return koreaTime.toISOString().replace('Z', '+09:00');
+}
+
 // 관리자 권한 확인 헬퍼
 async function checkAdmin(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
@@ -37,7 +43,7 @@ export async function PATCH(
     const supabase = getSupabase();
 
     const updateData: Record<string, string | boolean | null> = {
-      updated_at: new Date().toISOString(),
+      updated_at: getKoreanTime(),
     };
 
     // 카카오 ID 수정
