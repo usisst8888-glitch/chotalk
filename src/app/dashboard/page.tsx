@@ -61,7 +61,7 @@ export default function DashboardPage() {
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
   const [newSlot, setNewSlot] = useState({ girlName: '', shopName: '', customShopName: '', customClosingTime: '', chatRoomType: 'group' as 'group' | 'open', targetRoom: '' });
   const [editSlot, setEditSlot] = useState({ girlName: '', shopName: '', customShopName: '', customClosingTime: '', chatRoomType: 'group' as 'group' | 'open', targetRoom: '' });
-  const [shops, setShops] = useState<Array<{ id: string; shop_name: string; closing_time: string }>>([]);
+  const [shops, setShops] = useState<Array<{ id: string; shop_name: string; start_time: string; end_time: string }>>([]);
   const [submitting, setSubmitting] = useState(false);
   const [showSlotPurchaseModal, setShowSlotPurchaseModal] = useState(false);
   const [showExtendAllModal, setShowExtendAllModal] = useState(false);
@@ -78,7 +78,7 @@ export default function DashboardPage() {
   const [showEditTemplateModal, setShowEditTemplateModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<CustomTemplate | null>(null);
   const [newTemplate, setNewTemplate] = useState({ name: '', template: '' });
-  const [activeTab, setActiveTab] = useState<'slots' | 'templates' | 'users' | 'kakaoIds' | 'closingTimes'>('slots');
+  const [activeTab, setActiveTab] = useState<'slots' | 'templates' | 'users' | 'kakaoIds' | 'eventTimes'>('slots');
   // 관리자용 회원관리
   const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; role: string; slot_count: number; created_at: string }>>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -93,10 +93,10 @@ export default function DashboardPage() {
   const [editingSlotKakaoId, setEditingSlotKakaoId] = useState<string | null>(null);
   const [editingKakaoIdDescription, setEditingKakaoIdDescription] = useState<string | null>(null);
   const [editDescriptionValue, setEditDescriptionValue] = useState('');
-  // 관리자용 마감시간 관리
-  const [closingTimes, setClosingTimes] = useState<Array<{ id: string; shop_name: string; closing_time: string; is_active: boolean }>>([]);
-  const [closingTimesLoading, setClosingTimesLoading] = useState(false);
-  const [editingClosingTime, setEditingClosingTime] = useState<string | null>(null);
+  // 관리자용 이벤트 시간 관리
+  const [eventTimes, setEventTimes] = useState<Array<{ id: string; shop_name: string; start_time: string; end_time: string; is_active: boolean }>>([]);
+  const [eventTimesLoading, setEventTimesLoading] = useState(false);
+  const [editingEventTime, setEditingEventTime] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUser();
@@ -262,33 +262,33 @@ export default function DashboardPage() {
     }
   };
 
-  // 관리자용: 마감시간 목록 조회
-  const fetchClosingTimes = async () => {
-    setClosingTimesLoading(true);
+  // 관리자용: 이벤트 시간 목록 조회
+  const fetchEventTimes = async () => {
+    setEventTimesLoading(true);
     try {
       const res = await fetch('/api/admin/closing-times');
       if (res.ok) {
         const data = await res.json();
-        setClosingTimes(data.closingTimes);
+        setEventTimes(data.eventTimes);
       }
     } catch (error) {
-      console.error('Failed to fetch closing times:', error);
+      console.error('Failed to fetch event times:', error);
     } finally {
-      setClosingTimesLoading(false);
+      setEventTimesLoading(false);
     }
   };
 
-  // 관리자용: 마감시간 수정
-  const handleUpdateClosingTime = async (id: string, closingTime: string) => {
+  // 관리자용: 이벤트 시간 수정
+  const handleUpdateEventTime = async (id: string, startTime: string, endTime: string) => {
     try {
       const res = await fetch('/api/admin/closing-times', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, closingTime }),
+        body: JSON.stringify({ id, startTime, endTime }),
       });
       if (res.ok) {
-        setEditingClosingTime(null);
-        fetchClosingTimes();
+        setEditingEventTime(null);
+        fetchEventTimes();
       } else {
         alert('수정에 실패했습니다.');
       }
@@ -357,17 +357,10 @@ export default function DashboardPage() {
     e.preventDefault();
     if (submitting) return;
 
-    // 기타 선택 시 마감시간 필수 체크
-    if (newSlot.shopName === '기타' && newSlot.customShopName && !newSlot.customClosingTime) {
-      alert('기타 가게의 마감시간을 입력해주세요.');
-      return;
-    }
-
     setSubmitting(true);
 
     try {
       const shopNameValue = newSlot.shopName === '기타' ? newSlot.customShopName : newSlot.shopName;
-      const closingTimeValue = newSlot.shopName === '기타' ? newSlot.customClosingTime : null;
       const res = await fetch('/api/slots', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -376,7 +369,6 @@ export default function DashboardPage() {
           shopName: shopNameValue || null,
           targetRoom: newSlot.targetRoom,
           chatRoomType: newSlot.chatRoomType,
-          closingTime: closingTimeValue,
         }),
       });
 
@@ -768,16 +760,16 @@ export default function DashboardPage() {
                 </button>
                 <button
                   onClick={() => {
-                    setActiveTab('closingTimes');
-                    fetchClosingTimes();
+                    setActiveTab('eventTimes');
+                    fetchEventTimes();
                   }}
                   className={`px-4 py-2 rounded-lg font-medium transition ${
-                    activeTab === 'closingTimes'
+                    activeTab === 'eventTimes'
                       ? 'bg-purple-600 text-white'
                       : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
                   }`}
                 >
-                  마감시간
+                  이벤트 시간
                 </button>
               </>
             )}
@@ -1377,7 +1369,7 @@ export default function DashboardPage() {
                         className="w-full px-3 py-2 pr-10 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500 appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%239ca3af%22%20d%3D%22M2%204l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.75rem_center]"
                       >
                         {shops.map((shop) => (
-                          <option key={shop.id} value={shop.shop_name}>{shop.shop_name} ({shop.closing_time.slice(0, 5)})</option>
+                          <option key={shop.id} value={shop.shop_name}>{shop.shop_name} ({shop.start_time.slice(0, 5)}~{shop.end_time.slice(0, 5)})</option>
                         ))}
                         <option value="기타">기타 (직접입력)</option>
                       </select>
@@ -1388,13 +1380,6 @@ export default function DashboardPage() {
                             value={inlineNewSlot.customShopName}
                             onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, customShopName: e.target.value })}
                             placeholder="가게명 직접 입력"
-                            className="w-full mt-2 px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
-                          />
-                          <input
-                            type="text"
-                            value={inlineNewSlot.customClosingTime || ''}
-                            onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, customClosingTime: e.target.value })}
-                            placeholder="24시간 기준으로 작성 (예: 14:00)"
                             className="w-full mt-2 px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
                           />
                         </>
@@ -1795,54 +1780,66 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* 마감시간 관리 탭 (관리자 전용) */}
-        {activeTab === 'closingTimes' && user?.role === 'admin' && (
+        {/* 이벤트 시간 관리 탭 (관리자 전용) */}
+        {activeTab === 'eventTimes' && user?.role === 'admin' && (
           <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
-            <h2 className="text-xl font-bold text-white mb-6">가게별 마감시간 관리</h2>
-            {closingTimesLoading ? (
+            <h2 className="text-xl font-bold text-white mb-6">가게별 이벤트 시간 관리</h2>
+            {eventTimesLoading ? (
               <div className="text-center py-12 text-neutral-400">로딩 중...</div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                {closingTimes.map((item) => (
-                  <div key={item.id} className="flex flex-col items-center p-4 bg-neutral-800 rounded-xl">
-                    <span className="text-white font-medium mb-2">{item.shop_name}</span>
-                    {editingClosingTime === item.id ? (
-                      <input
-                        type="text"
-                        defaultValue={item.closing_time.slice(0, 5)}
-                        onBlur={(e) => {
-                          const val = e.target.value;
-                          if (/^\d{1,2}:\d{2}$/.test(val)) {
-                            handleUpdateClosingTime(item.id, val);
-                          } else {
-                            setEditingClosingTime(null);
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            const val = (e.target as HTMLInputElement).value;
-                            if (/^\d{1,2}:\d{2}$/.test(val)) {
-                              handleUpdateClosingTime(item.id, val);
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {eventTimes.map((item) => (
+                  <div key={item.id} className="flex flex-col p-4 bg-neutral-800 rounded-xl">
+                    <span className="text-white font-medium mb-3 text-center">{item.shop_name}</span>
+                    {editingEventTime === item.id ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <input
+                          type="text"
+                          id={`start-${item.id}`}
+                          defaultValue={item.start_time.slice(0, 5)}
+                          placeholder="18:00"
+                          className="w-16 px-2 py-1 bg-neutral-700 border border-purple-500 rounded text-white text-center focus:outline-none text-sm"
+                        />
+                        <span className="text-neutral-400">~</span>
+                        <input
+                          type="text"
+                          id={`end-${item.id}`}
+                          defaultValue={item.end_time.slice(0, 5)}
+                          placeholder="23:00"
+                          className="w-16 px-2 py-1 bg-neutral-700 border border-purple-500 rounded text-white text-center focus:outline-none text-sm"
+                        />
+                        <button
+                          onClick={() => {
+                            const startInput = document.getElementById(`start-${item.id}`) as HTMLInputElement;
+                            const endInput = document.getElementById(`end-${item.id}`) as HTMLInputElement;
+                            const startVal = startInput?.value;
+                            const endVal = endInput?.value;
+                            if (/^\d{1,2}:\d{2}$/.test(startVal) && /^\d{1,2}:\d{2}$/.test(endVal)) {
+                              handleUpdateEventTime(item.id, startVal, endVal);
                             }
-                          } else if (e.key === 'Escape') {
-                            setEditingClosingTime(null);
-                          }
-                        }}
-                        autoFocus
-                        placeholder="00:00"
-                        className="w-20 px-2 py-1 bg-neutral-700 border border-purple-500 rounded text-white text-center focus:outline-none"
-                      />
+                          }}
+                          className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm transition"
+                        >
+                          저장
+                        </button>
+                        <button
+                          onClick={() => setEditingEventTime(null)}
+                          className="px-2 py-1 bg-neutral-600 hover:bg-neutral-500 rounded text-white text-sm transition"
+                        >
+                          취소
+                        </button>
+                      </div>
                     ) : (
                       <button
-                        onClick={() => setEditingClosingTime(item.id)}
-                        className="px-3 py-1 bg-purple-600/20 hover:bg-purple-600/40 rounded text-purple-400 font-medium transition"
+                        onClick={() => setEditingEventTime(item.id)}
+                        className="px-3 py-2 bg-purple-600/20 hover:bg-purple-600/40 rounded text-purple-400 font-medium transition"
                       >
-                        {item.closing_time.slice(0, 5)}
+                        {item.start_time.slice(0, 5)} ~ {item.end_time.slice(0, 5)}
                       </button>
                     )}
                   </div>
                 ))}
-                {closingTimes.length === 0 && (
+                {eventTimes.length === 0 && (
                   <div className="col-span-full text-center py-12 text-neutral-600">
                     등록된 가게가 없습니다.
                   </div>
@@ -1944,7 +1941,7 @@ export default function DashboardPage() {
                   className="w-full px-4 py-3 pr-10 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%239ca3af%22%20d%3D%22M2%204l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.75rem_center]"
                 >
                   {shops.map((shop) => (
-                    <option key={shop.id} value={shop.shop_name}>{shop.shop_name} ({shop.closing_time.slice(0, 5)})</option>
+                    <option key={shop.id} value={shop.shop_name}>{shop.shop_name} ({shop.start_time.slice(0, 5)}~{shop.end_time.slice(0, 5)})</option>
                   ))}
                   <option value="기타">기타 (직접입력)</option>
                 </select>
@@ -1955,13 +1952,6 @@ export default function DashboardPage() {
                       value={newSlot.customShopName}
                       onChange={(e) => setNewSlot({ ...newSlot, customShopName: e.target.value })}
                       placeholder="가게명 직접 입력"
-                      className="w-full mt-2 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                    />
-                    <input
-                      type="text"
-                      value={newSlot.customClosingTime}
-                      onChange={(e) => setNewSlot({ ...newSlot, customClosingTime: e.target.value })}
-                      placeholder="24시간 기준으로 작성 (예: 14:00)"
                       className="w-full mt-2 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
                     />
                   </>
@@ -2062,7 +2052,7 @@ export default function DashboardPage() {
                   className="w-full px-4 py-3 pr-10 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%239ca3af%22%20d%3D%22M2%204l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.75rem_center]"
                 >
                   {shops.map((shop) => (
-                    <option key={shop.id} value={shop.shop_name}>{shop.shop_name} ({shop.closing_time.slice(0, 5)})</option>
+                    <option key={shop.id} value={shop.shop_name}>{shop.shop_name} ({shop.start_time.slice(0, 5)}~{shop.end_time.slice(0, 5)})</option>
                   ))}
                   <option value="기타">기타 (직접입력)</option>
                 </select>
@@ -2073,13 +2063,6 @@ export default function DashboardPage() {
                       value={editSlot.customShopName}
                       onChange={(e) => setEditSlot({ ...editSlot, customShopName: e.target.value })}
                       placeholder="가게명 직접 입력"
-                      className="w-full mt-2 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                    />
-                    <input
-                      type="text"
-                      value={editSlot.customClosingTime}
-                      onChange={(e) => setEditSlot({ ...editSlot, customClosingTime: e.target.value })}
-                      placeholder="24시간 기준으로 작성 (예: 14:00)"
                       className="w-full mt-2 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
                     />
                   </>
