@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '유효하지 않은 토큰입니다.' }, { status: 401 });
     }
 
-    const { girlName, shopName, targetRoom, chatRoomType, closingTime } = await request.json();
+    const { girlName, shopName, targetRoom, chatRoomType } = await request.json();
 
     if (!girlName || !targetRoom) {
       return NextResponse.json({ error: '모든 필드를 입력해주세요.' }, { status: 400 });
@@ -91,20 +91,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '슬롯이 부족합니다. 슬롯을 추가로 구매해주세요.' }, { status: 400 });
     }
 
-    // 새 가게인 경우 마감시간 테이블에 추가
-    if (shopName && closingTime) {
+    // 새 가게인 경우 이벤트 시간 테이블에 추가
+    if (shopName) {
       const { data: existingShop } = await supabase
-        .from('shop_closing_times')
+        .from('event_times')
         .select('id')
         .eq('shop_name', shopName)
         .single();
 
       if (!existingShop) {
         await supabase
-          .from('shop_closing_times')
+          .from('event_times')
           .insert({
             shop_name: shopName,
-            closing_time: closingTime,
           });
       }
     }

@@ -27,7 +27,7 @@ async function checkAdmin(request: NextRequest) {
   return user;
 }
 
-// 마감 시간 목록 조회
+// 이벤트 시간 목록 조회
 export async function GET(request: NextRequest) {
   try {
     const admin = await checkAdmin(request);
@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = getSupabase();
-    const { data: closingTimes, error } = await supabase
-      .from('shop_closing_times')
+    const { data: eventTimes, error } = await supabase
+      .from('event_times')
       .select('*')
       .order('shop_name', { ascending: true });
 
@@ -45,13 +45,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ closingTimes });
+    return NextResponse.json({ eventTimes });
   } catch {
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
 }
 
-// 마감 시간 수정
+// 이벤트 시간 수정
 export async function PATCH(request: NextRequest) {
   try {
     const admin = await checkAdmin(request);
@@ -59,7 +59,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
-    const { id, closingTime, isActive } = await request.json();
+    const { id, startTime, endTime, isActive } = await request.json();
 
     if (!id) {
       return NextResponse.json({ error: 'ID가 필요합니다.' }, { status: 400 });
@@ -68,11 +68,12 @@ export async function PATCH(request: NextRequest) {
     const supabase = getSupabase();
 
     const updateData: Record<string, unknown> = { updated_at: getKoreanTime() };
-    if (closingTime !== undefined) updateData.closing_time = closingTime;
+    if (startTime !== undefined) updateData.start_time = startTime;
+    if (endTime !== undefined) updateData.end_time = endTime;
     if (isActive !== undefined) updateData.is_active = isActive;
 
     const { error } = await supabase
-      .from('shop_closing_times')
+      .from('event_times')
       .update(updateData)
       .eq('id', id);
 
