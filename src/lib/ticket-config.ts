@@ -56,6 +56,7 @@ export interface MessageSignal {
   code: string;           // 신호 코드 (예: 'ㄲ')
   type: string;           // 신호 타입
   description: string;    // 설명
+  aliases?: string[];     // 대체 코드 (한글 버전 등)
 }
 
 export const MESSAGE_SIGNALS = {
@@ -71,6 +72,29 @@ export const MESSAGE_SIGNALS = {
     code: 'ㅈㅈ',
     type: 'correction',
     description: '수정 (방번호 또는 이용시간 변경)',
+  },
+
+  // 재진행 신호 (종료 → 시작으로 되돌리기)
+  RESUME: {
+    code: 'ㅈㅈㅎ',
+    type: 'resume',
+    description: '재진행 (종료된 세션을 다시 시작으로 되돌림)',
+    aliases: ['재진행'],  // 한글 대체 코드
+  },
+
+  // 현시간재진행 신호 (새 세션 시작, ㅈㅈ 무시)
+  NEW_SESSION: {
+    code: 'ㅎㅅㄱㅈㅈㅎ',
+    type: 'new_session',
+    description: '현시간재진행 (새 세션 시작)',
+    aliases: ['현시간재진행'],  // 한글 대체 코드
+  },
+
+  // 지명 신호
+  DESIGNATED: {
+    code: 'ㅈㅁ',
+    type: 'designated',
+    description: '지명 (손님이 특정 아가씨를 지명)',
   },
 
   // 추가 신호 예시:
@@ -136,5 +160,16 @@ export function findTicketRule(durationMinutes: number): TicketRule | null {
  */
 export function hasSignal(message: string, signalCode: string): boolean {
   return message.includes(signalCode);
+}
+
+/**
+ * 메시지에서 신호 확인 (aliases 포함)
+ */
+export function hasSignalWithAliases(message: string, signal: MessageSignal): boolean {
+  if (message.includes(signal.code)) return true;
+  if (signal.aliases) {
+    return signal.aliases.some(alias => message.includes(alias));
+  }
+  return false;
 }
 

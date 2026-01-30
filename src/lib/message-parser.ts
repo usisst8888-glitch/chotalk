@@ -12,6 +12,7 @@ import {
   MESSAGE_SIGNALS,
   PARSING_PATTERNS,
   hasSignal,
+  hasSignalWithAliases,
 } from './ticket-config';
 
 // ============================================================
@@ -192,6 +193,9 @@ export interface GirlSignalResult {
   girlName: string;
   isEnd: boolean;                  // 해당 아가씨 뒤에 ㄲ이 있는지
   isCorrection: boolean;           // 해당 아가씨 뒤에 ㅈㅈ이 있는지
+  isResume: boolean;               // 해당 아가씨 뒤에 ㅈㅈㅎ/재진행이 있는지
+  isNewSession: boolean;           // 해당 아가씨 뒤에 ㅎㅅㄱㅈㅈㅎ/현시간재진행이 있는지
+  isDesignated: boolean;           // 해당 아가씨 뒤에 ㅈㅁ(지명)이 있는지
   usageDuration: number | null;    // 해당 아가씨의 이용시간 (ㄲ 앞 숫자)
 }
 
@@ -211,6 +215,9 @@ export function parseGirlSignals(
     girlName: targetGirlName,
     isEnd: false,
     isCorrection: false,
+    isResume: false,
+    isNewSession: false,
+    isDesignated: false,
     usageDuration: null,
   };
 
@@ -236,6 +243,20 @@ export function parseGirlSignals(
   // 해당 아가씨에게 해당하는 부분만 추출
   const girlSection = afterGirl.substring(0, nextGirlIndex);
 
+  // ㅎㅅㄱㅈㅈㅎ/현시간재진행 (새 세션) 신호 확인 - 가장 먼저 체크 (가장 긴 패턴)
+  if (hasSignalWithAliases(girlSection, MESSAGE_SIGNALS.NEW_SESSION)) {
+    result.isNewSession = true;
+    // 새 세션이면 다른 신호는 무시
+    return result;
+  }
+
+  // ㅈㅈㅎ/재진행 (재개) 신호 확인 - ㅈㅈ보다 먼저 체크 (더 긴 패턴)
+  if (hasSignalWithAliases(girlSection, MESSAGE_SIGNALS.RESUME)) {
+    result.isResume = true;
+    // 재진행이면 ㅈㅈ은 무시
+    return result;
+  }
+
   // ㄲ (종료) 신호 확인
   if (hasSignal(girlSection, MESSAGE_SIGNALS.END.code)) {
     result.isEnd = true;
@@ -249,6 +270,11 @@ export function parseGirlSignals(
   // ㅈㅈ (수정) 신호 확인
   if (hasSignal(girlSection, MESSAGE_SIGNALS.CORRECTION.code)) {
     result.isCorrection = true;
+  }
+
+  // ㅈㅁ (지명) 신호 확인 - 다른 신호와 독립적으로 체크
+  if (hasSignal(girlSection, MESSAGE_SIGNALS.DESIGNATED.code)) {
+    result.isDesignated = true;
   }
 
   return result;

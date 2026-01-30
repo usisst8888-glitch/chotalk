@@ -108,11 +108,29 @@ export async function POST(request: NextRequest) {
       }
 
       // ====================================================
-      // 2. sessions 테이블 처리
-      // 핵심 조건: 방번호 + 아가씨이름 뒤에 ㄲ(종료) 있을 때만 종료
+      // 2. status_board 테이블 처리
+      // 우선순위:
+      // 1. ㅎㅅㄱㅈㅈㅎ/현시간재진행 → 새 세션 INSERT
+      // 2. ㅈㅈㅎ/재진행 → 가장 최근 종료 레코드를 시작으로 UPDATE
+      // 3. ㄲ(종료) → 세션 종료 처리
+      // 4. 방번호만 → 세션 시작 처리
       // ====================================================
 
-      if (girlSignals.isEnd && parsed.roomNumber) {
+      if (girlSignals.isNewSession && parsed.roomNumber) {
+        // ㅎㅅㄱㅈㅈㅎ/현시간재진행 → 새 세션 시작 (INSERT)
+        const result = await handleNewSession(
+          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id, userTemplateId
+        );
+        results.push({ ...result, logId: log?.id });
+
+      } else if (girlSignals.isResume) {
+        // ㅈㅈㅎ/재진행 → 가장 최근 종료 레코드를 시작으로 되돌림 (UPDATE)
+        const result = await handleResume(
+          supabase, slot, messageReceivedAt, log?.id
+        );
+        results.push({ ...result, logId: log?.id });
+
+      } else if (girlSignals.isEnd && parsed.roomNumber) {
         // 해당 아가씨 뒤에 ㄲ 있음 → 세션 종료 처리
         const result = await handleSessionEnd(
           supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id, userTemplateId
@@ -159,6 +177,112 @@ export async function POST(request: NextRequest) {
 }
 
 // ============================================================
+// 현시간재진행 처리 (ㅎㅅㄱㅈㅈㅎ) - 새 세션 INSERT
+// ============================================================
+
+async function handleNewSession(
+  supabase: ReturnType<typeof getSupabase>,
+  slot: { id: string; user_id: string; girl_name: string; shop_name: string | null; kakao_id: string | null; target_room: string | null },
+  parsed: ReturnType<typeof parseMessage>,
+  girlSignals: { isDesignated: boolean },
+  receivedAt: string,
+  logId: string | undefined,
+  userTemplateId: string | null
+) {
+  console.log('handleNewSession called for:', slot.girl_name, 'roomNumber:', parsed.roomNumber, 'isDesignated:', girlSignals.isDesignated);
+
+  // 새 세션 INSERT (기존 레코드 무시, 무조건 새로 생성)
+  const { error: insertError } = await supabase
+    .from('status_board')
+    .insert({
+      slot_id: slot.id,
+      user_id: slot.user_id,
+      shop_name: slot.shop_name,
+      room_number: parsed.roomNumber,
+      girl_name: slot.girl_name,
+      kakao_id: slot.kakao_id,
+      target_room: slot.target_room,
+      is_in_progress: true,
+      start_time: receivedAt,
+      end_time: null,
+      usage_duration: null,
+      trigger_type: 'start',
+      source_log_id: logId || null,
+      user_template_id: userTemplateId,
+      is_designated: girlSignals.isDesignated,
+    });
+
+  if (insertError) {
+    console.error('handleNewSession insert error:', insertError);
+  }
+
+  return {
+    type: 'new_session',
+    slotId: slot.id,
+    girlName: slot.girl_name,
+    roomNumber: parsed.roomNumber,
+    startTime: receivedAt,
+  };
+}
+
+// ============================================================
+// 재진행 처리 (ㅈㅈㅎ) - 가장 최근 종료 레코드를 시작으로 UPDATE
+// ============================================================
+
+async function handleResume(
+  supabase: ReturnType<typeof getSupabase>,
+  slot: { id: string; user_id: string; girl_name: string; shop_name: string | null; kakao_id: string | null; target_room: string | null },
+  receivedAt: string,
+  logId: string | undefined
+) {
+  console.log('handleResume called for:', slot.girl_name);
+
+  // 가장 최근에 종료된 레코드 찾기 (is_in_progress = false)
+  const { data: endedRecord, error: findError } = await supabase
+    .from('status_board')
+    .select('id, room_number')
+    .eq('slot_id', slot.id)
+    .eq('is_in_progress', false)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (findError || !endedRecord) {
+    console.log('handleResume - no ended record found:', findError);
+    return {
+      type: 'resume_failed',
+      slotId: slot.id,
+      girlName: slot.girl_name,
+      reason: '되돌릴 종료 레코드 없음',
+    };
+  }
+
+  // 종료 → 시작으로 되돌림 (is_in_progress = true, end_time = null, usage_duration = null)
+  const { error: updateError } = await supabase
+    .from('status_board')
+    .update({
+      is_in_progress: true,
+      end_time: null,
+      usage_duration: null,
+      trigger_type: 'start',
+      source_log_id: logId || null,
+      updated_at: getKoreanTime(),
+    })
+    .eq('id', endedRecord.id);
+
+  if (updateError) {
+    console.error('handleResume update error:', updateError);
+  }
+
+  return {
+    type: 'resume',
+    slotId: slot.id,
+    girlName: slot.girl_name,
+    roomNumber: endedRecord.room_number,
+  };
+}
+
+// ============================================================
 // 세션 시작 처리 (sessions 테이블에 저장)
 // ============================================================
 
@@ -166,12 +290,12 @@ async function handleSessionStart(
   supabase: ReturnType<typeof getSupabase>,
   slot: { id: string; user_id: string; girl_name: string; shop_name: string | null; kakao_id: string | null; target_room: string | null },
   parsed: ReturnType<typeof parseMessage>,
-  girlSignals: { isEnd: boolean; isCorrection: boolean; usageDuration: number | null },
+  girlSignals: { isEnd: boolean; isCorrection: boolean; isDesignated: boolean; usageDuration: number | null },
   receivedAt: string,
   logId: string | undefined,
   userTemplateId: string | null
 ) {
-  console.log('handleSessionStart called for:', slot.girl_name, 'roomNumber:', parsed.roomNumber);
+  console.log('handleSessionStart called for:', slot.girl_name, 'roomNumber:', parsed.roomNumber, 'isDesignated:', girlSignals.isDesignated);
   // 상황판에만 저장 (sender_logs 필요없음)
   await updateStatusBoard(supabase, {
     slotId: slot.id,
@@ -186,6 +310,7 @@ async function handleSessionStart(
     endTime: null,
     usageDuration: null,
     isCorrection: girlSignals.isCorrection,
+    isDesignated: girlSignals.isDesignated,
     sourceLogId: logId,
     userTemplateId: userTemplateId,
   });
@@ -207,7 +332,7 @@ async function handleSessionEnd(
   supabase: ReturnType<typeof getSupabase>,
   slot: { id: string; user_id: string; girl_name: string; shop_name: string | null; kakao_id: string | null; target_room: string | null },
   parsed: ReturnType<typeof parseMessage>,
-  girlSignals: { isEnd: boolean; isCorrection: boolean; usageDuration: number | null },
+  girlSignals: { isEnd: boolean; isCorrection: boolean; isDesignated: boolean; usageDuration: number | null },
   receivedAt: string,
   logId: string | undefined,
   userTemplateId: string | null
@@ -226,6 +351,7 @@ async function handleSessionEnd(
     endTime: receivedAt,
     usageDuration: girlSignals.usageDuration,
     isCorrection: girlSignals.isCorrection,
+    isDesignated: girlSignals.isDesignated,
     sourceLogId: logId,
     userTemplateId: userTemplateId,
   });
@@ -259,6 +385,7 @@ async function updateStatusBoard(
     endTime: string | null;
     usageDuration: number | null;
     isCorrection: boolean;
+    isDesignated: boolean;
     sourceLogId: string | undefined;
     userTemplateId: string | null;
   }
@@ -269,6 +396,7 @@ async function updateStatusBoard(
     girlName: data.girlName,
     isInProgress: data.isInProgress,
     isCorrection: data.isCorrection,
+    isDesignated: data.isDesignated,
     usageDuration: data.usageDuration,
   });
 
@@ -298,6 +426,7 @@ async function updateStatusBoard(
             trigger_type: data.isInProgress ? 'start' : 'end',
             source_log_id: data.sourceLogId || null,
             user_template_id: data.userTemplateId,
+            is_designated: data.isDesignated,
             updated_at: getKoreanTime(),
           })
           .eq('id', existingBySlot.id);
@@ -333,6 +462,7 @@ async function updateStatusBoard(
             trigger_type: 'end',
             source_log_id: data.sourceLogId || null,
             user_template_id: data.userTemplateId,
+            is_designated: data.isDesignated,
             updated_at: getKoreanTime(),
           })
           .eq('id', existing.id);
@@ -362,6 +492,7 @@ async function updateStatusBoard(
           trigger_type: 'start',
           source_log_id: data.sourceLogId || null,
           user_template_id: data.userTemplateId,
+          is_designated: data.isDesignated,
         });
 
       if (insertError) {
