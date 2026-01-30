@@ -56,7 +56,7 @@ export interface MessageSignal {
   code: string;           // 신호 코드 (예: 'ㄲ')
   type: string;           // 신호 타입
   description: string;    // 설명
-  aliases?: string[];     // 대체 코드 (한글 버전 등)
+  aliases?: readonly string[];     // 대체 코드 (한글 버전 등)
 }
 
 export const MESSAGE_SIGNALS = {
