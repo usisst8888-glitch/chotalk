@@ -223,6 +223,11 @@ export function parseGirlSignals(
     usageDuration: null,
   };
 
+  // ㅈㅈ(수정)는 메시지 맨 앞에 prefix로 올 수 있음
+  if (message.startsWith(MESSAGE_SIGNALS.CORRECTION.code)) {
+    result.isCorrection = true;
+  }
+
   // 해당 아가씨 이름의 위치 찾기
   const girlIndex = message.indexOf(targetGirlName);
   if (girlIndex === -1) {
@@ -242,8 +247,26 @@ export function parseGirlSignals(
     }
   }
 
-  // 해당 아가씨에게 해당하는 부분만 추출
-  const girlSection = afterGirl.substring(0, nextGirlIndex);
+  // 해당 아가씨에게 해당하는 부분만 추출 (이름 뒤)
+  const afterSection = afterGirl.substring(0, nextGirlIndex);
+
+  // 아가씨 이름 앞의 텍스트도 확인 (이름에 직접 붙은 신호 감지)
+  // 이전 아가씨 이름이 끝나는 위치부터 현재 아가씨 이름 시작까지
+  let prevGirlEndIndex = 0;
+  for (const otherGirl of allGirlNames) {
+    if (otherGirl === targetGirlName) continue;
+    const idx = message.indexOf(otherGirl);
+    if (idx !== -1 && idx < girlIndex) {
+      const endIdx = idx + otherGirl.length;
+      if (endIdx > prevGirlEndIndex) {
+        prevGirlEndIndex = endIdx;
+      }
+    }
+  }
+  const beforeSection = message.substring(prevGirlEndIndex, girlIndex);
+
+  // 앞뒤 섹션 합쳐서 신호 감지 (이름 앞뒤에 붙거나 띄어쓰기로 구분된 경우 모두)
+  const girlSection = beforeSection + afterSection;
 
   // ㄱㅌ (취소) 신호 확인 - 가장 먼저 체크 (세션 삭제)
   if (hasSignal(girlSection, MESSAGE_SIGNALS.CANCEL.code)) {
