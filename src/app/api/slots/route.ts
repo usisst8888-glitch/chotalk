@@ -3,6 +3,17 @@ import { getSupabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/jwt';
 import { cookies } from 'next/headers';
 
+// 한국 시간 (KST) 헬퍼 함수
+function getKoreanTimeDate(): Date {
+  const now = new Date();
+  return new Date(now.getTime() + (9 * 60 * 60 * 1000));
+}
+
+function toKoreanTimeString(date: Date): string {
+  // 이미 한국 시간으로 변환된 Date를 ISO 문자열로 변환 (Z 제거)
+  return date.toISOString().slice(0, -1);
+}
+
 // 슬롯 목록 조회
 export async function GET() {
   try {
@@ -108,8 +119,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 30일 후 만료
-    const expiresAt = new Date();
+    // 30일 후 만료 (한국 시간 기준)
+    const expiresAt = getKoreanTimeDate();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
     // 활성화된 카카오 초대 ID 목록 가져오기
@@ -152,7 +163,7 @@ export async function POST(request: NextRequest) {
         target_room: targetRoom,
         chat_room_type: validChatRoomType,
         kakao_id: availableKakaoId.kakao_id,
-        expires_at: expiresAt.toISOString(),
+        expires_at: toKoreanTimeString(expiresAt),
       })
       .select()
       .single();

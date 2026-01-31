@@ -3,6 +3,11 @@ import { getSupabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/jwt';
 import { cookies } from 'next/headers';
 
+// ISO 문자열 변환 (Z 제거) - 기존 값 연장용
+function toTimestampString(date: Date): string {
+  return date.toISOString().slice(0, -1);
+}
+
 // 슬롯 삭제
 export async function DELETE(
   request: NextRequest,
@@ -75,14 +80,13 @@ export async function PATCH(
         return NextResponse.json({ error: '슬롯을 찾을 수 없습니다.' }, { status: 404 });
       }
 
-      // 30일 연장
+      // 30일 연장 (한국 시간 기준)
       const currentExpiry = new Date(slot.expires_at);
-      const newExpiry = new Date(currentExpiry);
-      newExpiry.setDate(newExpiry.getDate() + 30);
+      currentExpiry.setDate(currentExpiry.getDate() + 30);
 
       const { data: updatedSlot, error } = await supabase
         .from('slots')
-        .update({ expires_at: newExpiry.toISOString() })
+        .update({ expires_at: toTimestampString(currentExpiry) })
         .eq('id', id)
         .eq('user_id', payload.userId)
         .select()
