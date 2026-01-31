@@ -477,13 +477,13 @@ async function updateStatusBoard(
       console.log('Correction mode - existingBySlot:', existingBySlot, 'error:', findError);
 
       if (existingBySlot) {
-        // 기존 레코드 수정 (방번호도 업데이트)
+        // 기존 레코드 수정 (방번호 등 업데이트, start_time은 유지!)
         const { error: updateError } = await supabase
           .from('status_board')
           .update({
             room_number: data.roomNumber,
             is_in_progress: data.isInProgress,
-            start_time: data.startTime,
+            // start_time은 수정하지 않음 - 처음 등록 시간 유지
             end_time: data.endTime,
             usage_duration: data.usageDuration,
             trigger_type: data.isInProgress ? 'start' : 'end',
