@@ -2,8 +2,10 @@ const scriptName = "Chotalk";
 const SERVER_URL = "https://chotalk.vercel.app/api/bot/message";
 
 function response(room, msg, sender, isGroupChat, replier, imageDB, packageName) {
-    // 알림이 온 시점의 시간 캡처 (Thread 시작 전에 캡처해야 정확함)
-    var receivedAt = new Date().toISOString();
+    // 알림이 온 시점의 시간 캡처 (한국 시간, Thread 시작 전에 캡처해야 정확함)
+    var now = new Date();
+    var koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+    var receivedAt = koreaTime.toISOString().slice(0, -1); // 'Z' 제거하여 한국 시간으로 저장
 
     // Thread로 비동기 처리 (메인 스레드 블로킹 방지)
     new java.lang.Thread({
