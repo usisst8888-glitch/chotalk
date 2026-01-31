@@ -13,6 +13,193 @@ function getKoreanTime(): string {
 }
 
 // ============================================================
+// 방(Room) 관리 함수
+// ============================================================
+
+// 방 조회 또는 생성 (아가씨 시작 시 호출)
+async function getOrCreateRoom(
+  supabase: ReturnType<typeof getSupabase>,
+  roomNumber: string,
+  shopName: string | null,
+  startTime: string
+): Promise<{ roomId: string; roomStartTime: string; isNewRoom: boolean }> {
+  // 같은 room_number + shop_name에서 활성 방 찾기
+  const { data: activeRoom } = await supabase
+    .from('rooms')
+    .select('id, room_start_time')
+    .eq('room_number', roomNumber)
+    .eq('shop_name', shopName || '')
+    .eq('is_active', true)
+    .single();
+
+  if (activeRoom) {
+    // 기존 활성 방에 합류
+    console.log('Joining existing room:', activeRoom.id, 'started at:', activeRoom.room_start_time);
+    return {
+      roomId: activeRoom.id,
+      roomStartTime: activeRoom.room_start_time,
+      isNewRoom: false,
+    };
+  }
+
+  // 새 방 생성
+  const { data: newRoom, error: insertError } = await supabase
+    .from('rooms')
+    .insert({
+      room_number: roomNumber,
+      shop_name: shopName || '',
+      room_start_time: startTime,
+      is_active: true,
+    })
+    .select('id, room_start_time')
+    .single();
+
+  if (insertError || !newRoom) {
+    console.error('Room creation error:', insertError);
+    // 에러 시에도 계속 진행할 수 있도록 임시 값 반환
+    return {
+      roomId: '',
+      roomStartTime: startTime,
+      isNewRoom: true,
+    };
+  }
+
+  console.log('Created new room:', newRoom.id, 'started at:', newRoom.room_start_time);
+  return {
+    roomId: newRoom.id,
+    roomStartTime: newRoom.room_start_time,
+    isNewRoom: true,
+  };
+}
+
+// 방 종료 확인 (모든 아가씨가 ㄲ되었는지)
+async function checkAndCloseRoom(
+  supabase: ReturnType<typeof getSupabase>,
+  roomNumber: string,
+  shopName: string | null
+): Promise<void> {
+  // 해당 방에서 아직 진행 중인 아가씨가 있는지 확인
+  const { data: activeGirls, error } = await supabase
+    .from('status_board')
+    .select('id')
+    .eq('room_number', roomNumber)
+    .eq('shop_name', shopName || '')
+    .eq('is_in_progress', true);
+
+  if (error) {
+    console.error('Check active girls error:', error);
+    return;
+  }
+
+  // 진행 중인 아가씨가 없으면 방 종료
+  if (!activeGirls || activeGirls.length === 0) {
+    const { error: updateError } = await supabase
+      .from('rooms')
+      .update({ is_active: false })
+      .eq('room_number', roomNumber)
+      .eq('shop_name', shopName || '')
+      .eq('is_active', true);
+
+    if (updateError) {
+      console.error('Room close error:', updateError);
+    } else {
+      console.log('Room closed:', roomNumber, shopName);
+    }
+  }
+}
+
+// ============================================================
+// 이벤트 계산 함수
+// ============================================================
+
+interface EventCalculation {
+  eventCount: number;
+  isNewRoom: boolean;
+}
+
+async function calculateEventCount(
+  supabase: ReturnType<typeof getSupabase>,
+  shopName: string | null,
+  roomStartTime: string,
+  girlStartTime: string,
+  girlEndTime: string,
+  usageDuration: number | null
+): Promise<EventCalculation> {
+  if (!shopName || usageDuration === null || usageDuration <= 0) {
+    return { eventCount: 0, isNewRoom: false };
+  }
+
+  // 이벤트 시간 조회
+  const { data: eventTime } = await supabase
+    .from('event_times')
+    .select('start_time, end_time')
+    .eq('shop_name', shopName)
+    .eq('is_active', true)
+    .single();
+
+  if (!eventTime) {
+    console.log('No event time found for shop:', shopName);
+    return { eventCount: 0, isNewRoom: false };
+  }
+
+  // 시간 파싱 (예: "15:00" → 15시 00분)
+  const [eventStartHour, eventStartMin] = eventTime.start_time.split(':').map(Number);
+  const [eventEndHour, eventEndMin] = eventTime.end_time.split(':').map(Number);
+
+  // 방 시작 시간 파싱
+  const roomStart = new Date(roomStartTime);
+  const girlStart = new Date(girlStartTime);
+  const girlEnd = new Date(girlEndTime);
+
+  // 이벤트 시작 시간 (오늘 날짜 기준)
+  const eventStart = new Date(girlEnd);
+  eventStart.setHours(eventStartHour, eventStartMin, 0, 0);
+
+  // 이벤트 종료 시간
+  const eventEnd = new Date(girlEnd);
+  eventEnd.setHours(eventEndHour, eventEndMin, 0, 0);
+
+  // 신규방 기준: 이벤트 시작 1시간 전
+  const newRoomThreshold = new Date(eventStart);
+  newRoomThreshold.setHours(newRoomThreshold.getHours() - 1);
+
+  // 신규방 판별: 방 시작 시간이 이벤트시작-1시간 이후인지
+  const isNewRoom = roomStart >= newRoomThreshold;
+
+  console.log('Event calculation:', {
+    shopName,
+    eventTime: `${eventTime.start_time}-${eventTime.end_time}`,
+    roomStartTime,
+    girlStartTime,
+    girlEndTime,
+    usageDuration,
+    isNewRoom,
+    newRoomThreshold: newRoomThreshold.toISOString(),
+  });
+
+  let eventCount = 0;
+
+  if (isNewRoom) {
+    // 신규방: 전체 usage_duration이 이벤트
+    eventCount = usageDuration;
+  } else {
+    // 기존방: 이벤트 시간대 내에 있는 부분만 이벤트
+    // 아가씨의 시간 중 이벤트 시간대와 겹치는 부분 계산
+    const overlapStart = new Date(Math.max(girlStart.getTime(), eventStart.getTime()));
+    const overlapEnd = new Date(Math.min(girlEnd.getTime(), eventEnd.getTime()));
+
+    if (overlapEnd > overlapStart) {
+      // 겹치는 시간 (밀리초 → 시간)
+      const overlapHours = (overlapEnd.getTime() - overlapStart.getTime()) / (1000 * 60 * 60);
+      eventCount = Math.round(overlapHours * 10) / 10; // 소수점 1자리
+    }
+  }
+
+  console.log('Event count calculated:', eventCount);
+  return { eventCount, isNewRoom };
+}
+
+// ============================================================
 // 메신저봇R에서 메시지 수신
 // ============================================================
 
@@ -197,6 +384,9 @@ async function handleNewSession(
 ) {
   console.log('handleNewSession called for:', slot.girl_name, 'roomNumber:', parsed.roomNumber, 'isDesignated:', girlSignals.isDesignated);
 
+  // 방 조회 또는 생성
+  const roomInfo = await getOrCreateRoom(supabase, parsed.roomNumber!, slot.shop_name, receivedAt);
+
   // 새 세션 INSERT (기존 레코드 무시, 무조건 새로 생성)
   const { error: insertError } = await supabase
     .from('status_board')
@@ -212,6 +402,7 @@ async function handleNewSession(
       start_time: receivedAt,
       end_time: null,
       usage_duration: null,
+      event_count: null,
       trigger_type: 'start',
       source_log_id: logId || null,
       user_template_id: userTemplateId,
@@ -228,6 +419,7 @@ async function handleNewSession(
     girlName: slot.girl_name,
     roomNumber: parsed.roomNumber,
     startTime: receivedAt,
+    isNewRoom: roomInfo.isNewRoom,
   };
 }
 
@@ -359,7 +551,11 @@ async function handleSessionStart(
   userTemplateId: string | null
 ) {
   console.log('handleSessionStart called for:', slot.girl_name, 'roomNumber:', parsed.roomNumber, 'isDesignated:', girlSignals.isDesignated);
-  // 상황판에만 저장 (sender_logs 필요없음)
+
+  // 방 조회 또는 생성
+  const roomInfo = await getOrCreateRoom(supabase, parsed.roomNumber!, slot.shop_name, receivedAt);
+
+  // 상황판에 저장
   await updateStatusBoard(supabase, {
     slotId: slot.id,
     userId: slot.user_id,
@@ -372,6 +568,7 @@ async function handleSessionStart(
     startTime: receivedAt,
     endTime: null,
     usageDuration: null,
+    eventCount: null,
     isCorrection: girlSignals.isCorrection,
     isDesignated: girlSignals.isDesignated,
     sourceLogId: logId,
@@ -384,6 +581,7 @@ async function handleSessionStart(
     girlName: slot.girl_name,
     roomNumber: parsed.roomNumber,
     startTime: receivedAt,
+    isNewRoom: roomInfo.isNewRoom,
   };
 }
 
@@ -400,7 +598,40 @@ async function handleSessionEnd(
   logId: string | undefined,
   userTemplateId: string | null
 ) {
-  // 상황판에만 저장 (sender_logs 필요없음)
+  // 기존 레코드에서 start_time 조회
+  const { data: existingRecord } = await supabase
+    .from('status_board')
+    .select('start_time')
+    .eq('slot_id', slot.id)
+    .eq('room_number', parsed.roomNumber)
+    .single();
+
+  const girlStartTime = existingRecord?.start_time || receivedAt;
+
+  // rooms 테이블에서 room_start_time 조회
+  const { data: room } = await supabase
+    .from('rooms')
+    .select('room_start_time')
+    .eq('room_number', parsed.roomNumber)
+    .eq('shop_name', slot.shop_name || '')
+    .eq('is_active', true)
+    .single();
+
+  const roomStartTime = room?.room_start_time || girlStartTime;
+
+  // 이벤트 계산
+  const { eventCount, isNewRoom } = await calculateEventCount(
+    supabase,
+    slot.shop_name,
+    roomStartTime,
+    girlStartTime,
+    receivedAt,
+    girlSignals.usageDuration
+  );
+
+  console.log('handleSessionEnd - eventCount:', eventCount, 'isNewRoom:', isNewRoom);
+
+  // 상황판 업데이트
   await updateStatusBoard(supabase, {
     slotId: slot.id,
     userId: slot.user_id,
@@ -410,14 +641,18 @@ async function handleSessionEnd(
     kakaoId: slot.kakao_id,
     targetRoom: slot.target_room,
     isInProgress: false,
-    startTime: receivedAt,
+    startTime: girlStartTime,
     endTime: receivedAt,
     usageDuration: girlSignals.usageDuration,
+    eventCount: eventCount,
     isCorrection: girlSignals.isCorrection,
     isDesignated: girlSignals.isDesignated,
     sourceLogId: logId,
     userTemplateId: userTemplateId,
   });
+
+  // 방 종료 체크 (모든 아가씨가 ㄲ 되었는지)
+  await checkAndCloseRoom(supabase, parsed.roomNumber!, slot.shop_name);
 
   return {
     type: 'end',
@@ -426,6 +661,8 @@ async function handleSessionEnd(
     roomNumber: parsed.roomNumber,
     endTime: receivedAt,
     usageDuration: girlSignals.usageDuration,
+    eventCount: eventCount,
+    isNewRoom: isNewRoom,
   };
 }
 
@@ -447,6 +684,7 @@ async function updateStatusBoard(
     startTime: string;
     endTime: string | null;
     usageDuration: number | null;
+    eventCount: number | null;
     isCorrection: boolean;
     isDesignated: boolean;
     sourceLogId: string | undefined;
@@ -486,6 +724,7 @@ async function updateStatusBoard(
             // start_time은 수정하지 않음 - 처음 등록 시간 유지
             end_time: data.endTime,
             usage_duration: data.usageDuration,
+            event_count: data.eventCount,
             trigger_type: data.isInProgress ? 'start' : 'end',
             source_log_id: data.sourceLogId || null,
             user_template_id: data.userTemplateId,
@@ -522,6 +761,7 @@ async function updateStatusBoard(
             start_time: data.startTime,
             end_time: data.endTime,
             usage_duration: data.usageDuration,
+            event_count: data.eventCount,
             trigger_type: 'end',
             source_log_id: data.sourceLogId || null,
             user_template_id: data.userTemplateId,
@@ -552,6 +792,7 @@ async function updateStatusBoard(
           start_time: data.startTime,
           end_time: data.endTime,
           usage_duration: data.usageDuration,
+          event_count: data.eventCount,
           trigger_type: 'start',
           source_log_id: data.sourceLogId || null,
           user_template_id: data.userTemplateId,
