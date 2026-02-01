@@ -148,7 +148,6 @@ async function calculateEventCount(
 
   // 방 시작 시간 파싱
   const roomStart = new Date(roomStartTime);
-  const girlStart = new Date(girlStartTime);
   const girlEnd = new Date(girlEndTime);
 
   // 이벤트 시작 시간 (오늘 날짜 기준)
@@ -159,11 +158,11 @@ async function calculateEventCount(
   const eventEnd = new Date(girlEnd);
   eventEnd.setHours(eventEndHour, eventEndMin, 0, 0);
 
-  // 신규방 기준: 이벤트 시작 1시간 전
+  // 신규방 기준: 이벤트 시작 1시간 전 (14:00)
   const newRoomThreshold = new Date(eventStart);
   newRoomThreshold.setHours(newRoomThreshold.getHours() - 1);
 
-  // 신규방 판별: 방 시작 시간이 이벤트시작-1시간 이후인지
+  // 신규방 판별: 방 시작 시간이 이벤트시작-1시간(14:00) 이후인지
   const isNewRoom = roomStart >= newRoomThreshold;
 
   console.log('Event calculation:', {
@@ -175,24 +174,23 @@ async function calculateEventCount(
     usageDuration,
     isNewRoom,
     newRoomThreshold: newRoomThreshold.toISOString(),
+    eventEnd: eventEnd.toISOString(),
   });
 
   let eventCount = 0;
 
   if (isNewRoom) {
-    // 신규방: 전체 usage_duration이 이벤트
-    eventCount = usageDuration;
-  } else {
-    // 기존방: 이벤트 시간대 내에 있는 부분만 이벤트
-    // 아가씨의 시간 중 이벤트 시간대와 겹치는 부분 계산
-    const overlapStart = new Date(Math.max(girlStart.getTime(), eventStart.getTime()));
-    const overlapEnd = new Date(Math.min(girlEnd.getTime(), eventEnd.getTime()));
-
-    if (overlapEnd > overlapStart) {
-      // 겹치는 시간 (밀리초 → 시간)
-      const overlapHours = (overlapEnd.getTime() - overlapStart.getTime()) / (1000 * 60 * 60);
-      eventCount = Math.round(overlapHours * 10) / 10; // 소수점 1자리
+    // 신규방 (방 시작 >= 14:00): 종료가 21:00 이전이면 전체 이벤트
+    if (girlEnd <= eventEnd) {
+      eventCount = usageDuration;
     }
+    // 21:00 이후 종료면 이벤트 0
+  } else {
+    // 기존방 (방 시작 < 15:00): 종료가 15:00~21:00 사이면 전체 이벤트
+    if (girlEnd >= eventStart && girlEnd <= eventEnd) {
+      eventCount = usageDuration;
+    }
+    // 15:00 이전 종료 또는 21:00 이후 종료면 이벤트 0
   }
 
   console.log('Event count calculated:', eventCount);
