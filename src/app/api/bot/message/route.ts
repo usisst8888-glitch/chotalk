@@ -178,19 +178,23 @@ async function calculateEventCount(
   });
 
   let eventCount = 0;
+  const girlStart = new Date(girlStartTime);
 
   if (isNewRoom) {
-    // 신규방 (방 시작 >= 14:00): 종료가 21:00 이전이면 전체 이벤트
-    if (girlEnd <= eventEnd) {
-      eventCount = usageDuration;
+    // 신규방 (방 시작 >= 14:00): 아가씨 시작~21:00까지 이벤트 (21:00 이후 제외)
+    const effectiveEnd = new Date(Math.min(girlEnd.getTime(), eventEnd.getTime()));
+    if (effectiveEnd > girlStart) {
+      const eventHours = (effectiveEnd.getTime() - girlStart.getTime()) / (1000 * 60 * 60);
+      eventCount = Math.round(eventHours * 10) / 10;
     }
-    // 21:00 이후 종료면 이벤트 0
   } else {
-    // 기존방 (방 시작 < 15:00): 종료가 15:00~21:00 사이면 전체 이벤트
-    if (girlEnd >= eventStart && girlEnd <= eventEnd) {
-      eventCount = usageDuration;
+    // 기존방 (방 시작 < 15:00): 15:00~21:00과 겹치는 시간만 이벤트
+    const overlapStart = new Date(Math.max(girlStart.getTime(), eventStart.getTime()));
+    const overlapEnd = new Date(Math.min(girlEnd.getTime(), eventEnd.getTime()));
+    if (overlapEnd > overlapStart) {
+      const eventHours = (overlapEnd.getTime() - overlapStart.getTime()) / (1000 * 60 * 60);
+      eventCount = Math.round(eventHours * 10) / 10;
     }
-    // 15:00 이전 종료 또는 21:00 이후 종료면 이벤트 0
   }
 
   console.log('Event count calculated:', eventCount);
