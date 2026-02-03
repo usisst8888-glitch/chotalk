@@ -59,7 +59,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
-    const { id, startTime, endTime, isActive } = await request.json();
+    const { id, startTime, endTime, isActive, address } = await request.json();
 
     if (!id) {
       return NextResponse.json({ error: 'ID가 필요합니다.' }, { status: 400 });
@@ -71,6 +71,7 @@ export async function PATCH(request: NextRequest) {
     if (startTime !== undefined) updateData.start_time = startTime;
     if (endTime !== undefined) updateData.end_time = endTime;
     if (isActive !== undefined) updateData.is_active = isActive;
+    if (address !== undefined) updateData.address = address;
 
     const { error } = await supabase
       .from('event_times')

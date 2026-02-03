@@ -93,8 +93,8 @@ export default function DashboardPage() {
   const [editingSlotKakaoId, setEditingSlotKakaoId] = useState<string | null>(null);
   const [editingKakaoIdDescription, setEditingKakaoIdDescription] = useState<string | null>(null);
   const [editDescriptionValue, setEditDescriptionValue] = useState('');
-  // 관리자용 이벤트 시간 관리
-  const [eventTimes, setEventTimes] = useState<Array<{ id: string; shop_name: string; start_time: string; end_time: string; is_active: boolean }>>([]);
+  // 관리자용 가게 관리 (이벤트 시간 + 주소)
+  const [eventTimes, setEventTimes] = useState<Array<{ id: string; shop_name: string; start_time: string; end_time: string; is_active: boolean; address: string | null }>>([]);
   const [eventTimesLoading, setEventTimesLoading] = useState(false);
   const [editingEventTime, setEditingEventTime] = useState<string | null>(null);
 
@@ -262,7 +262,7 @@ export default function DashboardPage() {
     }
   };
 
-  // 관리자용: 이벤트 시간 목록 조회
+  // 관리자용: 가게 목록 조회
   const fetchEventTimes = async () => {
     setEventTimesLoading(true);
     try {
@@ -278,13 +278,13 @@ export default function DashboardPage() {
     }
   };
 
-  // 관리자용: 이벤트 시간 수정
-  const handleUpdateEventTime = async (id: string, startTime: string, endTime: string) => {
+  // 관리자용: 가게 정보 수정 (이벤트 시간 + 주소)
+  const handleUpdateEventTime = async (id: string, startTime: string, endTime: string, address?: string) => {
     try {
       const res = await fetch('/api/admin/closing-times', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, startTime, endTime }),
+        body: JSON.stringify({ id, startTime, endTime, address }),
       });
       if (res.ok) {
         setEditingEventTime(null);
@@ -769,7 +769,7 @@ export default function DashboardPage() {
                       : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
                   }`}
                 >
-                  이벤트 시간
+                  가게 관리
                 </button>
               </>
             )}
@@ -1780,67 +1780,104 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* 이벤트 시간 관리 탭 (관리자 전용) */}
+        {/* 가게 관리 탭 (관리자 전용) */}
         {activeTab === 'eventTimes' && user?.role === 'admin' && (
           <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
-            <h2 className="text-xl font-bold text-white mb-6">가게별 이벤트 시간 관리</h2>
+            <h2 className="text-xl font-bold text-white mb-6">가게 관리</h2>
             {eventTimesLoading ? (
               <div className="text-center py-12 text-neutral-400">로딩 중...</div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="space-y-4">
                 {eventTimes.map((item) => (
-                  <div key={item.id} className="flex flex-col p-4 bg-neutral-800 rounded-xl">
-                    <span className="text-white font-medium mb-3 text-center">{item.shop_name}</span>
+                  <div key={item.id} className="p-4 bg-neutral-800 rounded-xl">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-white font-medium text-lg">{item.shop_name}</span>
+                      {editingEventTime !== item.id && (
+                        <button
+                          onClick={() => setEditingEventTime(item.id)}
+                          className="px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm transition"
+                        >
+                          수정
+                        </button>
+                      )}
+                    </div>
                     {editingEventTime === item.id ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <input
-                          type="text"
-                          id={`start-${item.id}`}
-                          defaultValue={item.start_time.slice(0, 5)}
-                          placeholder="18:00"
-                          className="w-16 px-2 py-1 bg-neutral-700 border border-purple-500 rounded text-white text-center focus:outline-none text-sm"
-                        />
-                        <span className="text-neutral-400">~</span>
-                        <input
-                          type="text"
-                          id={`end-${item.id}`}
-                          defaultValue={item.end_time.slice(0, 5)}
-                          placeholder="23:00"
-                          className="w-16 px-2 py-1 bg-neutral-700 border border-purple-500 rounded text-white text-center focus:outline-none text-sm"
-                        />
-                        <button
-                          onClick={() => {
-                            const startInput = document.getElementById(`start-${item.id}`) as HTMLInputElement;
-                            const endInput = document.getElementById(`end-${item.id}`) as HTMLInputElement;
-                            const startVal = startInput?.value;
-                            const endVal = endInput?.value;
-                            if (/^\d{1,2}:\d{2}$/.test(startVal) && /^\d{1,2}:\d{2}$/.test(endVal)) {
-                              handleUpdateEventTime(item.id, startVal, endVal);
-                            }
-                          }}
-                          className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm transition"
-                        >
-                          저장
-                        </button>
-                        <button
-                          onClick={() => setEditingEventTime(null)}
-                          className="px-2 py-1 bg-neutral-600 hover:bg-neutral-500 rounded text-white text-sm transition"
-                        >
-                          취소
-                        </button>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <label className="text-neutral-400 text-sm w-20">이벤트 시간</label>
+                          <input
+                            type="text"
+                            id={`start-${item.id}`}
+                            defaultValue={item.start_time.slice(0, 5)}
+                            placeholder="15:00"
+                            className="w-20 px-2 py-1 bg-neutral-700 border border-purple-500 rounded text-white text-center focus:outline-none text-sm"
+                          />
+                          <span className="text-neutral-400">~</span>
+                          <input
+                            type="text"
+                            id={`end-${item.id}`}
+                            defaultValue={item.end_time.slice(0, 5)}
+                            placeholder="21:00"
+                            className="w-20 px-2 py-1 bg-neutral-700 border border-purple-500 rounded text-white text-center focus:outline-none text-sm"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-neutral-400 text-sm w-20">주소</label>
+                          <input
+                            type="text"
+                            id={`address-${item.id}`}
+                            defaultValue={item.address || ''}
+                            placeholder="가게 주소 입력"
+                            className="flex-1 px-3 py-1 bg-neutral-700 border border-purple-500 rounded text-white focus:outline-none text-sm"
+                          />
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={() => setEditingEventTime(null)}
+                            className="px-3 py-1 bg-neutral-600 hover:bg-neutral-500 rounded text-white text-sm transition"
+                          >
+                            취소
+                          </button>
+                          <button
+                            onClick={() => {
+                              const startInput = document.getElementById(`start-${item.id}`) as HTMLInputElement;
+                              const endInput = document.getElementById(`end-${item.id}`) as HTMLInputElement;
+                              const addressInput = document.getElementById(`address-${item.id}`) as HTMLInputElement;
+                              const startVal = startInput?.value;
+                              const endVal = endInput?.value;
+                              const addressVal = addressInput?.value;
+                              if (/^\d{1,2}:\d{2}$/.test(startVal) && /^\d{1,2}:\d{2}$/.test(endVal)) {
+                                handleUpdateEventTime(item.id, startVal, endVal, addressVal);
+                              } else {
+                                alert('시간 형식이 올바르지 않습니다. (예: 15:00)');
+                              }
+                            }}
+                            className="px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm transition"
+                          >
+                            저장
+                          </button>
+                        </div>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => setEditingEventTime(item.id)}
-                        className="px-3 py-2 bg-purple-600/20 hover:bg-purple-600/40 rounded text-purple-400 font-medium transition"
-                      >
-                        {item.start_time.slice(0, 5)} ~ {item.end_time.slice(0, 5)}
-                      </button>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-neutral-400 text-sm w-20">이벤트 시간</span>
+                          <span className="text-purple-400 font-medium">
+                            {item.start_time.slice(0, 5)} ~ {item.end_time.slice(0, 5)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-neutral-400 text-sm w-20">주소</span>
+                          <span className="text-neutral-300">
+                            {item.address || '(미등록)'}
+                          </span>
+                        </div>
+                      </div>
                     )}
                   </div>
                 ))}
                 {eventTimes.length === 0 && (
-                  <div className="col-span-full text-center py-12 text-neutral-600">
+                  <div className="text-center py-12 text-neutral-600">
                     등록된 가게가 없습니다.
                   </div>
                 )}
