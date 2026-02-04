@@ -39,7 +39,6 @@ export async function GET(request: NextRequest) {
         girl_name,
         shop_name,
         target_room,
-        chat_room_type,
         kakao_id,
         is_active,
         expires_at,

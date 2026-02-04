@@ -120,12 +120,11 @@ export async function PATCH(
     }
 
     // 일반 수정
-    const { girlName, shopName, targetRoom, chatRoomType } = body;
+    const { girlName, shopName, targetRoom } = body;
     const updateData: Record<string, string | null> = {};
     if (girlName) updateData.girl_name = girlName;
     if (shopName !== undefined) updateData.shop_name = shopName || null;
     if (targetRoom) updateData.target_room = targetRoom;
-    if (chatRoomType === 'group' || chatRoomType === 'open') updateData.chat_room_type = chatRoomType;
 
     const { data: updatedSlot, error } = await supabase
       .from('slots')

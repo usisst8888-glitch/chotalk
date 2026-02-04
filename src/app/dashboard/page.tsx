@@ -15,7 +15,6 @@ interface Slot {
   girl_name: string;
   shop_name: string | null;  // 가게명
   target_room: string;  // 발송할 채팅방
-  chat_room_type: 'group' | 'open';
   kakao_id: string;
   is_active: boolean;
   expires_at: string;
@@ -59,14 +58,14 @@ export default function DashboardPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showExtendModal, setShowExtendModal] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
-  const [newSlot, setNewSlot] = useState({ girlName: '', shopName: '', customShopName: '', customClosingTime: '', chatRoomType: 'group' as 'group' | 'open', targetRoom: '' });
-  const [editSlot, setEditSlot] = useState({ girlName: '', shopName: '', customShopName: '', customClosingTime: '', chatRoomType: 'group' as 'group' | 'open', targetRoom: '' });
+  const [newSlot, setNewSlot] = useState({ girlName: '', shopName: '', customShopName: '', customClosingTime: '', targetRoom: '' });
+  const [editSlot, setEditSlot] = useState({ girlName: '', shopName: '', customShopName: '', customClosingTime: '', targetRoom: '' });
   const [shops, setShops] = useState<Array<{ id: string; shop_name: string; start_time: string; end_time: string }>>([]);
   const [submitting, setSubmitting] = useState(false);
   const [showSlotPurchaseModal, setShowSlotPurchaseModal] = useState(false);
   const [showExtendAllModal, setShowExtendAllModal] = useState(false);
   const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
-  const [inlineNewSlot, setInlineNewSlot] = useState({ girlName: '', shopName: '', customShopName: '', customClosingTime: '', chatRoomType: 'group' as 'group' | 'open', targetRoom: '' });
+  const [inlineNewSlot, setInlineNewSlot] = useState({ girlName: '', shopName: '', customShopName: '', customClosingTime: '', targetRoom: '' });
   const [purchaseForm, setPurchaseForm] = useState({ depositorName: '', slotCount: 1 });
   const [purchaseSubmitting, setPurchaseSubmitting] = useState(false);
   const [extendForm, setExtendForm] = useState({ depositorName: '' });
@@ -368,13 +367,12 @@ export default function DashboardPage() {
           girlName: newSlot.girlName,
           shopName: shopNameValue || null,
           targetRoom: newSlot.targetRoom,
-          chatRoomType: newSlot.chatRoomType,
         }),
       });
 
       if (res.ok) {
         setShowAddModal(false);
-        setNewSlot({ girlName: '', shopName: shops[0]?.shop_name || '', customShopName: '', customClosingTime: '', chatRoomType: 'group', targetRoom: '' });
+        setNewSlot({ girlName: '', shopName: shops[0]?.shop_name || '', customShopName: '', customClosingTime: '', targetRoom: '' });
         fetchSlots();
         fetchShops(); // 새 가게가 추가됐을 수 있으므로 목록 새로고침
       } else {
@@ -406,7 +404,7 @@ export default function DashboardPage() {
     const shopNames = shops.map(s => s.shop_name);
     const shopName = slot.shop_name && shopNames.includes(slot.shop_name) ? slot.shop_name : (slot.shop_name ? '기타' : (shops[0]?.shop_name || ''));
     const customShopName = slot.shop_name && !shopNames.includes(slot.shop_name) ? slot.shop_name : '';
-    setEditSlot({ girlName: slot.girl_name, shopName, customShopName, customClosingTime: '', chatRoomType: slot.chat_room_type || 'group', targetRoom: slot.target_room });
+    setEditSlot({ girlName: slot.girl_name, shopName, customShopName, customClosingTime: '', targetRoom: slot.target_room });
     setShowEditModal(true);
   };
 
@@ -429,7 +427,6 @@ export default function DashboardPage() {
           girlName: editSlot.girlName,
           shopName: shopNameValue || null,
           targetRoom: editSlot.targetRoom,
-          chatRoomType: editSlot.chatRoomType,
         }),
       });
 
@@ -516,13 +513,12 @@ export default function DashboardPage() {
           girlName: inlineNewSlot.girlName,
           shopName: shopNameValue || null,
           targetRoom: inlineNewSlot.targetRoom,
-          chatRoomType: inlineNewSlot.chatRoomType,
         }),
       });
 
       if (res.ok) {
         setEditingSlotIndex(null);
-        setInlineNewSlot({ girlName: '', shopName: shops[0]?.shop_name || '', customShopName: '', customClosingTime: '', chatRoomType: 'group', targetRoom: '' });
+        setInlineNewSlot({ girlName: '', shopName: shops[0]?.shop_name || '', customShopName: '', customClosingTime: '', targetRoom: '' });
         fetchSlots();
         fetchShops();
       } else {
@@ -538,7 +534,7 @@ export default function DashboardPage() {
 
   const cancelInlineEdit = () => {
     setEditingSlotIndex(null);
-    setInlineNewSlot({ girlName: '', shopName: shops[0]?.shop_name || '', customShopName: '', customClosingTime: '', chatRoomType: 'group', targetRoom: '' });
+    setInlineNewSlot({ girlName: '', shopName: shops[0]?.shop_name || '', customShopName: '', customClosingTime: '', targetRoom: '' });
   };
 
   const handleSlotPurchase = async () => {
@@ -868,7 +864,6 @@ export default function DashboardPage() {
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">아가씨 닉네임</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">가게명</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">채팅방</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">채팅방 타입</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">초대할 ID</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">만료일</th>
                   {user?.role !== 'admin' && (
@@ -900,15 +895,6 @@ export default function DashboardPage() {
                       <td className="px-4 py-3 text-center text-white font-medium">{slot.girl_name}</td>
                       <td className="px-4 py-3 text-center text-neutral-400">{slot.shop_name || '-'}</td>
                       <td className="px-4 py-3 text-center text-neutral-500">{slot.target_room}</td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          slot.chat_room_type === 'open'
-                            ? 'bg-purple-600/20 text-purple-400'
-                            : 'bg-blue-600/20 text-blue-400'
-                        }`}>
-                          {slot.chat_room_type === 'open' ? '오픈채팅' : '그룹채팅'}
-                        </span>
-                      </td>
                       <td className="px-4 py-3 text-center">
                         {editingSlotKakaoId === slot.id ? (
                           <select
@@ -969,15 +955,6 @@ export default function DashboardPage() {
                       <td className="px-4 py-3 text-center text-white font-medium">{slot.girl_name}</td>
                       <td className="px-4 py-3 text-center text-neutral-400">{slot.shop_name || '-'}</td>
                       <td className="px-4 py-3 text-center text-neutral-500">{slot.target_room}</td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          slot.chat_room_type === 'open'
-                            ? 'bg-purple-600/20 text-purple-400'
-                            : 'bg-blue-600/20 text-blue-400'
-                        }`}>
-                          {slot.chat_room_type === 'open' ? '오픈채팅' : '그룹채팅'}
-                        </span>
-                      </td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <span
@@ -1080,30 +1057,6 @@ export default function DashboardPage() {
                             className="w-full px-2 py-1 bg-neutral-800 border border-neutral-700 rounded text-white text-sm focus:outline-none focus:border-indigo-500"
                           />
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-3">
-                            <label className="flex items-center gap-1.5 cursor-pointer">
-                              <input
-                                type="radio"
-                                name={`inline-chat-type-${index}`}
-                                checked={inlineNewSlot.chatRoomType === 'group'}
-                                onChange={() => setInlineNewSlot({ ...inlineNewSlot, chatRoomType: 'group' })}
-                                className="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-700 focus:ring-blue-500"
-                              />
-                              <span className="text-xs text-neutral-400">그룹</span>
-                            </label>
-                            <label className="flex items-center gap-1.5 cursor-pointer">
-                              <input
-                                type="radio"
-                                name={`inline-chat-type-${index}`}
-                                checked={inlineNewSlot.chatRoomType === 'open'}
-                                onChange={() => setInlineNewSlot({ ...inlineNewSlot, chatRoomType: 'open' })}
-                                className="w-4 h-4 text-purple-600 bg-neutral-800 border-neutral-700 focus:ring-purple-500"
-                              />
-                              <span className="text-xs text-neutral-400">오픈</span>
-                            </label>
-                          </div>
-                        </td>
                         <td className="px-4 py-3 text-neutral-600 text-center">-</td>
                         <td className="px-4 py-3 text-neutral-600 text-center">-</td>
                         <td className="px-4 py-3">
@@ -1125,7 +1078,7 @@ export default function DashboardPage() {
                         </td>
                       </>
                     ) : (
-                      <td colSpan={7} className="px-4 py-3 text-center">
+                      <td colSpan={6} className="px-4 py-3 text-center">
                         <button
                           onClick={() => setEditingSlotIndex(index)}
                           className="text-neutral-600 hover:text-indigo-400 transition"
@@ -1190,12 +1143,6 @@ export default function DashboardPage() {
                     <div className="flex border-b border-neutral-800 pb-2">
                       <span className="text-neutral-600 w-28 flex-shrink-0">채팅방</span>
                       <span className="text-neutral-400">{slot.target_room}</span>
-                    </div>
-                    <div className="flex border-b border-neutral-800 pb-2 items-center">
-                      <span className="text-neutral-600 w-28 flex-shrink-0">채팅방 타입</span>
-                      <span className={`px-2 py-1 text-xs rounded-full ${slot.chat_room_type === 'open' ? 'bg-purple-600/20 text-purple-400' : 'bg-blue-600/20 text-blue-400'}`}>
-                        {slot.chat_room_type === 'open' ? '오픈채팅' : '그룹채팅'}
-                      </span>
                     </div>
                     <div className="flex border-b border-neutral-800 pb-2 items-center">
                       <span className="text-neutral-600 w-28 flex-shrink-0">초대할 ID</span>
@@ -1283,16 +1230,6 @@ export default function DashboardPage() {
                     <div className="flex border-b border-neutral-800 pb-2">
                       <span className="text-neutral-600 w-28 flex-shrink-0">채팅방</span>
                       <span className="text-neutral-400">{slot.target_room}</span>
-                    </div>
-                    <div className="flex border-b border-neutral-800 pb-2 items-center">
-                      <span className="text-neutral-600 w-28 flex-shrink-0">채팅방 타입</span>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        slot.chat_room_type === 'open'
-                          ? 'bg-purple-600/20 text-purple-400'
-                          : 'bg-blue-600/20 text-blue-400'
-                      }`}>
-                        {slot.chat_room_type === 'open' ? '오픈채팅' : '그룹채팅'}
-                      </span>
                     </div>
                     <div className="flex border-b border-neutral-800 pb-2 items-center">
                       <span className="text-neutral-600 w-28 flex-shrink-0">초대할 ID</span>
@@ -1392,31 +1329,6 @@ export default function DashboardPage() {
                       placeholder="채팅방 이름"
                       className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
                     />
-                    <div>
-                      <label className="block text-sm text-neutral-500 mb-2">채팅방 타입</label>
-                      <div className="flex gap-6">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name={`mobile-inline-chat-type-${index}`}
-                            checked={inlineNewSlot.chatRoomType === 'group'}
-                            onChange={() => setInlineNewSlot({ ...inlineNewSlot, chatRoomType: 'group' })}
-                            className="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-700 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-neutral-400">그룹채팅</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name={`mobile-inline-chat-type-${index}`}
-                            checked={inlineNewSlot.chatRoomType === 'open'}
-                            onChange={() => setInlineNewSlot({ ...inlineNewSlot, chatRoomType: 'open' })}
-                            className="w-4 h-4 text-purple-600 bg-neutral-800 border-neutral-700 focus:ring-purple-500"
-                          />
-                          <span className="text-sm text-neutral-400">오픈채팅</span>
-                        </label>
-                      </div>
-                    </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleInlineAddSlot(index)}
@@ -2007,33 +1919,6 @@ export default function DashboardPage() {
                   placeholder="아가씨 이름 입력 시 자동 생성"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-400 mb-2">
-                  채팅방 타입
-                </label>
-                <div className="flex gap-6">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="add-chat-type"
-                      checked={newSlot.chatRoomType === 'group'}
-                      onChange={() => setNewSlot({ ...newSlot, chatRoomType: 'group' })}
-                      className="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-700 focus:ring-blue-500"
-                    />
-                    <span className="text-neutral-400">그룹채팅</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="add-chat-type"
-                      checked={newSlot.chatRoomType === 'open'}
-                      onChange={() => setNewSlot({ ...newSlot, chatRoomType: 'open' })}
-                      className="w-4 h-4 text-purple-600 bg-neutral-800 border-neutral-700 focus:ring-purple-500"
-                    />
-                    <span className="text-neutral-400">오픈채팅</span>
-                  </label>
-                </div>
-              </div>
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
@@ -2117,33 +2002,6 @@ export default function DashboardPage() {
                   className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
                   placeholder="채팅방 이름 입력"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-400 mb-2">
-                  채팅방 타입
-                </label>
-                <div className="flex gap-6">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="edit-chat-type"
-                      checked={editSlot.chatRoomType === 'group'}
-                      onChange={() => setEditSlot({ ...editSlot, chatRoomType: 'group' })}
-                      className="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-700 focus:ring-blue-500"
-                    />
-                    <span className="text-neutral-400">그룹채팅</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="edit-chat-type"
-                      checked={editSlot.chatRoomType === 'open'}
-                      onChange={() => setEditSlot({ ...editSlot, chatRoomType: 'open' })}
-                      className="w-4 h-4 text-purple-600 bg-neutral-800 border-neutral-700 focus:ring-purple-500"
-                    />
-                    <span className="text-neutral-400">오픈채팅</span>
-                  </label>
-                </div>
               </div>
               <div className="flex gap-3 pt-2">
                 <button
