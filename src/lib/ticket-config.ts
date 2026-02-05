@@ -104,17 +104,12 @@ export const MESSAGE_SIGNALS = {
     description: '취소 (해당 세션을 status_board에서 삭제)',
   },
 
-  // 추가 신호 예시:
-  // EXTENSION: {
-  //   code: 'ㅇㅈ',
-  //   type: 'extension',
-  //   description: '연장',
-  // },
-  // CANCEL: {
-  //   code: 'ㅊㅅ',
-  //   type: 'cancel',
-  //   description: '취소',
-  // },
+  // 연장 신호 (시작으로 잡으면 안 됨)
+  EXTENSION: {
+    code: 'ㅇㅈ',
+    type: 'extension',
+    description: '연장 (기존 세션 연장, 새 시작 아님)',
+  },
 } as const;
 
 // ============================================================

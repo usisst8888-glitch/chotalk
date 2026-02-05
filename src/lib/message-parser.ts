@@ -198,6 +198,7 @@ export interface GirlSignalResult {
   isNewSession: boolean;           // 해당 아가씨 뒤에 ㅎㅅㄱㅈㅈㅎ/현시간재진행이 있는지
   isDesignated: boolean;           // 해당 아가씨 뒤에 ㅈㅁ(지명)이 있는지
   isCancel: boolean;               // 해당 아가씨 뒤에 ㄱㅌ(취소)이 있는지
+  isExtension: boolean;            // 해당 아가씨 뒤에 ㅇㅈ(연장)이 있는지
   usageDuration: number | null;    // 해당 아가씨의 이용시간 (ㄲ 앞 숫자)
 }
 
@@ -221,6 +222,7 @@ export function parseGirlSignals(
     isNewSession: false,
     isDesignated: false,
     isCancel: false,
+    isExtension: false,
     usageDuration: null,
   };
 
@@ -308,6 +310,11 @@ export function parseGirlSignals(
   // ㅈㅁ (지명) 신호 확인 - 다른 신호와 독립적으로 체크
   if (hasSignal(girlSection, MESSAGE_SIGNALS.DESIGNATED.code)) {
     result.isDesignated = true;
+  }
+
+  // ㅇㅈ (연장) 신호 확인 - 시작으로 잡으면 안 됨
+  if (hasSignal(girlSection, MESSAGE_SIGNALS.EXTENSION.code)) {
+    result.isExtension = true;
   }
 
   return result;

@@ -476,15 +476,15 @@ export async function POST(request: NextRequest) {
         );
         results.push({ ...result, logId: log?.id });
 
-      } else if (parsed.roomNumber) {
-        // ㄲ 없음 + 방번호 있음 → 세션 시작 처리
+      } else if (parsed.roomNumber && !girlSignals.isExtension) {
+        // ㄲ 없음 + 방번호 있음 + ㅇㅈ(연장) 아님 → 세션 시작 처리
         const result = await handleSessionStart(
           supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id
         );
         results.push({ ...result, logId: log?.id });
 
       } else {
-        // 방번호 없음 → 일반 메시지
+        // 방번호 없음 또는 ㅇㅈ(연장) → 일반 메시지
         results.push({
           type: 'message',
           logId: log?.id,
