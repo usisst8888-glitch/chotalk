@@ -77,11 +77,12 @@ export function isCorrectionSignal(message: string): boolean {
 
 /**
  * 이용시간 추출 (ㄲ 앞의 숫자)
- * 예: "1ㄲ" → 1, "1.5ㄲ" → 1.5, "2.5 ㄲ" → 2.5
+ * 예: "1ㄲ" → 1, "1.5ㄲ" → 1.5, "2.5 ㄲ" → 2.5, "1ㄴㄱㄲ" → 1
+ * 숫자와 ㄲ 사이에 다른 문자(날개 등)가 있어도 추출
  */
 export function extractUsageDuration(message: string): number | null {
-  // 패턴: 숫자(소수점 포함) + 공백(선택) + ㄲ
-  const match = message.match(/(\d+(?:\.\d+)?)\s*ㄲ/);
+  // 패턴: 숫자(소수점 포함) + 임의의 문자(숫자 제외) + ㄲ
+  const match = message.match(/(\d+(?:\.\d+)?)[^\d]*ㄲ/);
   if (match) {
     return parseFloat(match[1]);
   }
@@ -292,8 +293,8 @@ export function parseGirlSignals(
   // ㄲ (종료) 신호 확인
   if (hasSignal(girlSection, MESSAGE_SIGNALS.END.code)) {
     result.isEnd = true;
-    // 이용시간 추출 (ㄲ 앞의 숫자)
-    const match = girlSection.match(/(\d+(?:\.\d+)?)\s*ㄲ/);
+    // 이용시간 추출 (ㄲ 앞의 숫자, 사이에 다른 문자 있어도 OK)
+    const match = girlSection.match(/(\d+(?:\.\d+)?)[^\d]*ㄲ/);
     if (match) {
       result.usageDuration = parseFloat(match[1]);
     }
