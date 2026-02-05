@@ -24,29 +24,6 @@ interface Slot {
 // 가게명 프리셋
 const SHOP_NAMES = ['도파민', '유앤미', '달토', '퍼펙트', '엘리트'];
 
-// 샘플 템플릿 (코드에서 정의)
-interface SampleTemplate {
-  id: string;
-  name: string;
-  template: string;
-}
-
-// 커스텀 템플릿 (DB에서 가져옴)
-interface CustomTemplate {
-  id: string;
-  name: string;
-  template: string;
-  created_at: string;
-}
-
-// 선택된 템플릿 정보
-interface SelectedInfo {
-  type: 'sample' | 'custom';
-  id: string;
-  template: string;
-}
-
-
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -69,15 +46,7 @@ export default function DashboardPage() {
   const [purchaseForm, setPurchaseForm] = useState({ depositorName: '', slotCount: 1 });
   const [purchaseSubmitting, setPurchaseSubmitting] = useState(false);
   const [extendForm, setExtendForm] = useState({ depositorName: '' });
-  const [sampleTemplates, setSampleTemplates] = useState<SampleTemplate[]>([]);
-  const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<SelectedInfo | null>(null);
-  const [templateSubmitting, setTemplateSubmitting] = useState(false);
-  const [showAddTemplateModal, setShowAddTemplateModal] = useState(false);
-  const [showEditTemplateModal, setShowEditTemplateModal] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<CustomTemplate | null>(null);
-  const [newTemplate, setNewTemplate] = useState({ name: '', template: '' });
-  const [activeTab, setActiveTab] = useState<'slots' | 'templates' | 'users' | 'kakaoIds' | 'eventTimes'>('slots');
+  const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes'>('slots');
   // 관리자용 회원관리
   const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; role: string; slot_count: number; created_at: string }>>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -100,7 +69,6 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchUser();
     fetchSlots();
-    fetchTemplates();
     fetchShops();
   }, []);
 
@@ -313,20 +281,6 @@ export default function DashboardPage() {
       }
     } catch {
       alert('서버 오류가 발생했습니다.');
-    }
-  };
-
-  const fetchTemplates = async () => {
-    try {
-      const res = await fetch('/api/template');
-      if (res.ok) {
-        const data = await res.json();
-        setSampleTemplates(data.samples || []);
-        setCustomTemplates(data.customTemplates || []);
-        setSelectedTemplate(data.selected || null);
-      }
-    } catch (error) {
-      console.error('Failed to fetch templates:', error);
     }
   };
 
@@ -573,99 +527,6 @@ export default function DashboardPage() {
     }
   };
 
-  const handleSelectTemplate = async (templateId: string) => {
-    setTemplateSubmitting(true);
-    try {
-      const res = await fetch(`/api/template/${templateId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ select: true }),
-      });
-
-      if (res.ok) {
-        fetchTemplates();  // 새로고침하여 최신 상태 반영
-      } else {
-        const data = await res.json();
-        alert(data.error || '템플릿 선택 중 오류가 발생했습니다.');
-      }
-    } catch {
-      alert('템플릿 선택 중 오류가 발생했습니다.');
-    } finally {
-      setTemplateSubmitting(false);
-    }
-  };
-
-  const handleAddTemplate = async () => {
-    if (!newTemplate.name.trim() || !newTemplate.template.trim()) {
-      alert('템플릿 이름과 내용을 모두 입력해주세요.');
-      return;
-    }
-
-    setTemplateSubmitting(true);
-    try {
-      const res = await fetch('/api/template', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newTemplate),
-      });
-
-      if (res.ok) {
-        setShowAddTemplateModal(false);
-        setNewTemplate({ name: '', template: '' });
-        fetchTemplates();
-      } else {
-        const data = await res.json();
-        alert(data.error || '템플릿 추가 중 오류가 발생했습니다.');
-      }
-    } catch {
-      alert('템플릿 추가 중 오류가 발생했습니다.');
-    } finally {
-      setTemplateSubmitting(false);
-    }
-  };
-
-  const handleEditTemplate = async () => {
-    if (!editingTemplate) return;
-
-    setTemplateSubmitting(true);
-    try {
-      const res = await fetch(`/api/template/${editingTemplate.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editingTemplate.name, template: editingTemplate.template }),
-      });
-
-      if (res.ok) {
-        setShowEditTemplateModal(false);
-        setEditingTemplate(null);
-        fetchTemplates();
-      } else {
-        const data = await res.json();
-        alert(data.error || '템플릿 수정 중 오류가 발생했습니다.');
-      }
-    } catch {
-      alert('템플릿 수정 중 오류가 발생했습니다.');
-    } finally {
-      setTemplateSubmitting(false);
-    }
-  };
-
-  const handleDeleteTemplate = async (templateId: string) => {
-    if (!confirm('정말 삭제하시겠습니까?')) return;
-
-    try {
-      const res = await fetch(`/api/template/${templateId}`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchTemplates();
-      } else {
-        const data = await res.json();
-        alert(data.error || '템플릿 삭제 중 오류가 발생했습니다.');
-      }
-    } catch {
-      alert('템플릿 삭제 중 오류가 발생했습니다.');
-    }
-  };
-
   // 빈 슬롯 배열 생성 (사용가능한 슬롯 수만큼)
   const emptySlots = Array.from({ length: slotCount - usedSlots }, (_, i) => i);
 
@@ -715,16 +576,6 @@ export default function DashboardPage() {
               }`}
             >
               인원 관리
-            </button>
-            <button
-              onClick={() => setActiveTab('templates')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                activeTab === 'templates'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
-              }`}
-            >
-              발송 템플릿
             </button>
             {user?.role === 'admin' && (
               <>
@@ -1367,148 +1218,6 @@ export default function DashboardPage() {
             )}
         </div>
         </>
-        )}
-
-        {/* 템플릿 탭 */}
-        {activeTab === 'templates' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 왼쪽: 템플릿 목록 */}
-            <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-xl font-bold text-white">상단 템플릿</h2>
-                  <p className="text-neutral-500 text-sm mt-1">자동 발송 메시지의 상단 인사말을 선택하세요.</p>
-                </div>
-                <button
-                  onClick={() => setShowAddTemplateModal(true)}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition"
-                >
-                  + 내 템플릿 추가
-                </button>
-              </div>
-
-              {/* 템플릿 목록 */}
-              <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {/* 샘플 템플릿 섹션 */}
-                <div className="mb-4">
-                  <p className="text-neutral-500 text-xs mb-2 font-medium">샘플 템플릿</p>
-                  {sampleTemplates.map((sample) => {
-                    const isSelected = selectedTemplate?.type === 'sample' && selectedTemplate?.id === sample.id;
-                    return (
-                      <div
-                        key={sample.id}
-                        className={`p-4 rounded-xl border transition cursor-pointer mb-2 ${
-                          isSelected
-                            ? 'bg-indigo-900/30 border-indigo-500'
-                            : 'bg-neutral-800/50 border-neutral-700 hover:border-neutral-600'
-                        }`}
-                        onClick={() => !templateSubmitting && handleSelectTemplate(sample.id)}
-                      >
-                        <div className="flex items-start gap-3">
-                          {/* 라디오 버튼 */}
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                            isSelected ? 'border-indigo-500' : 'border-neutral-600'
-                          }`}>
-                            {isSelected && (
-                              <div className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-white font-medium">{sample.name}</span>
-                              <span className="px-2 py-0.5 text-xs bg-neutral-700 text-neutral-400 rounded">샘플</span>
-                              {isSelected && (
-                                <span className="px-2 py-0.5 text-xs bg-indigo-600 text-white rounded">사용중</span>
-                              )}
-                            </div>
-                            <p className="text-neutral-400 text-sm mt-1 whitespace-pre-line">{sample.template}</p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* 내 커스텀 템플릿 섹션 */}
-                {customTemplates.length > 0 && (
-                  <div>
-                    <p className="text-neutral-500 text-xs mb-2 font-medium">내 템플릿</p>
-                    {customTemplates.map((custom) => {
-                      const isSelected = selectedTemplate?.type === 'custom' && selectedTemplate?.id === custom.id;
-                      return (
-                        <div
-                          key={custom.id}
-                          className={`p-4 rounded-xl border transition cursor-pointer mb-2 ${
-                            isSelected
-                              ? 'bg-indigo-900/30 border-indigo-500'
-                              : 'bg-neutral-800/50 border-neutral-700 hover:border-neutral-600'
-                          }`}
-                          onClick={() => !templateSubmitting && handleSelectTemplate(custom.id)}
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start gap-3">
-                              {/* 라디오 버튼 */}
-                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                                isSelected ? 'border-indigo-500' : 'border-neutral-600'
-                              }`}>
-                                {isSelected && (
-                                  <div className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
-                                )}
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-white font-medium">{custom.name}</span>
-                                  {isSelected && (
-                                    <span className="px-2 py-0.5 text-xs bg-indigo-600 text-white rounded">사용중</span>
-                                  )}
-                                </div>
-                                <p className="text-neutral-400 text-sm mt-1 whitespace-pre-line">{custom.template}</p>
-                              </div>
-                            </div>
-                            {/* 수정/삭제 버튼 */}
-                            <div className="flex gap-2 flex-shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
-                              <button
-                                onClick={() => {
-                                  setEditingTemplate(custom);
-                                  setShowEditTemplateModal(true);
-                                }}
-                                className="px-3 py-1.5 text-xs bg-neutral-700 hover:bg-neutral-600 text-neutral-300 rounded-lg transition"
-                              >
-                                수정
-                              </button>
-                              <button
-                                onClick={() => handleDeleteTemplate(custom.id)}
-                                className="px-3 py-1.5 text-xs bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition"
-                              >
-                                삭제
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* 오른쪽: 미리보기 */}
-            <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 lg:sticky lg:top-8 h-fit">
-              <h3 className="text-lg font-bold text-white mb-3">발송 메시지 미리보기</h3>
-              <div className="bg-neutral-800 rounded-xl p-4">
-                <p className="text-neutral-400 text-sm mb-2">상단 (선택한 템플릿)</p>
-                <p className="text-white mb-4 whitespace-pre-line">
-                  {selectedTemplate?.template || '템플릿을 선택하세요'}
-                </p>
-                <hr className="border-neutral-700 my-4" />
-                <p className="text-neutral-400 text-sm mb-2">중단 (자동 생성)</p>
-                <p className="text-neutral-500 mb-4 italic">[아가씨 정보 + 시간 등 자동 삽입]</p>
-                <hr className="border-neutral-700 my-4" />
-                <p className="text-neutral-400 text-sm mb-2">하단 (자동 생성)</p>
-                <p className="text-neutral-500 italic">[추가 안내 메시지 자동 삽입]</p>
-              </div>
-            </div>
-          </div>
         )}
 
         {/* 회원관리 탭 (관리자 전용) */}
@@ -2205,110 +1914,6 @@ export default function DashboardPage() {
             >
               닫기
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* 템플릿 추가 모달 */}
-      {showAddTemplateModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 w-full max-w-md mx-4">
-            <h3 className="text-xl font-bold text-white mb-4">템플릿 추가</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-neutral-400 mb-2">
-                  템플릿 이름
-                </label>
-                <input
-                  type="text"
-                  value={newTemplate.name}
-                  onChange={(e) => setNewTemplate({ ...newTemplate, name: e.target.value })}
-                  placeholder="예: 나만의 인사말"
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-400 mb-2">
-                  템플릿 내용
-                </label>
-                <textarea
-                  value={newTemplate.template}
-                  onChange={(e) => setNewTemplate({ ...newTemplate, template: e.target.value })}
-                  placeholder="상단에 표시될 인사말을 입력하세요"
-                  rows={4}
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition resize-none"
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => {
-                    setShowAddTemplateModal(false);
-                    setNewTemplate({ name: '', template: '' });
-                  }}
-                  className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
-                >
-                  취소
-                </button>
-                <button
-                  onClick={handleAddTemplate}
-                  disabled={templateSubmitting}
-                  className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white font-semibold rounded-xl transition"
-                >
-                  {templateSubmitting ? '추가 중...' : '추가'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 템플릿 수정 모달 */}
-      {showEditTemplateModal && editingTemplate && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 w-full max-w-md mx-4">
-            <h3 className="text-xl font-bold text-white mb-4">템플릿 수정</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-neutral-400 mb-2">
-                  템플릿 이름
-                </label>
-                <input
-                  type="text"
-                  value={editingTemplate.name}
-                  onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-400 mb-2">
-                  템플릿 내용
-                </label>
-                <textarea
-                  value={editingTemplate.template}
-                  onChange={(e) => setEditingTemplate({ ...editingTemplate, template: e.target.value })}
-                  rows={4}
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition resize-none"
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => {
-                    setShowEditTemplateModal(false);
-                    setEditingTemplate(null);
-                  }}
-                  className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
-                >
-                  취소
-                </button>
-                <button
-                  onClick={handleEditTemplate}
-                  disabled={templateSubmitting}
-                  className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white font-semibold rounded-xl transition"
-                >
-                  {templateSubmitting ? '수정 중...' : '수정'}
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}

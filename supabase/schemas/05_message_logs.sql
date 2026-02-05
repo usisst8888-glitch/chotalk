@@ -4,7 +4,6 @@ CREATE TABLE IF NOT EXISTS message_logs (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   slot_id UUID NOT NULL REFERENCES slots(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  user_template_id UUID REFERENCES user_templates(id) ON DELETE SET NULL,
   source_room VARCHAR(255) NOT NULL,           -- 메시지 감지된 방 (초톡방)
   target_room VARCHAR(255),                    -- 발송할 채팅방 (슬롯에서 가져옴)
   kakao_id VARCHAR(100),                       -- 발송할 카카오톡 ID (어떤 폰이 발송할지)
@@ -19,7 +18,6 @@ CREATE TABLE IF NOT EXISTS message_logs (
 -- 인덱스
 CREATE INDEX IF NOT EXISTS idx_message_logs_slot_id ON message_logs(slot_id);
 CREATE INDEX IF NOT EXISTS idx_message_logs_user_id ON message_logs(user_id);
-CREATE INDEX IF NOT EXISTS idx_message_logs_user_template_id ON message_logs(user_template_id);
 CREATE INDEX IF NOT EXISTS idx_message_logs_sender_name ON message_logs(sender_name);
 CREATE INDEX IF NOT EXISTS idx_message_logs_is_processed ON message_logs(is_processed);
 CREATE INDEX IF NOT EXISTS idx_message_logs_created_at ON message_logs(created_at DESC);

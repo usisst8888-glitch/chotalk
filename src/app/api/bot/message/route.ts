@@ -420,15 +420,6 @@ export async function POST(request: NextRequest) {
       // 해당 아가씨에게 해당하는 신호만 파싱
       const girlSignals = parseGirlSignals(message, slot.girl_name, girlNames);
 
-      // 템플릿 조회 (user_id로)
-      const { data: template } = await supabase
-        .from('user_templates')
-        .select('id')
-        .eq('user_id', slot.user_id)
-        .single();
-
-      const userTemplateId = template?.id || null;
-
       // 1. message_logs에 원본 메시지 저장 (항상)
       const { data: log, error: logError } = await supabase
         .from('message_logs')
@@ -438,7 +429,6 @@ export async function POST(request: NextRequest) {
           source_room: room,
           sender_name: sender,
           message: message,
-          user_template_id: userTemplateId,
           received_at: messageReceivedAt,
         })
         .select()
@@ -468,7 +458,7 @@ export async function POST(request: NextRequest) {
       } else if (girlSignals.isNewSession && parsed.roomNumber) {
         // ㅎㅅㄱㅈㅈㅎ/현시간재진행 → 새 세션 시작 (INSERT)
         const result = await handleNewSession(
-          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id, userTemplateId
+          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id
         );
         results.push({ ...result, logId: log?.id });
 
@@ -482,14 +472,14 @@ export async function POST(request: NextRequest) {
       } else if (girlSignals.isEnd && parsed.roomNumber) {
         // 해당 아가씨 뒤에 ㄲ 있음 → 세션 종료 처리
         const result = await handleSessionEnd(
-          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id, userTemplateId
+          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id
         );
         results.push({ ...result, logId: log?.id });
 
       } else if (parsed.roomNumber) {
         // ㄲ 없음 + 방번호 있음 → 세션 시작 처리
         const result = await handleSessionStart(
-          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id, userTemplateId
+          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id
         );
         results.push({ ...result, logId: log?.id });
 
@@ -535,8 +525,7 @@ async function handleNewSession(
   parsed: ReturnType<typeof parseMessage>,
   girlSignals: { isDesignated: boolean },
   receivedAt: string,
-  logId: string | undefined,
-  userTemplateId: string | null
+  logId: string | undefined
 ) {
   console.log('handleNewSession called for:', slot.girl_name, 'roomNumber:', parsed.roomNumber, 'isDesignated:', girlSignals.isDesignated);
 
@@ -561,7 +550,6 @@ async function handleNewSession(
       event_count: null,
       trigger_type: 'start',
       source_log_id: logId || null,
-      user_template_id: userTemplateId,
       is_designated: girlSignals.isDesignated,
     });
 
@@ -703,8 +691,7 @@ async function handleSessionStart(
   parsed: ReturnType<typeof parseMessage>,
   girlSignals: { isEnd: boolean; isCorrection: boolean; isDesignated: boolean; usageDuration: number | null },
   receivedAt: string,
-  logId: string | undefined,
-  userTemplateId: string | null
+  logId: string | undefined
 ) {
   console.log('handleSessionStart called for:', slot.girl_name, 'roomNumber:', parsed.roomNumber, 'isDesignated:', girlSignals.isDesignated);
 
@@ -728,7 +715,6 @@ async function handleSessionStart(
     isCorrection: girlSignals.isCorrection,
     isDesignated: girlSignals.isDesignated,
     sourceLogId: logId,
-    userTemplateId: userTemplateId,
   });
 
   return {
@@ -751,8 +737,7 @@ async function handleSessionEnd(
   parsed: ReturnType<typeof parseMessage>,
   girlSignals: { isEnd: boolean; isCorrection: boolean; isDesignated: boolean; usageDuration: number | null },
   receivedAt: string,
-  logId: string | undefined,
-  userTemplateId: string | null
+  logId: string | undefined
 ) {
   // 기존 레코드에서 start_time 조회
   const { data: existingRecord } = await supabase
@@ -805,7 +790,6 @@ async function handleSessionEnd(
     isCorrection: girlSignals.isCorrection,
     isDesignated: girlSignals.isDesignated,
     sourceLogId: logId,
-    userTemplateId: userTemplateId,
   });
 
   // 방 종료 체크 (모든 아가씨가 ㄲ 되었는지)
@@ -845,7 +829,6 @@ async function updateStatusBoard(
     isCorrection: boolean;
     isDesignated: boolean;
     sourceLogId: string | undefined;
-    userTemplateId: string | null;
   }
 ) {
   console.log('updateStatusBoard called:', {
@@ -884,7 +867,6 @@ async function updateStatusBoard(
             event_count: data.eventCount,
             trigger_type: data.isInProgress ? 'start' : 'end',
             source_log_id: data.sourceLogId || null,
-            user_template_id: data.userTemplateId,
             is_designated: data.isDesignated,
             updated_at: getKoreanTime(),
           })
@@ -921,7 +903,6 @@ async function updateStatusBoard(
             event_count: data.eventCount,
             trigger_type: 'end',
             source_log_id: data.sourceLogId || null,
-            user_template_id: data.userTemplateId,
             is_designated: data.isDesignated,
             updated_at: getKoreanTime(),
           })
@@ -952,7 +933,6 @@ async function updateStatusBoard(
           event_count: data.eventCount,
           trigger_type: 'start',
           source_log_id: data.sourceLogId || null,
-          user_template_id: data.userTemplateId,
           is_designated: data.isDesignated,
         });
 

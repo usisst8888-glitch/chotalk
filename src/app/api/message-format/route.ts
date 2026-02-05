@@ -23,27 +23,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '유효하지 않은 토큰입니다.' }, { status: 401 });
     }
 
-    const { slotId, templateData } = await request.json();
+    const { slotId } = await request.json();
 
     const supabase = getSupabase();
 
-    // 1. 사용자 템플릿 가져오기 (header)
-    let headerTemplate = '';
-    if (templateData?.template) {
-      headerTemplate = templateData.template;
-    } else {
-      const { data: userTemplate } = await supabase
-        .from('user_templates')
-        .select('template')
-        .eq('user_id', payload.userId)
-        .single();
-
-      if (userTemplate) {
-        headerTemplate = userTemplate.template;
-      }
-    }
-
-    // 2. 완료된 세션 가져오기 (sender_logs 테이블)
+    // 1. 완료된 세션 가져오기 (sender_logs 테이블)
     let query = supabase
       .from('sender_logs')
       .select('*')
@@ -58,7 +42,7 @@ export async function POST(request: NextRequest) {
     const { data: sessions } = await query;
     const completedSessions = sessions || [];
 
-    // 3. Body 계산 (티켓 합계)
+    // Body 계산 (티켓 합계)
     const ticketSessions = completedSessions.map(s => ({
       halfTickets: Number(s.half_tickets) || 0,
       fullTickets: Number(s.full_tickets) || 0,
@@ -66,7 +50,7 @@ export async function POST(request: NextRequest) {
     const totalTickets = calculateTotalTickets(ticketSessions);
     const body = formatMessageBody(totalTickets);
 
-    // 4. Footer 생성 (각 방별 상세 정보)
+    // Footer 생성 (각 방별 상세 정보)
     const footerSessions = completedSessions.map(s => {
       const startTime = new Date(s.start_time).toLocaleTimeString('ko-KR', {
         hour: '2-digit', minute: '2-digit', hour12: false
@@ -89,12 +73,11 @@ export async function POST(request: NextRequest) {
     });
     const footer = formatMessageFooter(footerSessions);
 
-    // 5. 최종 메시지 구성
+    // 2. 최종 메시지 구성
     return NextResponse.json({
-      header: headerTemplate,
       body: body,
       footer: footer,
-      fullMessage: [headerTemplate, body, footer].filter(Boolean).join('\n\n'),
+      fullMessage: [body, footer].filter(Boolean).join('\n\n'),
       metadata: {
         totalTickets,
         sessionCount: completedSessions.length,
