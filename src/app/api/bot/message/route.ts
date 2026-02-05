@@ -884,21 +884,19 @@ async function updateStatusBoard(
       // 수정할 레코드가 없으면 아래에서 새로 생성
     }
 
-    // 일반 흐름: slot + room_number 조합으로 기존 레코드 찾기
-    const { data: existing, error: findError } = await supabase
+    // 일반 흐름: slot + room_number + is_in_progress=true 조합으로 진행 중인 레코드만 찾기
+    const { data: inProgressRecord, error: findError } = await supabase
       .from('status_board')
-      .select('id, is_in_progress')
+      .select('id')
       .eq('slot_id', data.slotId)
       .eq('room_number', data.roomNumber)
+      .eq('is_in_progress', true)
       .single();
 
-    console.log('Normal mode - existing:', existing, 'error:', findError);
+    console.log('Normal mode - inProgressRecord:', inProgressRecord, 'error:', findError);
 
-    // 기존 레코드가 종료된 상태이고 새 시작인 경우 → 새 레코드 생성
-    const shouldCreateNew = existing && !existing.is_in_progress && data.usageDuration === null;
-
-    if (existing && !shouldCreateNew) {
-      // 기존 레코드가 있고 usageDuration이 있을 때만 업데이트
+    if (inProgressRecord) {
+      // 진행 중인 레코드가 있음 → 종료 시에만 업데이트
       if (data.usageDuration !== null) {
         const { error: updateError } = await supabase
           .from('status_board')
@@ -913,16 +911,20 @@ async function updateStatusBoard(
             is_designated: data.isDesignated,
             updated_at: getKoreanTime(),
           })
-          .eq('id', existing.id);
+          .eq('id', inProgressRecord.id);
 
         if (updateError) {
           console.error('Status board update error:', updateError);
         }
       }
-      // usageDuration이 없으면 업데이트 안 함
+      // usageDuration이 없으면 (시작인데 이미 진행 중) → 무시
     } else {
-      // 새 레코드 생성 (첫 진입 또는 종료 후 같은 방 재시작)
-      console.log('Inserting new status_board record...', shouldCreateNew ? '(기존 종료 레코드 있음, 새 세션 생성)' : '(첫 진입)');
+      // 진행 중인 레코드가 없음 → 시작 시에만 새 레코드 생성
+      if (data.usageDuration !== null) {
+        console.log('Warning: 종료 요청인데 진행 중인 세션 없음');
+        return; // 종료할 세션이 없으면 무시
+      }
+      console.log('Inserting new status_board record...');
       const { error: insertError } = await supabase
         .from('status_board')
         .insert({
