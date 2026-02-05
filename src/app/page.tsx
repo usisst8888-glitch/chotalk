@@ -28,14 +28,14 @@ export default function Home() {
       <main className="pt-32 pb-20 px-6">
         <div className="max-w-3xl mx-auto text-center">
           <div className="inline-block px-4 py-2 bg-indigo-600/20 text-indigo-400 rounded-full text-sm font-medium mb-6">
-            초톡/도촉 자동화 서비스
+            스타트톡 자동화 서비스
           </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
             매번 확인하고 보고하는<br />
             <span className="text-indigo-400">번거로움을 끝내세요</span>
           </h1>
           <p className="text-lg text-neutral-400 mb-10 max-w-xl mx-auto leading-relaxed">
-            초톡, 도촉 일일이 확인하고<br />
+            스타트톡을 일일이 확인하고<br />
             아가씨들에게 상황 보고하느라 지치셨나요?<br />
             <span className="text-white font-medium">이제 모든 과정이 자동으로 처리됩니다.</span>
           </p>
@@ -61,7 +61,7 @@ export default function Home() {
               </div>
               <h3 className="text-lg font-semibold mb-2 text-red-300">매번 수동 확인</h3>
               <p className="text-neutral-400 text-sm">
-                초톡, 도촉 단톡방을 하나하나 확인하는 반복 작업
+                스타트톡 단톡방을 하나하나 확인하는 반복 작업
               </p>
             </div>
 
@@ -100,7 +100,7 @@ export default function Home() {
               </div>
               <h3 className="text-lg font-semibold mb-2">자동 감지</h3>
               <p className="text-neutral-400 text-sm">
-                초톡, 도촉이 올라오면 자동으로 감지합니다
+                스타트톡이 올라오면 자동으로 감지합니다
               </p>
             </div>
 
