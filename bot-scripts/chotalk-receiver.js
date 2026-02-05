@@ -1,5 +1,5 @@
 const scriptName = "Chotalk";
-const SERVER_URL = "https://startalkbot.com/api/bot/message";
+const SERVER_URL = "https://chotalk.vercel.app/api/bot/message";
 
 function response(room, msg, sender, isGroupChat, replier, imageDB, packageName) {
     // 알림이 온 시점의 시간 캡처 (한국 시간, Thread 시작 전에 캡처해야 정확함)

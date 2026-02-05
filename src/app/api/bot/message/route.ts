@@ -846,7 +846,7 @@ async function updateStatusBoard(
     if (data.isCorrection) {
       const { data: existingBySlot, error: findError } = await supabase
         .from('status_board')
-        .select('id')
+        .select('id, start_time')
         .eq('slot_id', data.slotId)
         .order('updated_at', { ascending: false })
         .limit(1)
@@ -855,6 +855,10 @@ async function updateStatusBoard(
       console.log('Correction mode - existingBySlot:', existingBySlot, 'error:', findError);
 
       if (existingBySlot) {
+        // 새 방번호에 대한 rooms 테이블 등록 (기존 start_time 사용)
+        const originalStartTime = existingBySlot.start_time || data.startTime;
+        await getOrCreateRoom(supabase, data.roomNumber, data.shopName, originalStartTime);
+
         // 기존 레코드 수정 (방번호 등 업데이트, start_time은 유지!)
         const { error: updateError } = await supabase
           .from('status_board')
