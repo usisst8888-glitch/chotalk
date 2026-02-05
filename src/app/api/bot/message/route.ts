@@ -887,14 +887,17 @@ async function updateStatusBoard(
     // 일반 흐름: slot + room_number 조합으로 기존 레코드 찾기
     const { data: existing, error: findError } = await supabase
       .from('status_board')
-      .select('id')
+      .select('id, is_in_progress')
       .eq('slot_id', data.slotId)
       .eq('room_number', data.roomNumber)
       .single();
 
     console.log('Normal mode - existing:', existing, 'error:', findError);
 
-    if (existing) {
+    // 기존 레코드가 종료된 상태이고 새 시작인 경우 → 새 레코드 생성
+    const shouldCreateNew = existing && !existing.is_in_progress && data.usageDuration === null;
+
+    if (existing && !shouldCreateNew) {
       // 기존 레코드가 있고 usageDuration이 있을 때만 업데이트
       if (data.usageDuration !== null) {
         const { error: updateError } = await supabase
@@ -918,8 +921,8 @@ async function updateStatusBoard(
       }
       // usageDuration이 없으면 업데이트 안 함
     } else {
-      // 새 레코드 생성 (첫 진입)
-      console.log('Inserting new status_board record...');
+      // 새 레코드 생성 (첫 진입 또는 종료 후 같은 방 재시작)
+      console.log('Inserting new status_board record...', shouldCreateNew ? '(기존 종료 레코드 있음, 새 세션 생성)' : '(첫 진입)');
       const { error: insertError } = await supabase
         .from('status_board')
         .insert({
