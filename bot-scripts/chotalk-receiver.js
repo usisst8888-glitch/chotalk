@@ -24,7 +24,7 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
                     .requestBody(data)
                     .ignoreContentType(true)
                     .ignoreHttpErrors(true)
-                    .timeout(5000)  // 타임아웃 5초로 단축
+                    .timeout(5000)  // 타임아웃 5초
                     .method(org.jsoup.Connection.Method.POST);
 
                 var res = conn.execute();
