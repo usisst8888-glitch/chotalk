@@ -90,6 +90,95 @@ export function extractUsageDuration(message: string): number | null {
 }
 
 /**
+ * 메시지에서 수동 지정 시간 추출 및 가장 가까운 시간대 반환
+ * 지원 포맷: 3시34분, 03시34분, 15시34분, 15:34, 03:34, 3:34,
+ *           03시, 15시, 3시, 15.34, 03.34, 3.34
+ *
+ * @param message 메시지 내용
+ * @param receivedAt 알림 받은 시간 (ISO string 또는 "YYYY-MM-DD HH:mm:ss" 형식)
+ * @returns 가장 가까운 시간 (YYYY-MM-DD HH:mm:ss 형식) 또는 null
+ */
+export function extractManualTime(message: string, receivedAt: string): string | null {
+  // 시간 패턴들 (우선순위 순)
+  const patterns = [
+    // 15시34분, 3시34분, 03시34분
+    /(\d{1,2})시\s*(\d{1,2})분/,
+    // 15:34, 3:34, 03:34
+    /(\d{1,2}):(\d{2})/,
+    // 15.34, 3.34, 03.34 (소수점 뒤 2자리만)
+    /(\d{1,2})\.(\d{2})(?!\d)/,
+    // 15시, 3시, 03시 (분 없음 → 00분)
+    /(\d{1,2})시(?!\s*\d)/,
+  ];
+
+  let hour: number | null = null;
+  let minute: number = 0;
+
+  for (const pattern of patterns) {
+    const match = message.match(pattern);
+    if (match) {
+      hour = parseInt(match[1], 10);
+      minute = match[2] ? parseInt(match[2], 10) : 0;
+      break;
+    }
+  }
+
+  if (hour === null || hour > 23 || minute > 59) {
+    return null;
+  }
+
+  // receivedAt 파싱
+  const receivedDate = new Date(receivedAt.replace(' ', 'T'));
+  if (isNaN(receivedDate.getTime())) {
+    return null;
+  }
+
+  // 24시간제인 경우 (hour >= 13) 그대로 사용
+  if (hour >= 13) {
+    const result = new Date(receivedDate);
+    result.setHours(hour, minute, 0, 0);
+    return formatTimeString(result);
+  }
+
+  // 12시간제 애매함 처리: hour vs hour+12 중 가까운 것 선택
+  const receivedHour = receivedDate.getHours();
+  const receivedMinute = receivedDate.getMinutes();
+  const receivedTotalMinutes = receivedHour * 60 + receivedMinute;
+
+  const option1Minutes = hour * 60 + minute;           // AM (예: 03:34)
+  const option2Minutes = (hour + 12) * 60 + minute;    // PM (예: 15:34)
+
+  // 각 옵션과 receivedAt의 차이 계산 (하루 경계 고려)
+  const diff1 = Math.min(
+    Math.abs(option1Minutes - receivedTotalMinutes),
+    1440 - Math.abs(option1Minutes - receivedTotalMinutes)
+  );
+  const diff2 = Math.min(
+    Math.abs(option2Minutes - receivedTotalMinutes),
+    1440 - Math.abs(option2Minutes - receivedTotalMinutes)
+  );
+
+  const selectedHour = diff1 <= diff2 ? hour : hour + 12;
+
+  const result = new Date(receivedDate);
+  result.setHours(selectedHour, minute, 0, 0);
+  return formatTimeString(result);
+}
+
+/**
+ * Date를 시간 문자열로 변환 (YYYY-MM-DD HH:mm:ss)
+ */
+function formatTimeString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+/**
  * 모든 신호 확인 (확장용)
  */
 export function checkAllSignals(message: string): { [key: string]: boolean } {

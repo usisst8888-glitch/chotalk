@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
-import { parseMessage, parseGirlSignals } from '@/lib/message-parser';
+import { parseMessage, parseGirlSignals, extractManualTime } from '@/lib/message-parser';
 
 // ============================================================
 // 한국 시간 (KST) 헬퍼 함수
@@ -693,10 +693,14 @@ async function handleSessionStart(
   receivedAt: string,
   logId: string | undefined
 ) {
-  console.log('handleSessionStart called for:', slot.girl_name, 'roomNumber:', parsed.roomNumber, 'isDesignated:', girlSignals.isDesignated);
+  // 메시지에 수동 지정 시간이 있으면 사용, 없으면 receivedAt 사용
+  const manualTime = extractManualTime(parsed.rawMessage, receivedAt);
+  const startTime = manualTime || receivedAt;
+
+  console.log('handleSessionStart called for:', slot.girl_name, 'roomNumber:', parsed.roomNumber, 'isDesignated:', girlSignals.isDesignated, 'manualTime:', manualTime);
 
   // 방 조회 또는 생성
-  const roomInfo = await getOrCreateRoom(supabase, parsed.roomNumber!, slot.shop_name, receivedAt);
+  const roomInfo = await getOrCreateRoom(supabase, parsed.roomNumber!, slot.shop_name, startTime);
 
   // 상황판에 저장
   await updateStatusBoard(supabase, {
@@ -708,7 +712,7 @@ async function handleSessionStart(
     kakaoId: slot.kakao_id,
     targetRoom: slot.target_room,
     isInProgress: true,
-    startTime: receivedAt,
+    startTime: startTime,
     endTime: null,
     usageDuration: null,
     eventCount: null,
@@ -722,7 +726,7 @@ async function handleSessionStart(
     slotId: slot.id,
     girlName: slot.girl_name,
     roomNumber: parsed.roomNumber,
-    startTime: receivedAt,
+    startTime: startTime,
     isNewRoom: roomInfo.isNewRoom,
   };
 }
@@ -739,6 +743,9 @@ async function handleSessionEnd(
   receivedAt: string,
   logId: string | undefined
 ) {
+  // ㅈㅈ(수정) 시 메시지에 수동 지정 시간이 있으면 추출
+  const manualStartTime = girlSignals.isCorrection ? extractManualTime(parsed.rawMessage, receivedAt) : null;
+
   // 기존 레코드에서 start_time 조회
   const { data: existingRecord } = await supabase
     .from('status_board')
@@ -771,7 +778,7 @@ async function handleSessionEnd(
     girlSignals.usageDuration
   );
 
-  console.log('handleSessionEnd - eventCount:', eventCount, 'isNewRoom:', isNewRoom);
+  console.log('handleSessionEnd - eventCount:', eventCount, 'isNewRoom:', isNewRoom, 'manualStartTime:', manualStartTime);
 
   // 상황판 업데이트
   await updateStatusBoard(supabase, {
@@ -790,6 +797,7 @@ async function handleSessionEnd(
     isCorrection: girlSignals.isCorrection,
     isDesignated: girlSignals.isDesignated,
     sourceLogId: logId,
+    manualStartTime: manualStartTime,
   });
 
   // 방 종료 체크 (모든 아가씨가 ㄲ 되었는지)
@@ -829,6 +837,7 @@ async function updateStatusBoard(
     isCorrection: boolean;
     isDesignated: boolean;
     sourceLogId: string | undefined;
+    manualStartTime?: string | null;  // ㅈㅈ 시 수동 지정 시간
   }
 ) {
   console.log('updateStatusBoard called:', {
@@ -855,25 +864,33 @@ async function updateStatusBoard(
       console.log('Correction mode - existingBySlot:', existingBySlot, 'error:', findError);
 
       if (existingBySlot) {
-        // 새 방번호에 대한 rooms 테이블 등록 (기존 start_time 사용)
-        const originalStartTime = existingBySlot.start_time || data.startTime;
-        await getOrCreateRoom(supabase, data.roomNumber, data.shopName, originalStartTime);
+        // 수동 지정 시간이 있으면 사용, 없으면 기존 start_time 유지
+        const newStartTime = data.manualStartTime || existingBySlot.start_time || data.startTime;
 
-        // 기존 레코드 수정 (방번호 등 업데이트, start_time은 유지!)
+        // 새 방번호에 대한 rooms 테이블 등록
+        await getOrCreateRoom(supabase, data.roomNumber, data.shopName, newStartTime);
+
+        // 기존 레코드 수정 (방번호 등 업데이트)
+        const updateData: Record<string, unknown> = {
+          room_number: data.roomNumber,
+          is_in_progress: data.isInProgress,
+          end_time: data.endTime,
+          usage_duration: data.usageDuration,
+          event_count: data.eventCount,
+          trigger_type: data.isInProgress ? 'start' : 'end',
+          source_log_id: data.sourceLogId || null,
+          is_designated: data.isDesignated,
+          updated_at: getKoreanTime(),
+        };
+
+        // 수동 지정 시간이 있으면 start_time도 업데이트
+        if (data.manualStartTime) {
+          updateData.start_time = data.manualStartTime;
+        }
+
         const { error: updateError } = await supabase
           .from('status_board')
-          .update({
-            room_number: data.roomNumber,
-            is_in_progress: data.isInProgress,
-            // start_time은 수정하지 않음 - 처음 등록 시간 유지
-            end_time: data.endTime,
-            usage_duration: data.usageDuration,
-            event_count: data.eventCount,
-            trigger_type: data.isInProgress ? 'start' : 'end',
-            source_log_id: data.sourceLogId || null,
-            is_designated: data.isDesignated,
-            updated_at: getKoreanTime(),
-          })
+          .update(updateData)
           .eq('id', existingBySlot.id);
 
         if (updateError) {
