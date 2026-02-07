@@ -579,12 +579,14 @@ async function handleResume(
 ) {
   console.log('handleResume called for:', slot.girl_name);
 
-  // 가장 최근에 종료된 레코드 찾기 (is_in_progress = false)
+  // 가장 최근에 종료된 레코드 찾기 (trigger_type = 'end'인 것만!)
+  // start나 canceled는 재진행 대상이 아님
   const { data: endedRecord, error: findError } = await supabase
     .from('status_board')
     .select('id, room_number')
     .eq('slot_id', slot.id)
     .eq('is_in_progress', false)
+    .eq('trigger_type', 'end')
     .order('updated_at', { ascending: false })
     .limit(1)
     .single();
