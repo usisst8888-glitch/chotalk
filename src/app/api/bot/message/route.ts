@@ -579,12 +579,12 @@ async function handleResume(
 ) {
   console.log('handleResume called for:', slot.girl_name);
 
-  // 가장 최근 레코드 1개만 가져오기 (trigger_type 상관없이)
+  // 가장 최근 레코드 1개만 가져오기 (trigger_type 상관없이, created_at 기준)
   const { data: recentRecord, error: findError } = await supabase
     .from('status_board')
     .select('id, room_number, trigger_type, is_in_progress')
     .eq('slot_id', slot.id)
-    .order('updated_at', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(1)
     .single();
 
@@ -647,13 +647,13 @@ async function handleCancel(
 ) {
   console.log('handleCancel called for:', slot.girl_name, 'roomNumber:', roomNumber);
 
-  // 진행 중인 레코드 찾기 (is_in_progress = true)
+  // 진행 중인 레코드 찾기 (is_in_progress = true, created_at 기준)
   const { data: recentRecord, error: findError } = await supabase
     .from('status_board')
     .select('id, room_number')
     .eq('slot_id', slot.id)
     .eq('is_in_progress', true)
-    .order('updated_at', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(1)
     .single();
 
@@ -903,7 +903,7 @@ async function updateStatusBoard(
         .from('status_board')
         .select('id, start_time, trigger_type')
         .eq('slot_id', data.slotId)
-        .order('updated_at', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(1)
         .single();
 
