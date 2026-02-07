@@ -890,7 +890,7 @@ async function updateStatusBoard(
     if (data.isCorrection) {
       const { data: existingBySlot, error: findError } = await supabase
         .from('status_board')
-        .select('id, start_time')
+        .select('id, start_time, trigger_type')
         .eq('slot_id', data.slotId)
         .order('updated_at', { ascending: false })
         .limit(1)
@@ -905,6 +905,11 @@ async function updateStatusBoard(
         // 새 방번호에 대한 rooms 테이블 등록
         await getOrCreateRoom(supabase, data.roomNumber, data.shopName, newStartTime);
 
+        // trigger_type 결정: 'canceled'면 유지, 아니면 is_in_progress 기반
+        const newTriggerType = existingBySlot.trigger_type === 'canceled'
+          ? 'canceled'
+          : (data.isInProgress ? 'start' : 'end');
+
         // 기존 레코드 수정 (방번호 등 업데이트)
         const updateData: Record<string, unknown> = {
           room_number: data.roomNumber,
@@ -912,7 +917,7 @@ async function updateStatusBoard(
           end_time: data.endTime,
           usage_duration: data.usageDuration,
           event_count: data.eventCount,
-          trigger_type: data.isInProgress ? 'start' : 'end',
+          trigger_type: newTriggerType,
           source_log_id: data.sourceLogId || null,
           is_designated: data.isDesignated,
           updated_at: getKoreanTime(),
