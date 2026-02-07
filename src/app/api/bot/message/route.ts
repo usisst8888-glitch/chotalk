@@ -766,6 +766,7 @@ async function handleSessionStart(
     isCorrection: girlSignals.isCorrection,
     isDesignated: girlSignals.isDesignated,
     sourceLogId: logId,
+    manualStartTime: girlSignals.isCorrection ? manualTime : null,
   });
 
   return {
