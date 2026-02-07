@@ -579,25 +579,33 @@ async function handleResume(
 ) {
   console.log('handleResume called for:', slot.girl_name);
 
-  // 가장 최근에 종료된 레코드 찾기 (trigger_type = 'end'인 것만!)
-  // start나 canceled는 재진행 대상이 아님
-  const { data: endedRecord, error: findError } = await supabase
+  // 가장 최근 레코드 1개만 가져오기 (trigger_type 상관없이)
+  const { data: recentRecord, error: findError } = await supabase
     .from('status_board')
-    .select('id, room_number')
+    .select('id, room_number, trigger_type, is_in_progress')
     .eq('slot_id', slot.id)
-    .eq('is_in_progress', false)
-    .eq('trigger_type', 'end')
     .order('updated_at', { ascending: false })
     .limit(1)
     .single();
 
-  if (findError || !endedRecord) {
-    console.log('handleResume - no ended record found:', findError);
+  if (findError || !recentRecord) {
+    console.log('handleResume - no record found:', findError);
     return {
       type: 'resume_failed',
       slotId: slot.id,
       girlName: slot.girl_name,
-      reason: '되돌릴 종료 레코드 없음',
+      reason: '레코드 없음',
+    };
+  }
+
+  // 가장 최근 레코드가 'end'가 아니면 재진행 불가
+  if (recentRecord.trigger_type !== 'end' || recentRecord.is_in_progress) {
+    console.log('handleResume - most recent record is not ended:', recentRecord.trigger_type, recentRecord.is_in_progress);
+    return {
+      type: 'resume_failed',
+      slotId: slot.id,
+      girlName: slot.girl_name,
+      reason: `최근 레코드가 종료 상태가 아님 (${recentRecord.trigger_type})`,
     };
   }
 
@@ -613,7 +621,7 @@ async function handleResume(
       updated_at: getKoreanTime(),
       data_changed: true,  // ㅈㅈㅎ(재진행) 시 재발송 트리거
     })
-    .eq('id', endedRecord.id);
+    .eq('id', recentRecord.id);
 
   if (updateError) {
     console.error('handleResume update error:', updateError);
@@ -623,7 +631,7 @@ async function handleResume(
     type: 'resume',
     slotId: slot.id,
     girlName: slot.girl_name,
-    roomNumber: endedRecord.room_number,
+    roomNumber: recentRecord.room_number,
   };
 }
 
