@@ -905,10 +905,13 @@ async function updateStatusBoard(
         // 새 방번호에 대한 rooms 테이블 등록
         await getOrCreateRoom(supabase, data.roomNumber, data.shopName, newStartTime);
 
-        // trigger_type 결정: 'canceled'면 유지, 아니면 is_in_progress 기반
-        const newTriggerType = existingBySlot.trigger_type === 'canceled'
-          ? 'canceled'
-          : (data.isInProgress ? 'start' : 'end');
+        // ㅈㅈ(수정) + ㄲ(종료) 조합 처리:
+        // - trigger_type이 변경되면 → trigger_type만 변경 (data_changed = false)
+        // - trigger_type이 동일하면 → data_changed = true (재발송 트리거)
+        // 이렇게 해야 한 번만 발송됨!
+
+        const expectedTriggerType = data.isInProgress ? 'start' : 'end';
+        const triggerTypeChanging = existingBySlot.trigger_type !== expectedTriggerType;
 
         // 기존 레코드 수정 (방번호 등 업데이트)
         const updateData: Record<string, unknown> = {
@@ -917,11 +920,12 @@ async function updateStatusBoard(
           end_time: data.endTime,
           usage_duration: data.usageDuration,
           event_count: data.eventCount,
-          trigger_type: newTriggerType,
+          trigger_type: expectedTriggerType,
           source_log_id: data.sourceLogId || null,
           is_designated: data.isDesignated,
           updated_at: getKoreanTime(),
-          data_changed: true,  // ㅈㅈ(수정) 시 재발송 트리거
+          // trigger_type이 변경되면 data_changed는 false, 아니면 true
+          data_changed: !triggerTypeChanging,
         };
 
         // 수동 지정 시간이 있으면 start_time도 업데이트
