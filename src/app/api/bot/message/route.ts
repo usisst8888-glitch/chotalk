@@ -723,6 +723,7 @@ async function handleSessionStart(
   logId: string | undefined
 ) {
   // 이미 진행 중인 세션이 있는지 확인 (다른 방에서 진행 중이면 무시)
+  // 단, ㅈㅈ(수정) 신호일 때는 무시하지 않고 수정 처리
   const { data: existingSession } = await supabase
     .from('status_board')
     .select('id, room_number')
@@ -730,7 +731,7 @@ async function handleSessionStart(
     .eq('is_in_progress', true)
     .single();
 
-  if (existingSession) {
+  if (existingSession && !girlSignals.isCorrection) {
     console.log('handleSessionStart - 이미 진행 중인 세션 있음:', slot.girl_name, '현재 방:', existingSession.room_number, '→ 무시');
     return {
       type: 'ignored',
