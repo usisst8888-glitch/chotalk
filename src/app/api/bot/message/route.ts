@@ -609,6 +609,7 @@ async function handleResume(
       trigger_type: 'start',
       source_log_id: logId || null,
       updated_at: getKoreanTime(),
+      data_changed: true,  // ㅈㅈㅎ(재진행) 시 재발송 트리거
     })
     .eq('id', endedRecord.id);
 
