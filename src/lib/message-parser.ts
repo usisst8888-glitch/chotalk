@@ -384,8 +384,8 @@ export function parseGirlSignals(
   // ㄲ (종료) 신호 확인
   if (hasSignal(girlSection, MESSAGE_SIGNALS.END.code)) {
     result.isEnd = true;
-    // 이용시간 추출 (ㄲ 앞의 숫자, 사이에 다른 문자 있어도 OK)
-    const match = girlSection.match(/(\d+(?:\.\d+)?)[^\d]*ㄲ/);
+    // 이용시간 추출 (아가씨 이름 뒤에서만! 방번호 혼동 방지)
+    const match = afterSection.match(/(\d+(?:\.\d+)?)[^\d]*ㄲ/);
     if (match) {
       result.usageDuration = parseFloat(match[1]);
     }
