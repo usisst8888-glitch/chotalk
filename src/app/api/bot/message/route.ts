@@ -443,7 +443,7 @@ export async function POST(request: NextRequest) {
       // ====================================================
       // 2. status_board 테이블 처리
       // 우선순위:
-      // 0. ㄱㅌ(취소) → 해당 세션 DELETE
+      // 0. ㄱㅌ(취소) → trigger_type을 'canceled'로 변경
       // 1. ㅎㅅㄱㅈㅈㅎ/현시간재진행 → 새 세션 INSERT
       // 2. ㅈㅈㅎ/재진행 → 가장 최근 종료 레코드를 시작으로 UPDATE
       // 3. ㄲ(종료) → 세션 종료 처리
@@ -451,7 +451,7 @@ export async function POST(request: NextRequest) {
       // ====================================================
 
       if (girlSignals.isCancel) {
-        // ㄱㅌ(취소) → 해당 세션 삭제
+        // ㄱㅌ(취소) → trigger_type을 'canceled'로 변경
         const result = await handleCancel(supabase, slot, log?.id);
         results.push({ ...result, logId: log?.id });
 
@@ -625,7 +625,7 @@ async function handleResume(
 }
 
 // ============================================================
-// 취소 처리 (ㄱㅌ) - 해당 세션 DELETE
+// 취소 처리 (ㄱㅌ) - trigger_type을 'canceled'로 변경
 // ============================================================
 
 async function handleCancel(
@@ -635,7 +635,7 @@ async function handleCancel(
 ) {
   console.log('handleCancel called for:', slot.girl_name);
 
-  // 가장 최근 레코드 찾아서 삭제
+  // 가장 최근 레코드 찾기
   const { data: recentRecord, error: findError } = await supabase
     .from('status_board')
     .select('id, room_number')
@@ -650,34 +650,38 @@ async function handleCancel(
       type: 'cancel_failed',
       slotId: slot.id,
       girlName: slot.girl_name,
-      reason: '삭제할 레코드 없음',
+      reason: '취소할 레코드 없음',
     };
   }
 
-  // 레코드 삭제
-  const { error: deleteError } = await supabase
+  // trigger_type을 'canceled'로 변경하고 is_in_progress를 false로 설정
+  const { error: updateError } = await supabase
     .from('status_board')
-    .delete()
+    .update({
+      trigger_type: 'canceled',
+      is_in_progress: false,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', recentRecord.id);
 
-  if (deleteError) {
-    console.error('handleCancel delete error:', deleteError);
+  if (updateError) {
+    console.error('handleCancel update error:', updateError);
     return {
       type: 'cancel_failed',
       slotId: slot.id,
       girlName: slot.girl_name,
-      reason: '삭제 실패',
+      reason: '취소 처리 실패',
     };
   }
 
-  console.log('handleCancel success - deleted record:', recentRecord.id, 'room:', recentRecord.room_number);
+  console.log('handleCancel success - canceled record:', recentRecord.id, 'room:', recentRecord.room_number);
 
   return {
     type: 'cancel',
     slotId: slot.id,
     girlName: slot.girl_name,
     roomNumber: recentRecord.room_number,
-    deletedRecordId: recentRecord.id,
+    canceledRecordId: recentRecord.id,
   };
 }
 
