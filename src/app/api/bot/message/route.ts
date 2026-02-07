@@ -693,6 +693,24 @@ async function handleSessionStart(
   receivedAt: string,
   logId: string | undefined
 ) {
+  // 이미 진행 중인 세션이 있는지 확인 (다른 방에서 진행 중이면 무시)
+  const { data: existingSession } = await supabase
+    .from('status_board')
+    .select('id, room_number')
+    .eq('slot_id', slot.id)
+    .eq('is_in_progress', true)
+    .single();
+
+  if (existingSession) {
+    console.log('handleSessionStart - 이미 진행 중인 세션 있음:', slot.girl_name, '현재 방:', existingSession.room_number, '→ 무시');
+    return {
+      type: 'ignored',
+      slotId: slot.id,
+      girlName: slot.girl_name,
+      reason: `이미 ${existingSession.room_number}번 방에서 진행 중`,
+    };
+  }
+
   // 메시지에 수동 지정 시간이 있으면 사용, 없으면 receivedAt 사용
   const manualTime = extractManualTime(parsed.rawMessage, receivedAt);
   const startTime = manualTime || receivedAt;
