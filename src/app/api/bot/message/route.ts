@@ -620,6 +620,7 @@ async function handleResume(
       source_log_id: logId || null,
       updated_at: getKoreanTime(),
       data_changed: true,  // ㅈㅈㅎ(재진행) 시 재발송 트리거
+      end_sent_at: null,   // 발송 상태 초기화 (재발송 가능하게)
     })
     .eq('id', recentRecord.id);
 
