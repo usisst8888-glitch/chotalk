@@ -451,8 +451,8 @@ export async function POST(request: NextRequest) {
       // ====================================================
 
       if (girlSignals.isCancel) {
-        // ㄱㅌ(취소) → trigger_type을 'canceled'로 변경
-        const result = await handleCancel(supabase, slot, log?.id);
+        // ㄱㅌ(취소) → trigger_type을 'canceled'로 변경 (방번호 일치해야 함)
+        const result = await handleCancel(supabase, slot, parsed.roomNumber, log?.id);
         results.push({ ...result, logId: log?.id });
 
       } else if (girlSignals.isNewSession && parsed.roomNumber) {
@@ -631,9 +631,10 @@ async function handleResume(
 async function handleCancel(
   supabase: ReturnType<typeof getSupabase>,
   slot: { id: string; user_id: string; girl_name: string },
+  roomNumber: string | null,
   logId: string | undefined
 ) {
-  console.log('handleCancel called for:', slot.girl_name);
+  console.log('handleCancel called for:', slot.girl_name, 'roomNumber:', roomNumber);
 
   // 진행 중인 레코드 찾기 (is_in_progress = true)
   const { data: recentRecord, error: findError } = await supabase
@@ -652,6 +653,17 @@ async function handleCancel(
       slotId: slot.id,
       girlName: slot.girl_name,
       reason: '취소할 레코드 없음',
+    };
+  }
+
+  // 방번호가 일치하는지 확인 (메시지에 방번호가 있으면 반드시 일치해야 함)
+  if (roomNumber && recentRecord.room_number !== roomNumber) {
+    console.log('handleCancel - room number mismatch:', recentRecord.room_number, '!=', roomNumber);
+    return {
+      type: 'ignored',
+      slotId: slot.id,
+      girlName: slot.girl_name,
+      reason: `방번호 불일치 (진행중: ${recentRecord.room_number}, 메시지: ${roomNumber})`,
     };
   }
 
