@@ -916,6 +916,7 @@ async function updateStatusBoard(
           source_log_id: data.sourceLogId || null,
           is_designated: data.isDesignated,
           updated_at: getKoreanTime(),
+          data_changed: true,  // ㅈㅈ(수정) 시 재발송 트리거
         };
 
         // 수동 지정 시간이 있으면 start_time도 업데이트
