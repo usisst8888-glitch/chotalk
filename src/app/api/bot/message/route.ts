@@ -635,11 +635,12 @@ async function handleCancel(
 ) {
   console.log('handleCancel called for:', slot.girl_name);
 
-  // 가장 최근 레코드 찾기
+  // 진행 중인 레코드 찾기 (is_in_progress = true)
   const { data: recentRecord, error: findError } = await supabase
     .from('status_board')
     .select('id, room_number')
     .eq('slot_id', slot.id)
+    .eq('is_in_progress', true)
     .order('updated_at', { ascending: false })
     .limit(1)
     .single();
