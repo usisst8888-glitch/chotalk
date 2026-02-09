@@ -1926,9 +1926,9 @@ export default function DashboardPage() {
                 />
               </div>
 
-              {/* 건수 */}
+              {/* 이벤트 갯수 */}
               <div>
-                <label className="block text-sm font-medium text-neutral-400 mb-1">건수</label>
+                <label className="block text-sm font-medium text-neutral-400 mb-1">이벤트 갯수</label>
                 <input
                   type="text"
                   value={statusForm.event_count}
