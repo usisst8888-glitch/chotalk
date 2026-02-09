@@ -1914,36 +1914,35 @@ export default function DashboardPage() {
                 />
               </div>
 
-              {/* 이용시간 + 지명: 종료 상태일 때만 표시 */}
+              {/* 이용시간: 종료 상태일 때만 표시 */}
               {!statusRecord.is_in_progress && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-400 mb-1">이용시간</label>
-                    <input
-                      type="text"
-                      value={statusForm.usage_duration}
-                      onChange={(e) => setStatusForm({ ...statusForm, usage_duration: e.target.value })}
-                      placeholder="1.5"
-                      className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <label className="text-sm font-medium text-neutral-400">지명</label>
-                    <button
-                      type="button"
-                      onClick={() => setStatusForm({ ...statusForm, is_designated: !statusForm.is_designated })}
-                      className={`px-4 py-1.5 text-sm rounded-lg font-medium transition ${
-                        statusForm.is_designated
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-neutral-700 text-neutral-400'
-                      }`}
-                    >
-                      {statusForm.is_designated ? 'ON' : 'OFF'}
-                    </button>
-                  </div>
-                </>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-400 mb-1">이용시간</label>
+                  <input
+                    type="text"
+                    value={statusForm.usage_duration}
+                    onChange={(e) => setStatusForm({ ...statusForm, usage_duration: e.target.value })}
+                    placeholder="1.5"
+                    className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                  />
+                </div>
               )}
+
+              {/* 지명 */}
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-medium text-neutral-400">지명</label>
+                <button
+                  type="button"
+                  onClick={() => setStatusForm({ ...statusForm, is_designated: !statusForm.is_designated })}
+                  className={`px-4 py-1.5 text-sm rounded-lg font-medium transition ${
+                    statusForm.is_designated
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-neutral-700 text-neutral-400'
+                  }`}
+                >
+                  {statusForm.is_designated ? 'ON' : 'OFF'}
+                </button>
+              </div>
             </div>
 
             {/* 버튼 */}
