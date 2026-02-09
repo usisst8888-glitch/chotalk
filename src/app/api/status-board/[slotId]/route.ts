@@ -89,9 +89,12 @@ export async function PATCH(
 
     if (body.room_number !== undefined) updateData.room_number = body.room_number;
     if (body.start_time !== undefined) updateData.start_time = body.start_time;
-    if (body.usage_duration !== undefined) updateData.usage_duration = body.usage_duration;
+    if (body.usage_duration !== undefined) {
+      updateData.usage_duration = body.usage_duration;
+      // 이벤트 갯수 = 이용시간의 소수점 버림 (4.5 → 4, 1.2 → 1)
+      updateData.event_count = Math.floor(body.usage_duration);
+    }
     if (body.is_designated !== undefined) updateData.is_designated = body.is_designated;
-    if (body.event_count !== undefined) updateData.event_count = body.event_count;
 
     const { error: updateError } = await supabase
       .from('status_board')
