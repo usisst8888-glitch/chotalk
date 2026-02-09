@@ -356,7 +356,7 @@ export default function DashboardPage() {
     try {
       const res = await fetch(`/api/status-board/${slot.id}`);
       if (!res.ok) {
-        alert('상황판 레코드가 없습니다.');
+        alert('현재 진행중인 방이 없습니다.');
         return;
       }
       const data = await res.json();
