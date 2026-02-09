@@ -479,7 +479,7 @@ export async function POST(request: NextRequest) {
           );
           results.push({ ...result, logId: log?.id });
 
-        } else if (lineSignals.isEnd && lineParsed.roomNumber) {
+        } else if (lineSignals.isEnd && lineParsed.roomNumber && lineSignals.usageDuration !== null) {
           const result = await handleSessionEnd(
             supabase, slot, lineParsed, lineSignals, messageReceivedAt, log?.id
           );
