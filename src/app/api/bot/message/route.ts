@@ -485,7 +485,7 @@ export async function POST(request: NextRequest) {
           );
           results.push({ ...result, logId: log?.id });
 
-        } else if (lineParsed.roomNumber && !lineSignals.isExtension && !lineSignals.isDesignatedFee) {
+        } else if (lineParsed.roomNumber && !lineSignals.isExtension && !lineSignals.isDesignatedFee && !lineSignals.isCorrection) {
           const result = await handleSessionStart(
             supabase, slot, lineParsed, lineSignals, messageReceivedAt, log?.id
           );
