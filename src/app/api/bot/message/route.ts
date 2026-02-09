@@ -908,19 +908,18 @@ async function updateStatusBoard(
   });
 
   try {
-    // ㅈㅈ(수정) 신호일 때: 방번호가 있으면 해당 방의 최근 레코드, 없으면 전체 최근 레코드
+    // ㅈㅈ(수정) 신호일 때: 방번호가 반드시 있어야 해당 방의 최근 레코드 수정
     if (data.isCorrection) {
-      let correctionQuery = supabase
-        .from('status_board')
-        .select('id, start_time, trigger_type, room_number')
-        .eq('slot_id', data.slotId);
-
-      // 방번호가 있으면 해당 방의 최근 레코드를 우선으로 찾기
-      if (data.roomNumber) {
-        correctionQuery = correctionQuery.eq('room_number', data.roomNumber);
+      if (!data.roomNumber) {
+        console.log('Correction mode - 방번호 없음, 무시');
+        return;
       }
 
-      const { data: existingBySlot, error: findError } = await correctionQuery
+      const { data: existingBySlot, error: findError } = await supabase
+        .from('status_board')
+        .select('id, start_time, trigger_type, room_number')
+        .eq('slot_id', data.slotId)
+        .eq('room_number', data.roomNumber)
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
