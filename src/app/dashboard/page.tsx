@@ -340,18 +340,6 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDeleteSlot = async (slotId: string) => {
-    if (!confirm('정말 삭제하시겠습니까?')) return;
-
-    try {
-      const res = await fetch(`/api/slots/${slotId}`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchSlots();
-      }
-    } catch {
-      alert('인원 삭제 중 오류가 발생했습니다.');
-    }
-  };
 
   const openEditModal = (slot: Slot) => {
     setSelectedSlot(slot);
@@ -848,12 +836,6 @@ export default function DashboardPage() {
                           >
                             연장
                           </button>
-                          <button
-                            onClick={() => handleDeleteSlot(slot.id)}
-                            className="px-3 py-1.5 text-sm bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg font-medium transition"
-                          >
-                            삭제
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1121,12 +1103,6 @@ export default function DashboardPage() {
                       }`}
                     >
                       연장
-                    </button>
-                    <button
-                      onClick={() => handleDeleteSlot(slot.id)}
-                      className="px-4 py-2 text-sm bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg font-medium transition"
-                    >
-                      삭제
                     </button>
                   </div>
                 </div>
