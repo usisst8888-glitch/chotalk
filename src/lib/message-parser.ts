@@ -98,9 +98,9 @@ export function extractUsageDuration(message: string): number | null {
  * @param receivedAt 알림 받은 시간 (ISO string 또는 "YYYY-MM-DD HH:mm:ss" 형식)
  * @returns 가장 가까운 시간 (YYYY-MM-DD HH:mm:ss 형식) 또는 null
  */
-export function extractManualTime(message: string, receivedAt: string): string | null {
+export function extractManualTime(message: string, receivedAt: string, options?: { allowTwoDigit?: boolean }): string | null {
   // 시간 패턴들 (우선순위 순)
-  const patterns = [
+  const patterns: RegExp[] = [
     // 15시34분, 3시34분, 03시34분
     /(\d{1,2})시\s*(\d{1,2})분/,
     // 15:34, 3:34, 03:34
@@ -111,7 +111,17 @@ export function extractManualTime(message: string, receivedAt: string): string |
     /(?<!\d)(\d{2})(\d{2})(?!\d)/,
     // 15시, 3시, 03시 (분 없음 → 00분)
     /(\d{1,2})시(?!\s*\d)/,
+    // 300, 951 (3자리 HMM: 1자리 시 + 2자리 분)
+    /(?<!\d)(\d)(\d{2})(?!\d)/,
   ];
+
+  // 1~2자리 시간 패턴 - ㅈㅈ 시작시간 수정에서만 사용
+  // (ㄲ이 없는 컨텍스트에서만 안전, usageDuration 혼동 방지)
+  // 03 → 03:00, 3 → 3:00 (또는 15:00)
+  if (options?.allowTwoDigit) {
+    patterns.push(/(?<!\d)(\d{2})(?!\d)/);  // 03 → 03:00
+    patterns.push(/(?<!\d)(\d)(?!\d)/);     // 3 → 3:00
+  }
 
   let hour: number | null = null;
   let minute: number = 0;

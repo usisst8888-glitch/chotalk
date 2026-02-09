@@ -487,7 +487,11 @@ export async function POST(request: NextRequest) {
 
         } else if (lineSignals.isCorrection && lineParsed.roomNumber) {
           // ㅈㅈ + 방번호 (ㄲ 없음): 시간패턴이 있으면 시작시간만 수정
-          const manualTime = extractManualTime(lineMsg, messageReceivedAt);
+          // 아가씨 이름 뒤 부분만 전달 (방번호 3자리와 시간패턴 혼동 방지)
+          // allowTwoDigit: ㄲ이 없어서 usageDuration 혼동 없으므로 2자리(03→03:00)도 허용
+          const corrGirlIdx = lineMsg.lastIndexOf(slot.girl_name);
+          const corrAfterGirl = corrGirlIdx >= 0 ? lineMsg.substring(corrGirlIdx + slot.girl_name.length) : lineMsg;
+          const manualTime = extractManualTime(corrAfterGirl, messageReceivedAt, { allowTwoDigit: true });
           if (manualTime) {
             const { data: record } = await supabase
               .from('status_board')
@@ -784,7 +788,10 @@ async function handleSessionStart(
   }
 
   // 메시지에 수동 지정 시간이 있으면 사용, 없으면 receivedAt 사용
-  const manualTime = extractManualTime(parsed.rawMessage, receivedAt);
+  // 아가씨 이름 뒤 부분만 전달 (방번호 3자리와 시간패턴 혼동 방지)
+  const girlIdx = parsed.rawMessage.lastIndexOf(slot.girl_name);
+  const afterGirlSection = girlIdx >= 0 ? parsed.rawMessage.substring(girlIdx + slot.girl_name.length) : parsed.rawMessage;
+  const manualTime = extractManualTime(afterGirlSection, receivedAt);
   const startTime = manualTime || receivedAt;
 
   console.log('handleSessionStart called for:', slot.girl_name, 'roomNumber:', parsed.roomNumber, 'isDesignated:', girlSignals.isDesignated, 'manualTime:', manualTime);
@@ -835,7 +842,13 @@ async function handleSessionEnd(
   logId: string | undefined
 ) {
   // ㅈㅈ(수정) 시 메시지에 수동 지정 시간이 있으면 추출
-  const manualStartTime = girlSignals.isCorrection ? extractManualTime(parsed.rawMessage, receivedAt) : null;
+  // 아가씨 이름 뒤 부분만 전달 (방번호 3자리와 시간패턴 혼동 방지)
+  let manualStartTime: string | null = null;
+  if (girlSignals.isCorrection) {
+    const girlIdx = parsed.rawMessage.lastIndexOf(slot.girl_name);
+    const afterGirlSection = girlIdx >= 0 ? parsed.rawMessage.substring(girlIdx + slot.girl_name.length) : parsed.rawMessage;
+    manualStartTime = extractManualTime(afterGirlSection, receivedAt);
+  }
 
   // 기존 레코드에서 start_time 조회
   const { data: existingRecord } = await supabase
