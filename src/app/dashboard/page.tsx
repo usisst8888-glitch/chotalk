@@ -1926,18 +1926,6 @@ export default function DashboardPage() {
                 />
               </div>
 
-              {/* 이벤트 갯수 */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-400 mb-1">이벤트 갯수</label>
-                <input
-                  type="text"
-                  value={statusForm.event_count}
-                  onChange={(e) => setStatusForm({ ...statusForm, event_count: e.target.value })}
-                  placeholder="1"
-                  className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-                />
-              </div>
-
               {/* 지명 */}
               <div className="flex items-center gap-3">
                 <label className="text-sm font-medium text-neutral-400">지명</label>
