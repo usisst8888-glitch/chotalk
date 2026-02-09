@@ -476,8 +476,8 @@ export async function POST(request: NextRequest) {
         );
         results.push({ ...result, logId: log?.id });
 
-      } else if (parsed.roomNumber && !girlSignals.isExtension) {
-        // ㄲ 없음 + 방번호 있음 + ㅇㅈ(연장) 아님 → 세션 시작 처리
+      } else if (parsed.roomNumber && !girlSignals.isExtension && !girlSignals.isDesignatedFee) {
+        // ㄲ 없음 + 방번호 있음 + ㅇㅈ(연장) 아님 + ㅈㅁㅅㅅ(지명수수) 아님 → 세션 시작 처리
         const result = await handleSessionStart(
           supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id
         );

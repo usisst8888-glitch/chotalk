@@ -110,6 +110,13 @@ export const MESSAGE_SIGNALS = {
     type: 'extension',
     description: '연장 (기존 세션 연장, 새 시작 아님)',
   },
+
+  // 지명수수 신호 (시작으로 잡으면 안 됨)
+  DESIGNATED_FEE: {
+    code: 'ㅈㅁㅅㅅ',
+    type: 'designated_fee',
+    description: '지명수수 (트리거 무시)',
+  },
 } as const;
 
 // ============================================================

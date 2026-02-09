@@ -288,6 +288,7 @@ export interface GirlSignalResult {
   isDesignated: boolean;           // 해당 아가씨 뒤에 ㅈㅁ(지명)이 있는지
   isCancel: boolean;               // 해당 아가씨 뒤에 ㄱㅌ(취소)이 있는지
   isExtension: boolean;            // 해당 아가씨 뒤에 ㅇㅈ(연장)이 있는지
+  isDesignatedFee: boolean;        // 해당 아가씨 뒤에 ㅈㅁㅅㅅ(지명수수)이 있는지
   usageDuration: number | null;    // 해당 아가씨의 이용시간 (ㄲ 앞 숫자)
 }
 
@@ -312,6 +313,7 @@ export function parseGirlSignals(
     isDesignated: false,
     isCancel: false,
     isExtension: false,
+    isDesignatedFee: false,
     usageDuration: null,
   };
 
@@ -396,8 +398,13 @@ export function parseGirlSignals(
     result.isCorrection = true;
   }
 
-  // ㅈㅁ (지명) 신호 확인 - 다른 신호와 독립적으로 체크
-  if (hasSignal(girlSection, MESSAGE_SIGNALS.DESIGNATED.code)) {
+  // ㅈㅁㅅㅅ (지명수수) 신호 확인 - ㅈㅁ보다 먼저 체크! (시작으로 잡으면 안 됨)
+  if (hasSignal(girlSection, MESSAGE_SIGNALS.DESIGNATED_FEE.code)) {
+    result.isDesignatedFee = true;
+  }
+
+  // ㅈㅁ (지명) 신호 확인 - ㅈㅁㅅㅅ가 아닐 때만
+  if (!result.isDesignatedFee && hasSignal(girlSection, MESSAGE_SIGNALS.DESIGNATED.code)) {
     result.isDesignated = true;
   }
 
