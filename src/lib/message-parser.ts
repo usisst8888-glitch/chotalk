@@ -62,10 +62,10 @@ export function extractRoomNumber(message: string): string | null {
 // ============================================================
 
 /**
- * 종료 신호(ㄲ) 확인 - 숫자+ㄲ 패턴이 있어야만 종료
+ * 종료 신호(ㄲ) 확인
  */
 export function isEndSignal(message: string): boolean {
-  return hasSignal(message, MESSAGE_SIGNALS.END.code) && /\d[^\d]*ㄲ/.test(message);
+  return hasSignal(message, MESSAGE_SIGNALS.END.code);
 }
 
 /**
@@ -385,15 +385,14 @@ export function parseGirlSignals(
     return result;
   }
 
-  // ㄲ (종료) 신호 확인 - 숫자+ㄲ 패턴이 있어야만 종료 (예: 1ㄲ, 0.5ㄲ)
+  // ㄲ (종료) 신호 확인
   if (hasSignal(girlSection, MESSAGE_SIGNALS.END.code)) {
+    result.isEnd = true;
     // 이용시간 추출 (아가씨 이름 뒤에서만! 방번호 혼동 방지)
     const match = afterSection.match(/(\d+(?:\.\d+)?)[^\d]*ㄲ/);
     if (match) {
-      result.isEnd = true;
       result.usageDuration = parseFloat(match[1]);
     }
-    // 숫자 없이 ㄲ만 있으면 종료로 인식하지 않음
   }
 
   // ㅈㅈ (수정) 신호 확인

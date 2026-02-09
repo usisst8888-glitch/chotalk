@@ -908,24 +908,31 @@ async function updateStatusBoard(
   });
 
   try {
-    // ㅈㅈ(수정) 신호일 때: slot_id(아가씨)로만 찾아서 기존 레코드 수정
+    // ㅈㅈ(수정) 신호일 때: 방번호가 있으면 해당 방의 최근 레코드, 없으면 전체 최근 레코드
     if (data.isCorrection) {
-      const { data: existingBySlot, error: findError } = await supabase
+      let correctionQuery = supabase
         .from('status_board')
-        .select('id, start_time, trigger_type')
-        .eq('slot_id', data.slotId)
+        .select('id, start_time, trigger_type, room_number')
+        .eq('slot_id', data.slotId);
+
+      // 방번호가 있으면 해당 방의 최근 레코드를 우선으로 찾기
+      if (data.roomNumber) {
+        correctionQuery = correctionQuery.eq('room_number', data.roomNumber);
+      }
+
+      const { data: existingBySlot, error: findError } = await correctionQuery
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
 
-      console.log('Correction mode - existingBySlot:', existingBySlot, 'error:', findError);
+      console.log('Correction mode - existingBySlot:', existingBySlot, 'roomFilter:', data.roomNumber, 'error:', findError);
 
       if (existingBySlot) {
         // 수동 지정 시간이 있으면 사용, 없으면 기존 start_time 유지
         const newStartTime = data.manualStartTime || existingBySlot.start_time || data.startTime;
 
-        // 새 방번호에 대한 rooms 테이블 등록
-        await getOrCreateRoom(supabase, data.roomNumber, data.shopName, newStartTime);
+        // rooms 테이블 등록 (기존 방번호 사용)
+        await getOrCreateRoom(supabase, existingBySlot.room_number, data.shopName, newStartTime);
 
         // ㅈㅈ(수정) + ㄲ(종료) 조합 처리:
         // - trigger_type이 변경되면 → trigger_type만 변경 (data_changed = false)
@@ -935,9 +942,8 @@ async function updateStatusBoard(
         const expectedTriggerType = data.isInProgress ? 'start' : 'end';
         const triggerTypeChanging = existingBySlot.trigger_type !== expectedTriggerType;
 
-        // 기존 레코드 수정 (방번호 등 업데이트)
+        // 기존 레코드 수정 (방번호는 변경하지 않음!)
         const updateData: Record<string, unknown> = {
-          room_number: data.roomNumber,
           is_in_progress: data.isInProgress,
           end_time: data.endTime,
           usage_duration: data.usageDuration,
