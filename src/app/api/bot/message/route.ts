@@ -417,10 +417,7 @@ export async function POST(request: NextRequest) {
     const results = [];
 
     for (const slot of matchedSlots) {
-      // 해당 아가씨에게 해당하는 신호만 파싱
-      const girlSignals = parseGirlSignals(message, slot.girl_name, girlNames);
-
-      // 1. message_logs에 원본 메시지 저장 (항상)
+      // 1. message_logs에 원본 메시지 저장 (항상 - 한번만)
       const { data: log, error: logError } = await supabase
         .from('message_logs')
         .insert({
@@ -442,55 +439,66 @@ export async function POST(request: NextRequest) {
 
       // ====================================================
       // 2. status_board 테이블 처리
-      // 우선순위:
-      // 0. ㄱㅌ(취소) → trigger_type을 'canceled'로 변경
-      // 1. ㅎㅅㄱㅈㅈㅎ/현시간재진행 → 새 세션 INSERT
-      // 2. ㅈㅈㅎ/재진행 → 가장 최근 종료 레코드를 시작으로 UPDATE
-      // 3. ㄲ(종료) → 세션 종료 처리
-      // 4. 방번호만 → 세션 시작 처리
+      // 같은 아가씨가 여러 줄에 나올 수 있음 (예: 종료 + 새 시작)
+      // 각 줄을 별도로 파싱하여 순차 처리
       // ====================================================
 
-      if (girlSignals.isCancel) {
-        // ㄱㅌ(취소) → trigger_type을 'canceled'로 변경 (방번호 일치해야 함)
-        const result = await handleCancel(supabase, slot, parsed.roomNumber, log?.id);
-        results.push({ ...result, logId: log?.id });
+      // 같은 아가씨가 여러 줄에 나오는지 확인
+      const lines = message.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0);
+      const girlLines = lines.filter((line: string) => line.includes(slot.girl_name));
 
-      } else if (girlSignals.isNewSession && parsed.roomNumber) {
-        // ㅎㅅㄱㅈㅈㅎ/현시간재진행 → 새 세션 시작 (INSERT)
-        const result = await handleNewSession(
-          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id
-        );
-        results.push({ ...result, logId: log?.id });
+      // 여러 줄이면 각 줄별로 처리, 한 줄이면 원본 메시지로 처리
+      const messagesToProcess = girlLines.length > 1 ? girlLines : [message];
 
-      } else if (girlSignals.isResume) {
-        // ㅈㅈㅎ/재진행 → 가장 최근 종료 레코드를 시작으로 되돌림 (UPDATE)
-        const result = await handleResume(
-          supabase, slot, messageReceivedAt, log?.id
-        );
-        results.push({ ...result, logId: log?.id });
+      console.log('Processing', messagesToProcess.length, 'line(s) for', slot.girl_name);
 
-      } else if (girlSignals.isEnd && parsed.roomNumber) {
-        // 해당 아가씨 뒤에 ㄲ 있음 → 세션 종료 처리
-        const result = await handleSessionEnd(
-          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id
-        );
-        results.push({ ...result, logId: log?.id });
+      for (const lineMsg of messagesToProcess) {
+        const lineParsed = parseMessage(lineMsg, girlNames);
+        const lineSignals = parseGirlSignals(lineMsg, slot.girl_name, girlNames);
 
-      } else if (parsed.roomNumber && !girlSignals.isExtension && !girlSignals.isDesignatedFee) {
-        // ㄲ 없음 + 방번호 있음 + ㅇㅈ(연장) 아님 + ㅈㅁㅅㅅ(지명수수) 아님 → 세션 시작 처리
-        const result = await handleSessionStart(
-          supabase, slot, parsed, girlSignals, messageReceivedAt, log?.id
-        );
-        results.push({ ...result, logId: log?.id });
+        // 우선순위:
+        // 0. ㄱㅌ(취소) → trigger_type을 'canceled'로 변경
+        // 1. ㅎㅅㄱㅈㅈㅎ/현시간재진행 → 새 세션 INSERT
+        // 2. ㅈㅈㅎ/재진행 → 가장 최근 종료 레코드를 시작으로 UPDATE
+        // 3. ㄲ(종료) → 세션 종료 처리
+        // 4. 방번호만 → 세션 시작 처리
 
-      } else {
-        // 방번호 없음 또는 ㅇㅈ(연장) → 일반 메시지
-        results.push({
-          type: 'message',
-          logId: log?.id,
-          slotId: slot.id,
-          girlName: slot.girl_name,
-        });
+        if (lineSignals.isCancel) {
+          const result = await handleCancel(supabase, slot, lineParsed.roomNumber, log?.id);
+          results.push({ ...result, logId: log?.id });
+
+        } else if (lineSignals.isNewSession && lineParsed.roomNumber) {
+          const result = await handleNewSession(
+            supabase, slot, lineParsed, lineSignals, messageReceivedAt, log?.id
+          );
+          results.push({ ...result, logId: log?.id });
+
+        } else if (lineSignals.isResume) {
+          const result = await handleResume(
+            supabase, slot, messageReceivedAt, log?.id
+          );
+          results.push({ ...result, logId: log?.id });
+
+        } else if (lineSignals.isEnd && lineParsed.roomNumber) {
+          const result = await handleSessionEnd(
+            supabase, slot, lineParsed, lineSignals, messageReceivedAt, log?.id
+          );
+          results.push({ ...result, logId: log?.id });
+
+        } else if (lineParsed.roomNumber && !lineSignals.isExtension && !lineSignals.isDesignatedFee) {
+          const result = await handleSessionStart(
+            supabase, slot, lineParsed, lineSignals, messageReceivedAt, log?.id
+          );
+          results.push({ ...result, logId: log?.id });
+
+        } else {
+          results.push({
+            type: 'message',
+            logId: log?.id,
+            slotId: slot.id,
+            girlName: slot.girl_name,
+          });
+        }
       }
     }
 
