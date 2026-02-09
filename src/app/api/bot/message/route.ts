@@ -485,6 +485,40 @@ export async function POST(request: NextRequest) {
           );
           results.push({ ...result, logId: log?.id });
 
+        } else if (lineSignals.isCorrection && lineParsed.roomNumber) {
+          // ㅈㅈ + 방번호 (ㄲ 없음): 시간패턴이 있으면 시작시간만 수정
+          const manualTime = extractManualTime(lineMsg, messageReceivedAt);
+          if (manualTime) {
+            const { data: record } = await supabase
+              .from('status_board')
+              .select('id')
+              .eq('slot_id', slot.id)
+              .eq('room_number', lineParsed.roomNumber)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+
+            if (record) {
+              await supabase
+                .from('status_board')
+                .update({
+                  start_time: manualTime,
+                  data_changed: true,
+                  updated_at: getKoreanTime(),
+                })
+                .eq('id', record.id);
+
+              console.log('ㅈㅈ 시작시간 수정:', slot.girl_name, '방:', lineParsed.roomNumber, '→', manualTime);
+              results.push({ type: 'correction_time', slotId: slot.id, girlName: slot.girl_name, roomNumber: lineParsed.roomNumber, newStartTime: manualTime, logId: log?.id });
+            } else {
+              console.log('ㅈㅈ 시작시간 수정 - 레코드 없음:', lineParsed.roomNumber);
+              results.push({ type: 'ignored', slotId: slot.id, girlName: slot.girl_name, reason: '수정할 레코드 없음', logId: log?.id });
+            }
+          } else {
+            console.log('ㅈㅈ 시간패턴 없음 - 무시:', lineMsg);
+            results.push({ type: 'ignored', slotId: slot.id, girlName: slot.girl_name, reason: 'ㅈㅈ 시간패턴 없음', logId: log?.id });
+          }
+
         } else if (lineParsed.roomNumber && !lineSignals.isExtension && !lineSignals.isDesignatedFee && !lineSignals.isCorrection) {
           const result = await handleSessionStart(
             supabase, slot, lineParsed, lineSignals, messageReceivedAt, log?.id
