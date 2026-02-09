@@ -67,14 +67,19 @@ export async function PATCH(
     const body = await request.json();
     const supabase = getSupabase();
 
+    // 관리자 여부 확인
+    const { data: currentUser } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', payload.userId)
+      .single();
+    const isAdmin = currentUser?.role === 'admin';
+
     // 연장 요청인 경우
     if (body.extend) {
-      const { data: slot } = await supabase
-        .from('slots')
-        .select('expires_at')
-        .eq('id', id)
-        .eq('user_id', payload.userId)
-        .single();
+      let q = supabase.from('slots').select('expires_at').eq('id', id);
+      if (!isAdmin) q = q.eq('user_id', payload.userId);
+      const { data: slot } = await q.single();
 
       if (!slot) {
         return NextResponse.json({ error: '슬롯을 찾을 수 없습니다.' }, { status: 404 });
@@ -84,13 +89,9 @@ export async function PATCH(
       const currentExpiry = new Date(slot.expires_at);
       currentExpiry.setDate(currentExpiry.getDate() + 30);
 
-      const { data: updatedSlot, error } = await supabase
-        .from('slots')
-        .update({ expires_at: toTimestampString(currentExpiry) })
-        .eq('id', id)
-        .eq('user_id', payload.userId)
-        .select()
-        .single();
+      let updateQ = supabase.from('slots').update({ expires_at: toTimestampString(currentExpiry) }).eq('id', id);
+      if (!isAdmin) updateQ = updateQ.eq('user_id', payload.userId);
+      const { data: updatedSlot, error } = await updateQ.select().single();
 
       if (error) {
         return NextResponse.json({ error: '슬롯 연장 실패' }, { status: 500 });
@@ -101,13 +102,9 @@ export async function PATCH(
 
     // 활성화/비활성화 토글
     if (typeof body.isActive === 'boolean') {
-      const { data: updatedSlot, error } = await supabase
-        .from('slots')
-        .update({ is_active: body.isActive })
-        .eq('id', id)
-        .eq('user_id', payload.userId)
-        .select()
-        .single();
+      let updateQ = supabase.from('slots').update({ is_active: body.isActive }).eq('id', id);
+      if (!isAdmin) updateQ = updateQ.eq('user_id', payload.userId);
+      const { data: updatedSlot, error } = await updateQ.select().single();
 
       if (error) {
         return NextResponse.json({ error: '슬롯 상태 변경 실패' }, { status: 500 });
@@ -126,13 +123,9 @@ export async function PATCH(
     if (shopName !== undefined) updateData.shop_name = shopName || null;
     if (targetRoom) updateData.target_room = targetRoom;
 
-    const { data: updatedSlot, error } = await supabase
-      .from('slots')
-      .update(updateData)
-      .eq('id', id)
-      .eq('user_id', payload.userId)
-      .select()
-      .single();
+    let updateQ = supabase.from('slots').update(updateData).eq('id', id);
+    if (!isAdmin) updateQ = updateQ.eq('user_id', payload.userId);
+    const { data: updatedSlot, error } = await updateQ.select().single();
 
     if (error) {
       return NextResponse.json({ error: '슬롯 수정 실패' }, { status: 500 });

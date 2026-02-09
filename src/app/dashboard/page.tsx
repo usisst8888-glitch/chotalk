@@ -769,9 +769,7 @@ export default function DashboardPage() {
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">채팅방</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">초대할 ID</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">만료일</th>
-                  {user?.role !== 'admin' && (
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">관리</th>
-                  )}
+                  <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">관리</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-800">
@@ -829,6 +827,32 @@ export default function DashboardPage() {
                       <td className={`px-4 py-3 text-center ${isExpired ? 'text-red-400' : isExpiringSoon ? 'text-yellow-400' : 'text-neutral-500'}`}>
                         {formatDate(slot.expires_at)}
                         {isExpired ? ' (만료됨)' : isExpiringSoon ? ` (${daysRemaining}일)` : ''}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => openEditModal(slot)}
+                            className="px-3 py-1.5 text-sm bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 rounded-lg font-medium transition"
+                          >
+                            수정
+                          </button>
+                          <button
+                            onClick={() => openExtendModal(slot)}
+                            className={`px-3 py-1.5 text-sm rounded-lg font-medium transition ${
+                              isExpired || isExpiringSoon
+                                ? 'bg-yellow-600 hover:bg-yellow-500 text-white'
+                                : 'bg-neutral-700 hover:bg-neutral-600 text-neutral-400'
+                            }`}
+                          >
+                            연장
+                          </button>
+                          <button
+                            onClick={() => openStatusModal(slot)}
+                            className="px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg font-medium transition"
+                          >
+                            상황판
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -1082,6 +1106,30 @@ export default function DashboardPage() {
                         {formatDate(slot.expires_at)}
                       </span>
                     </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => openEditModal(slot)}
+                      className="flex-1 py-2 text-sm bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 rounded-lg font-medium transition"
+                    >
+                      수정
+                    </button>
+                    <button
+                      onClick={() => openExtendModal(slot)}
+                      className={`flex-1 py-2 text-sm rounded-lg font-medium transition ${
+                        isExpired || isExpiringSoon
+                          ? 'bg-yellow-600 hover:bg-yellow-500 text-white'
+                          : 'bg-neutral-700 hover:bg-neutral-600 text-neutral-400'
+                      }`}
+                    >
+                      연장
+                    </button>
+                    <button
+                      onClick={() => openStatusModal(slot)}
+                      className="flex-1 py-2 text-sm bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg font-medium transition"
+                    >
+                      상황판
+                    </button>
                   </div>
                 </div>
               );
