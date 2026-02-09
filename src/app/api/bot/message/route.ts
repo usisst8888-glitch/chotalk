@@ -479,7 +479,7 @@ export async function POST(request: NextRequest) {
           );
           results.push({ ...result, logId: log?.id });
 
-        } else if (lineSignals.isEnd && lineParsed.roomNumber && lineSignals.usageDuration !== null) {
+        } else if (lineSignals.isEnd && lineParsed.roomNumber) {
           const result = await handleSessionEnd(
             supabase, slot, lineParsed, lineSignals, messageReceivedAt, log?.id
           );
@@ -1032,12 +1032,13 @@ async function updateStatusBoard(
     console.log('Normal mode - inProgressRecord:', inProgressRecord, 'error:', findError);
 
     if (inProgressRecord) {
-      // 진행 중인 레코드가 있음 → 종료 시에만 업데이트
-      if (data.usageDuration !== null) {
+      // 진행 중인 레코드가 있음
+      if (!data.isInProgress) {
+        // 종료 처리 (ㄲ) - usageDuration 유무와 관계없이 is_in_progress=false, trigger_type='end'
         const { error: updateError } = await supabase
           .from('status_board')
           .update({
-            is_in_progress: data.isInProgress,
+            is_in_progress: false,
             start_time: data.startTime,
             end_time: data.endTime,
             usage_duration: data.usageDuration,
@@ -1053,7 +1054,7 @@ async function updateStatusBoard(
           console.error('Status board update error:', updateError);
         }
       }
-      // usageDuration이 없으면 (시작인데 이미 진행 중) → 무시
+      // isInProgress가 true이면 (시작인데 이미 진행 중) → 무시
     } else {
       // 진행 중인 레코드가 없음 → 시작 시에만 새 레코드 생성
       if (data.usageDuration !== null) {
