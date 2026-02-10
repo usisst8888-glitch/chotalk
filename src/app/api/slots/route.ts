@@ -43,7 +43,7 @@ export async function GET() {
       .from('slots')
       .select('*')
       .eq('user_id', payload.userId)
-      .order('created_at', { ascending: false });
+      .order('expires_at', { ascending: true });
 
     if (error) {
       return NextResponse.json({ error: '슬롯 조회 실패' }, { status: 500 });

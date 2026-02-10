@@ -1056,10 +1056,41 @@ async function updateStatusBoard(
       }
       // isInProgress가 true이면 (시작인데 이미 진행 중) → 무시
     } else {
-      // 진행 중인 레코드가 없음 → 시작 시에만 새 레코드 생성
+      // 진행 중인 레코드가 없음
       if (data.usageDuration !== null) {
-        console.log('Warning: 종료 요청인데 진행 중인 세션 없음');
-        return; // 종료할 세션이 없으면 무시
+        // 이미 종료된 세션에 usage_duration 추가 (예: "ㄲ" 후 "3ㄲ")
+        const { data: endedRecord } = await supabase
+          .from('status_board')
+          .select('id')
+          .eq('slot_id', data.slotId)
+          .eq('room_number', data.roomNumber)
+          .eq('is_in_progress', false)
+          .eq('trigger_type', 'end')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (endedRecord) {
+          const { error: updateError } = await supabase
+            .from('status_board')
+            .update({
+              usage_duration: data.usageDuration,
+              event_count: data.eventCount,
+              source_log_id: data.sourceLogId || null,
+              updated_at: getKoreanTime(),
+              data_changed: true,
+            })
+            .eq('id', endedRecord.id);
+
+          if (updateError) {
+            console.error('종료된 세션 usage_duration 업데이트 오류:', updateError);
+          } else {
+            console.log('종료된 세션에 usage_duration 업데이트:', data.usageDuration);
+          }
+        } else {
+          console.log('Warning: 종료 요청인데 진행 중인/종료된 세션 없음');
+        }
+        return;
       }
       console.log('Inserting new status_board record...');
       const { error: insertError } = await supabase
