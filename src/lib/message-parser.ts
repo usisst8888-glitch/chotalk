@@ -396,29 +396,20 @@ export function parseGirlSignals(
   }
 
   // ㄲ (종료) 신호 확인
-  // - 본인 구간에 ㄲ이 있으면 → 무조건 종료
-  // - 메시지 전체에 ㄲ이 있으면 → ㅇㅈ(연장)/ㅈㅁㅅㅅ(지명수수) 등 다른 신호 없을 때만 종료
+  // - 구간 또는 메시지 전체에 ㄲ이 있으면 종료 후보
+  // - 단, ㅇㅈ(연장)/ㅈㅁㅅㅅ(지명수수) 신호가 구간에 있으면 종료가 아님
+  //   (미등록 아가씨가 뒤에 있으면 구간에 ㄲ과 ㅇㅈ이 동시에 포함될 수 있음)
   // - 이용시간은 항상 아가씨 이름 바로 뒤 첫 번째 숫자
   const hasEndInSection = hasSignal(girlSection, MESSAGE_SIGNALS.END.code);
   const hasEndInMessage = hasSignal(message, MESSAGE_SIGNALS.END.code);
+  const hasExtension = hasSignal(girlSection, MESSAGE_SIGNALS.EXTENSION.code);
+  const hasDesignatedFee = hasSignal(girlSection, MESSAGE_SIGNALS.DESIGNATED_FEE.code);
 
-  if (hasEndInSection) {
+  if ((hasEndInSection || hasEndInMessage) && !hasExtension && !hasDesignatedFee) {
     result.isEnd = true;
     const match = afterSection.match(/(\d+(?:\.\d+)?)/);
     if (match) {
       result.usageDuration = parseFloat(match[1]);
-    }
-  } else if (hasEndInMessage) {
-    // ㄲ이 메시지에 있지만 본인 구간에는 없는 경우
-    // ㅇㅈ(연장), ㅈㅁㅅㅅ(지명수수) 신호가 있으면 종료가 아님
-    const hasExtension = hasSignal(girlSection, MESSAGE_SIGNALS.EXTENSION.code);
-    const hasDesignatedFee = hasSignal(girlSection, MESSAGE_SIGNALS.DESIGNATED_FEE.code);
-    if (!hasExtension && !hasDesignatedFee) {
-      result.isEnd = true;
-      const match = afterSection.match(/(\d+(?:\.\d+)?)/);
-      if (match) {
-        result.usageDuration = parseFloat(match[1]);
-      }
     }
   }
 
