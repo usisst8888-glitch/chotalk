@@ -1007,7 +1007,10 @@ export default function DashboardPage() {
                     ) : (
                       <td colSpan={6} className="px-4 py-3 text-center">
                         <button
-                          onClick={() => setEditingSlotIndex(index)}
+                          onClick={() => {
+                            setEditingSlotIndex(index);
+                            setInlineNewSlot({ girlName: '', shopName: shops[0]?.shop_name || '', customShopName: '', customClosingTime: '', targetRoom: '' });
+                          }}
                           className="text-neutral-600 hover:text-indigo-400 transition"
                         >
                           + 인원 추가하기
@@ -1298,7 +1301,10 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <button
-                    onClick={() => setEditingSlotIndex(index)}
+                    onClick={() => {
+                      setEditingSlotIndex(index);
+                      setInlineNewSlot({ girlName: '', shopName: shops[0]?.shop_name || '', customShopName: '', customClosingTime: '', targetRoom: '' });
+                    }}
                     className="w-full py-6 text-neutral-600 hover:text-indigo-400 transition text-center"
                   >
                     + 인원 추가하기
