@@ -523,7 +523,7 @@ export async function POST(request: NextRequest) {
             results.push({ type: 'ignored', slotId: slot.id, girlName: slot.girl_name, reason: 'ㅈㅈ 시간패턴 없음', logId: log?.id });
           }
 
-        } else if (lineParsed.roomNumber && !lineSignals.isExtension && !lineSignals.isDesignatedFee && !lineSignals.isCorrection) {
+        } else if (lineParsed.roomNumber && !lineSignals.isExtension && !lineSignals.isDesignatedFee && !lineSignals.isDesignatedHalfFee && !lineSignals.isCorrection) {
           const result = await handleSessionStart(
             supabase, slot, lineParsed, lineSignals, messageReceivedAt, log?.id
           );
@@ -1078,7 +1078,6 @@ async function updateStatusBoard(
               event_count: data.eventCount,
               source_log_id: data.sourceLogId || null,
               updated_at: getKoreanTime(),
-              data_changed: true,
             })
             .eq('id', endedRecord.id);
 

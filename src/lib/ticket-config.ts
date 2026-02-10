@@ -111,11 +111,18 @@ export const MESSAGE_SIGNALS = {
     description: '연장 (기존 세션 연장, 새 시작 아님)',
   },
 
-  // 지명수수 신호 (시작으로 잡으면 안 됨)
+  // 지명순번삭제 신호 (시작으로 잡으면 안 됨)
   DESIGNATED_FEE: {
     code: 'ㅈㅁㅅㅅ',
     type: 'designated_fee',
-    description: '지명수수 (트리거 무시)',
+    description: '지명순번삭제 (트리거 무시)',
+  },
+
+  // 지명반순번삭제 신호 (시작으로 잡으면 안 됨)
+  DESIGNATED_HALF_FEE: {
+    code: 'ㅈㅁㅂㅅㅅ',
+    type: 'designated_half_fee',
+    description: '지명반순번삭제 (트리거 무시)',
   },
 } as const;
 
