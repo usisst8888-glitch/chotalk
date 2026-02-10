@@ -1966,27 +1966,27 @@ export default function DashboardPage() {
             <p className="text-neutral-500 text-center py-8">대기 중인 연장 요청이 없습니다.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-neutral-800">
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-400">신청일</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-400">회원명</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-400">입금자명</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">인원수</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-neutral-400">금액</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">승인</th>
+              <table className="w-full min-w-[640px]">
+                <thead className="bg-neutral-800/50">
+                  <tr>
+                    <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">신청일</th>
+                    <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">회원명</th>
+                    <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">입금자명</th>
+                    <th className="w-[80px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">인원수</th>
+                    <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">금액</th>
+                    <th className="w-[80px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">승인</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-neutral-800">
                   {extensionRequests.map((req) => (
-                    <tr key={req.id} className="border-b border-neutral-800/50 hover:bg-neutral-800/30">
-                      <td className="px-4 py-3 text-neutral-400 text-sm">
+                    <tr key={req.id} className="hover:bg-neutral-800/30">
+                      <td className="px-4 py-3 text-center text-neutral-400 text-sm">
                         {new Date(req.created_at).toLocaleDateString('ko-KR')}
                       </td>
-                      <td className="px-4 py-3 text-white">{req.username}</td>
-                      <td className="px-4 py-3 text-yellow-400 font-medium">{req.depositor_name}</td>
+                      <td className="px-4 py-3 text-center text-white">{req.username}</td>
+                      <td className="px-4 py-3 text-center text-yellow-400 font-medium">{req.depositor_name}</td>
                       <td className="px-4 py-3 text-center text-neutral-300">{req.slot_count}명</td>
-                      <td className="px-4 py-3 text-right text-neutral-300">{req.total_amount.toLocaleString()}원</td>
+                      <td className="px-4 py-3 text-center text-neutral-300">{req.total_amount.toLocaleString()}원</td>
                       <td className="px-4 py-3 text-center">
                         <button
                           onClick={() => handleApproveExtension(req.id)}
