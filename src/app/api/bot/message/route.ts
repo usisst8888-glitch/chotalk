@@ -1091,6 +1091,11 @@ async function updateStatusBoard(
         }
         return;
       }
+      // 종료 요청인데 세션이 없으면 무시 (start가 아닌 end가 먼저 온 경우)
+      if (!data.isInProgress) {
+        console.log('Warning: 종료 요청인데 진행 중인 세션 없음 (duration 없음) - INSERT 무시');
+        return;
+      }
       console.log('Inserting new status_board record...');
       const { error: insertError } = await supabase
         .from('status_board')
