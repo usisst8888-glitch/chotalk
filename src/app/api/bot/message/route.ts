@@ -523,7 +523,7 @@ export async function POST(request: NextRequest) {
             results.push({ type: 'ignored', slotId: slot.id, girlName: slot.girl_name, reason: 'ㅈㅈ 시간패턴 없음', logId: log?.id });
           }
 
-        } else if (lineParsed.roomNumber && !lineSignals.isExtension && !lineSignals.isDesignatedFee && !lineSignals.isDesignatedHalfFee && !lineSignals.isCorrection) {
+        } else if (lineParsed.roomNumber && !lineSignals.isEnd && !lineSignals.isExtension && !lineSignals.isDesignatedFee && !lineSignals.isDesignatedHalfFee && !lineSignals.isCorrection) {
           const result = await handleSessionStart(
             supabase, slot, lineParsed, lineSignals, messageReceivedAt, log?.id
           );
