@@ -56,7 +56,7 @@ export default function DashboardPage() {
   const [purchaseForm, setPurchaseForm] = useState({ depositorName: '', slotCount: 1 });
   const [purchaseSubmitting, setPurchaseSubmitting] = useState(false);
   const [extendForm, setExtendForm] = useState({ depositorName: '' });
-  const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes'>('slots');
+  const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions'>('slots');
   // 관리자용 회원관리
   const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; role: string; slot_count: number; created_at: string }>>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -71,6 +71,9 @@ export default function DashboardPage() {
   const [editingSlotKakaoId, setEditingSlotKakaoId] = useState<string | null>(null);
   const [editingKakaoIdDescription, setEditingKakaoIdDescription] = useState<string | null>(null);
   const [editDescriptionValue, setEditDescriptionValue] = useState('');
+  // 관리자용 연장 요청 관리
+  const [extensionRequests, setExtensionRequests] = useState<Array<{ id: string; username: string; depositor_name: string; slot_count: number; total_amount: number; created_at: string }>>([]);
+  const [extensionsLoading, setExtensionsLoading] = useState(false);
   // 관리자용 가게 관리 (이벤트 시간 + 주소)
   const [eventTimes, setEventTimes] = useState<Array<{ id: string; shop_name: string; start_time: string; end_time: string; is_active: boolean; address: string | null }>>([]);
   const [eventTimesLoading, setEventTimesLoading] = useState(false);
@@ -252,6 +255,43 @@ export default function DashboardPage() {
       console.error('Failed to fetch event times:', error);
     } finally {
       setEventTimesLoading(false);
+    }
+  };
+
+  // 관리자용: 연장 요청 목록 조회
+  const fetchExtensionRequests = async () => {
+    setExtensionsLoading(true);
+    try {
+      const res = await fetch('/api/admin/extensions');
+      if (res.ok) {
+        const data = await res.json();
+        setExtensionRequests(data.requests || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch extension requests:', error);
+    } finally {
+      setExtensionsLoading(false);
+    }
+  };
+
+  // 관리자용: 연장 요청 승인
+  const handleApproveExtension = async (requestId: string) => {
+    if (!confirm('이 연장 요청을 승인하시겠습니까?')) return;
+    try {
+      const res = await fetch('/api/admin/extensions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId }),
+      });
+      if (res.ok) {
+        alert('연장이 승인되었습니다.');
+        fetchExtensionRequests();
+      } else {
+        const data = await res.json();
+        alert(data.error || '승인 실패');
+      }
+    } catch {
+      alert('승인 중 오류가 발생했습니다.');
     }
   };
 
@@ -579,6 +619,39 @@ export default function DashboardPage() {
     }
   };
 
+  const handleExtensionRequest = async (slotIds: string[]) => {
+    if (!extendForm.depositorName.trim()) {
+      alert('입금자명을 입력해주세요.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/slot-extensions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          depositorName: extendForm.depositorName,
+          slotIds,
+        }),
+      });
+
+      if (res.ok) {
+        alert('연장 신청이 접수되었습니다. 입금 확인 후 연장됩니다.');
+        setShowExtendModal(false);
+        setShowExtendAllModal(false);
+        setExtendForm({ depositorName: '' });
+      } else {
+        const data = await res.json();
+        alert(data.error || '연장 신청 중 오류가 발생했습니다.');
+      }
+    } catch {
+      alert('연장 신청 중 오류가 발생했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // 빈 슬롯 배열 생성 (사용가능한 슬롯 수만큼)
   const emptySlots = Array.from({ length: slotCount - usedSlots }, (_, i) => i);
 
@@ -669,6 +742,19 @@ export default function DashboardPage() {
                   }`}
                 >
                   가게 관리
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('extensions');
+                    fetchExtensionRequests();
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    activeTab === 'extensions'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
+                  }`}
+                >
+                  연장 요청
                 </button>
               </>
             )}
@@ -1839,6 +1925,54 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* 연장 요청 탭 (관리자 전용) */}
+      {activeTab === 'extensions' && user?.role === 'admin' && (
+        <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
+          <h2 className="text-xl font-bold text-white mb-6">연장 요청</h2>
+          {extensionsLoading ? (
+            <p className="text-neutral-500 text-center py-8">로딩 중...</p>
+          ) : extensionRequests.length === 0 ? (
+            <p className="text-neutral-500 text-center py-8">대기 중인 연장 요청이 없습니다.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-neutral-800">
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-400">신청일</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-400">회원명</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-400">입금자명</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">인원수</th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold text-neutral-400">금액</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">승인</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {extensionRequests.map((req) => (
+                    <tr key={req.id} className="border-b border-neutral-800/50 hover:bg-neutral-800/30">
+                      <td className="px-4 py-3 text-neutral-400 text-sm">
+                        {new Date(req.created_at).toLocaleDateString('ko-KR')}
+                      </td>
+                      <td className="px-4 py-3 text-white">{req.username}</td>
+                      <td className="px-4 py-3 text-yellow-400 font-medium">{req.depositor_name}</td>
+                      <td className="px-4 py-3 text-center text-neutral-300">{req.slot_count}명</td>
+                      <td className="px-4 py-3 text-right text-neutral-300">{req.total_amount.toLocaleString()}원</td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => handleApproveExtension(req.id)}
+                          className="px-4 py-1.5 bg-green-600 hover:bg-green-500 text-white text-sm font-medium rounded-lg transition"
+                        >
+                          승인
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 연장 모달 (계좌번호 안내) */}
       {showExtendModal && selectedSlot && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
@@ -1913,15 +2047,24 @@ export default function DashboardPage() {
               />
             </div>
 
-            <button
-              onClick={() => {
-                setShowExtendModal(false);
-                setExtendForm({ depositorName: '' });
-              }}
-              className="w-full py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
-            >
-              닫기
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleExtensionRequest([selectedSlot.id])}
+                disabled={submitting}
+                className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white font-semibold rounded-xl transition"
+              >
+                {submitting ? '처리 중...' : '연장 신청'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowExtendModal(false);
+                  setExtendForm({ depositorName: '' });
+                }}
+                className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
+              >
+                닫기
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -2108,15 +2251,24 @@ export default function DashboardPage() {
               />
             </div>
 
-            <button
-              onClick={() => {
-                setShowExtendAllModal(false);
-                setExtendForm({ depositorName: '' });
-              }}
-              className="w-full py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
-            >
-              닫기
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleExtensionRequest(slots.map(s => s.id))}
+                disabled={submitting}
+                className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white font-semibold rounded-xl transition"
+              >
+                {submitting ? '처리 중...' : '연장 신청'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowExtendAllModal(false);
+                  setExtendForm({ depositorName: '' });
+                }}
+                className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
+              >
+                닫기
+              </button>
+            </div>
           </div>
         </div>
       )}
