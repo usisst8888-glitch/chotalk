@@ -396,10 +396,21 @@ export function parseGirlSignals(
   }
 
   // ㄲ (종료) 신호 확인
-  if (hasSignal(girlSection, MESSAGE_SIGNALS.END.code)) {
+  const hasEndInSection = hasSignal(girlSection, MESSAGE_SIGNALS.END.code);
+  const hasEndInMessage = hasSignal(message, MESSAGE_SIGNALS.END.code);
+
+  if (hasEndInSection) {
     result.isEnd = true;
     // 이용시간 추출 (아가씨 이름 뒤에서만! 방번호 혼동 방지)
     const match = afterSection.match(/(\d+(?:\.\d+)?)[^\d]*ㄲ/);
+    if (match) {
+      result.usageDuration = parseFloat(match[1]);
+    }
+  } else if (hasEndInMessage) {
+    // ㄲ이 메시지 전체에 있지만 이 아가씨 구간에는 없는 경우
+    // → 이 아가씨도 종료, 이름 뒤의 숫자가 개별 이용시간
+    result.isEnd = true;
+    const match = afterSection.match(/(\d+(?:\.\d+)?)/);
     if (match) {
       result.usageDuration = parseFloat(match[1]);
     }
