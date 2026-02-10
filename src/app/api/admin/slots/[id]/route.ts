@@ -27,6 +27,37 @@ async function checkAdmin(request: NextRequest) {
   return user;
 }
 
+// 관리자용 슬롯 삭제 (연관 데이터 전부 삭제)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const admin = await checkAdmin(request);
+    if (!admin) {
+      return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const supabase = getSupabase();
+
+    // CASCADE 안 되는 테이블 수동 삭제
+    await supabase.from('status_board_history').delete().eq('slot_id', id);
+    await supabase.from('send_queue').delete().eq('slot_id', id);
+
+    // slots 삭제 (status_board, message_logs는 ON DELETE CASCADE)
+    const { error } = await supabase.from('slots').delete().eq('id', id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: '슬롯이 삭제되었습니다.' });
+  } catch {
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
+  }
+}
+
 // 관리자용 슬롯 수정 (카카오 ID 변경 등)
 export async function PATCH(
   request: NextRequest,

@@ -314,6 +314,25 @@ export default function DashboardPage() {
     }
   };
 
+  // 관리자용: 슬롯 삭제
+  const handleAdminDeleteSlot = async (slotId: string) => {
+    if (!confirm('정말 이 슬롯을 삭제하시겠습니까?\n연관된 모든 데이터(상황판, 메시지 로그 등)가 함께 삭제됩니다.')) return;
+    try {
+      const res = await fetch(`/api/admin/slots/${slotId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        alert('슬롯이 삭제되었습니다.');
+        fetchAllSlots();
+      } else {
+        const data = await res.json();
+        alert(data.error || '삭제 실패');
+      }
+    } catch {
+      alert('삭제 중 오류가 발생했습니다.');
+    }
+  };
+
   // 관리자용: 슬롯의 카카오 ID 변경
   const handleChangeSlotKakaoId = async (slotId: string, newKakaoId: string) => {
     try {
@@ -938,6 +957,12 @@ export default function DashboardPage() {
                           >
                             상황판
                           </button>
+                          <button
+                            onClick={() => handleAdminDeleteSlot(slot.id)}
+                            className="px-3 py-1.5 text-sm bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg font-medium transition"
+                          >
+                            삭제
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1218,6 +1243,12 @@ export default function DashboardPage() {
                       className="flex-1 py-2 text-sm bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg font-medium transition"
                     >
                       상황판
+                    </button>
+                    <button
+                      onClick={() => handleAdminDeleteSlot(slot.id)}
+                      className="flex-1 py-2 text-sm bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg font-medium transition"
+                    >
+                      삭제
                     </button>
                   </div>
                 </div>
