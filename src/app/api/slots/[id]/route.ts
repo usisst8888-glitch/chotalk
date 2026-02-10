@@ -102,6 +102,47 @@ export async function PATCH(
 
     // 활성화/비활성화 토글
     if (typeof body.isActive === 'boolean') {
+      // 비활성화 시 status_board 레코드를 히스토리로 이동
+      if (!body.isActive) {
+        const { data: records } = await supabase
+          .from('status_board')
+          .select('*')
+          .eq('slot_id', id);
+
+        if (records && records.length > 0) {
+          await supabase.from('status_board_history').insert(
+            records.map((r: Record<string, unknown>) => ({
+              original_id: r.id,
+              slot_id: r.slot_id,
+              user_id: r.user_id,
+              shop_name: r.shop_name,
+              room_number: r.room_number,
+              girl_name: r.girl_name,
+              is_in_progress: r.is_in_progress,
+              start_time: r.start_time,
+              end_time: r.end_time,
+              source_log_id: r.source_log_id,
+              created_at: r.created_at,
+              updated_at: r.updated_at,
+              usage_duration: r.usage_duration,
+              kakao_id: r.kakao_id,
+              target_room: r.target_room,
+              trigger_type: r.trigger_type,
+              start_sent_at: r.start_sent_at,
+              hourly_count: r.hourly_count,
+              end_sent_at: r.end_sent_at,
+              is_designated: r.is_designated,
+              event_count: r.event_count,
+              last_hourly_sent_at: r.last_hourly_sent_at,
+              canceled_sent_at: r.canceled_sent_at,
+              data_changed: r.data_changed,
+            }))
+          );
+
+          await supabase.from('status_board').delete().eq('slot_id', id);
+        }
+      }
+
       let updateQ = supabase.from('slots').update({ is_active: body.isActive }).eq('id', id);
       if (!isAdmin) updateQ = updateQ.eq('user_id', payload.userId);
       const { data: updatedSlot, error } = await updateQ.select().single();
