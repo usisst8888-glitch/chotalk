@@ -42,73 +42,62 @@ export async function processDesignatedSection(
     return result;
   }
 
-  // 새 메시지에서 파싱된 아가씨 이름 목록
-  const newGirlNames = entries.map(e => e.girlName);
+  // 슬롯 매칭된 이름만 추출 (중복 포함)
+  const newGirlNames: string[] = [];
+  for (const entry of entries) {
+    const matchedSlot = slots.find(s => s.girl_name === entry.girlName);
+    if (matchedSlot && new Date((matchedSlot as any).expires_at) >= new Date()) {
+      newGirlNames.push(entry.girlName);
+    } else {
+      result.skipped++;
+    }
+  }
 
-  // 기존 레코드 중 새 메시지에 없는 이름 → history로 이동
+  // 기존 DB 상태 가져오기
   const { data: currentNotices } = await supabase
     .from('designated_notices')
     .select('*');
 
+  const currentGirlNames = (currentNotices || []).map((n: any) => n.girl_name).sort();
+  const newGirlNamesSorted = [...newGirlNames].sort();
+
+  // 상태가 동일하면 skip (반복 메시지 dedup)
+  if (JSON.stringify(currentGirlNames) === JSON.stringify(newGirlNamesSorted)) {
+    console.log('ㅈ.ㅁ dedup: same state, skipping');
+    result.deduped = newGirlNames.length;
+    return result;
+  }
+
+  // 상태가 다르면 전체 갱신: 기존 → history 이동
   if (currentNotices && currentNotices.length > 0) {
     for (const notice of currentNotices) {
-      if (!newGirlNames.includes(notice.girl_name)) {
-        // history로 이동
-        const { error: historyError } = await supabase
-          .from('designated_notices_history')
-          .insert({
-            original_id: notice.id,
-            slot_id: notice.slot_id,
-            user_id: notice.user_id,
-            shop_name: notice.shop_name,
-            girl_name: notice.girl_name,
-            kakao_id: notice.kakao_id,
-            target_room: notice.target_room,
-            source_log_id: notice.source_log_id,
-            sent_at: notice.sent_at,
-            send_success: notice.send_success,
-            created_at: notice.created_at,
-          });
+      const { error: historyError } = await supabase
+        .from('designated_notices_history')
+        .insert({
+          original_id: notice.id,
+          slot_id: notice.slot_id,
+          user_id: notice.user_id,
+          shop_name: notice.shop_name,
+          girl_name: notice.girl_name,
+          kakao_id: notice.kakao_id,
+          target_room: notice.target_room,
+          source_log_id: notice.source_log_id,
+          sent_at: notice.sent_at,
+          send_success: notice.send_success,
+          created_at: notice.created_at,
+        });
 
-        if (!historyError) {
-          await supabase.from('designated_notices').delete().eq('id', notice.id);
-          console.log(`ㅈ.ㅁ removed: "${notice.girl_name}" → history`);
-          result.removed++;
-        } else {
-          console.error(`ㅈ.ㅁ history error for "${notice.girl_name}":`, historyError);
-        }
+      if (!historyError) {
+        await supabase.from('designated_notices').delete().eq('id', notice.id);
+        console.log(`ㅈ.ㅁ removed: "${notice.girl_name}" → history`);
+        result.removed++;
       }
     }
   }
 
-  for (const entry of entries) {
-    // 슬롯 매칭 (점 제거된 이름으로 비교)
-    const matchedSlot = slots.find(s => s.girl_name === entry.girlName);
-    if (!matchedSlot) {
-      console.log(`ㅈ.ㅁ skip: "${entry.girlName}" not found in slots`);
-      result.skipped++;
-      continue;
-    }
-
-    // 만료 체크
-    if (new Date((matchedSlot as any).expires_at) < new Date()) {
-      console.log(`ㅈ.ㅁ skip: "${entry.girlName}" slot expired`);
-      result.skipped++;
-      continue;
-    }
-
-    // 중복 방지: 같은 slot_id로 레코드가 이미 있으면 skip (발송 여부 무관)
-    const { data: existing } = await supabase
-      .from('designated_notices')
-      .select('id')
-      .eq('slot_id', matchedSlot.id)
-      .limit(1);
-
-    if (existing && existing.length > 0) {
-      console.log(`ㅈ.ㅁ dedup: "${entry.girlName}" already exists`);
-      result.deduped++;
-      continue;
-    }
+  // 새 엔트리 전부 INSERT (중복 이름도 각각 별도 세션)
+  for (const girlName of newGirlNames) {
+    const matchedSlot = slots.find(s => s.girl_name === girlName)!;
 
     // message_logs에 원본 메시지 저장
     const { data: log, error: logError } = await supabase
@@ -125,10 +114,9 @@ export async function processDesignatedSection(
       .single();
 
     if (logError) {
-      console.error(`ㅈ.ㅁ message_logs error for "${entry.girlName}":`, logError);
+      console.error(`ㅈ.ㅁ message_logs error for "${girlName}":`, logError);
     }
 
-    // designated_notices에 저장
     const { error: insertError } = await supabase
       .from('designated_notices')
       .insert({
@@ -142,9 +130,9 @@ export async function processDesignatedSection(
       });
 
     if (insertError) {
-      console.error(`ㅈ.ㅁ insert error for "${entry.girlName}":`, insertError);
+      console.error(`ㅈ.ㅁ insert error for "${girlName}":`, insertError);
     } else {
-      console.log(`ㅈ.ㅁ saved: "${entry.girlName}"`);;
+      console.log(`ㅈ.ㅁ saved: "${girlName}"`);
       result.processed++;
     }
   }

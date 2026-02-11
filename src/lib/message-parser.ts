@@ -494,7 +494,6 @@ export function parseDesignatedSection(message: string): DesignatedNoticeEntry[]
   }
 
   const results: DesignatedNoticeEntry[] = [];
-  const seen = new Set<string>();
 
   // 구분선 이후 줄들을 순회
   for (let i = dividerIndex + 1; i < lines.length; i++) {
@@ -510,12 +509,10 @@ export function parseDesignatedSection(message: string): DesignatedNoticeEntry[]
     if (!rightRaw) continue;
 
     // 공백으로 분리하여 각 토큰 처리 (예: "검지 예서 403" → ["검지", "예서"])
+    // 같은 이름이 여러 줄에 나오면 각각 별도 세션
     const tokens = rightRaw.split(/\s+/).filter(t => t && !/^\d+$/.test(t));
     for (const girlName of tokens) {
-      if (!seen.has(girlName)) {
-        seen.add(girlName);
-        results.push({ girlName });
-      }
+      results.push({ girlName });
     }
   }
 
