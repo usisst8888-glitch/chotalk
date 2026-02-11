@@ -504,15 +504,15 @@ export function parseDesignatedSection(message: string): DesignatedNoticeEntry[]
     const parts = line.split('ㅡ');
     if (parts.length < 2) continue;
 
-    // 오른쪽: 점 제거 후 아가씨 이름만 추출 (숫자는 룸번호이므로 제거)
+    // 오른쪽: 점 제거 후 공백으로 분리 → 각각이 아가씨 이름 (숫자는 룸번호이므로 제외)
     const rightRaw = parts.slice(1).join('ㅡ').replace(/\./g, '').trim();
     if (!rightRaw) continue;
 
-    // 숫자(룸번호) 제거하고 이름만 추출
-    const girlName = rightRaw.replace(/\s*\d+$/, '').trim();
-    if (!girlName) continue;
-
-    results.push({ girlName });
+    // 공백으로 분리하여 각 토큰 처리 (예: "검지 예서 403" → ["검지", "예서"])
+    const tokens = rightRaw.split(/\s+/).filter(t => t && !/^\d+$/.test(t));
+    for (const girlName of tokens) {
+      results.push({ girlName });
+    }
   }
 
   return results;
