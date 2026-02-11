@@ -393,9 +393,26 @@ export async function POST(request: NextRequest) {
 
     console.log('Active slots found:', slots.length, 'names:', slots.map(s => s.girl_name));
 
-    // ㅈ.ㅁ(지명) 섹션 감지 → 별도 핸들러로 처리
+    // ㅈ.ㅁ(지명) 섹션 감지 → message_logs 무조건 저장 후 별도 핸들러 처리
     if (message.includes('ㅈ.ㅁ')) {
-      await processDesignatedSection(room, sender, message, messageReceivedAt);
+      // message_logs 무조건 저장 (첫 번째 활성 슬롯 기준)
+      const { data: designatedLog } = await supabase
+        .from('message_logs')
+        .insert({
+          slot_id: slots[0].id,
+          user_id: slots[0].user_id,
+          source_room: room,
+          sender_name: sender,
+          message: message,
+          received_at: messageReceivedAt,
+        })
+        .select()
+        .single();
+
+      console.log('ㅈ.ㅁ message_logs saved:', designatedLog?.id);
+
+      // designated_notices 증분 업데이트
+      await processDesignatedSection(message, designatedLog?.id || null);
     }
 
     // 메시지 파싱

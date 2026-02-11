@@ -14,15 +14,13 @@ function getKoreanTime(): string {
 }
 
 /**
- * ㅈ.ㅁ 섹션 처리 핵심 로직
- * route.ts에서도 import하여 사용
+ * ㅈ.ㅁ 섹션 처리 핵심 로직 (designated_notices 증분 업데이트만 담당)
+ * message_logs 저장은 호출측(route.ts)에서 무조건 먼저 수행
  */
 export async function processDesignatedSection(
-  room: string,
-  sender: string,
   message: string,
-  receivedAt: string
-): Promise<{ processed: number; skipped: number; deduped: number }> {
+  sourceLogId: string | null
+): Promise<{ processed: number; skipped: number; deduped: number; removed: number }> {
   const supabase = getSupabase();
   const result = { processed: 0, skipped: 0, deduped: 0, removed: 0 };
 
@@ -34,7 +32,7 @@ export async function processDesignatedSection(
   // 활성 슬롯 가져오기
   const { data: slots, error: slotsError } = await supabase
     .from('slots')
-    .select('id, user_id, girl_name, target_room, kakao_id, shop_name')
+    .select('id, user_id, girl_name, target_room, kakao_id, shop_name, expires_at')
     .eq('is_active', true);
 
   if (slotsError || !slots) {
@@ -54,29 +52,6 @@ export async function processDesignatedSection(
   }
 
   if (newGirlNames.length === 0) return result;
-
-  // message_logs에 원본 메시지 저장 (매번, 첫 번째 매칭 슬롯 기준)
-  const firstSlot = slots.find(s => s.girl_name === newGirlNames[0])!;
-  const { data: log, error: logError } = await supabase
-    .from('message_logs')
-    .insert({
-      slot_id: firstSlot.id,
-      user_id: firstSlot.user_id,
-      source_room: room,
-      sender_name: sender,
-      message: message,
-      received_at: receivedAt,
-    })
-    .select()
-    .single();
-
-  if (logError) {
-    console.error('ㅈ.ㅁ message_logs error:', logError);
-  } else {
-    console.log('ㅈ.ㅁ message_logs saved:', log?.id);
-  }
-
-  const sourceLogId = log?.id || null;
 
   // 기존 DB 레코드 가져오기
   const { data: currentNotices } = await supabase
@@ -204,8 +179,36 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    const supabase = getSupabase();
     const messageReceivedAt = receivedAt || getKoreanTime();
-    const result = await processDesignatedSection(room, sender, message, messageReceivedAt);
+
+    // message_logs 무조건 저장 (첫 번째 활성 슬롯 기준)
+    const { data: slots } = await supabase
+      .from('slots')
+      .select('id, user_id')
+      .eq('is_active', true)
+      .limit(1)
+      .single();
+
+    let sourceLogId: string | null = null;
+    if (slots) {
+      const { data: log } = await supabase
+        .from('message_logs')
+        .insert({
+          slot_id: slots.id,
+          user_id: slots.user_id,
+          source_room: room,
+          sender_name: sender,
+          message: message,
+          received_at: messageReceivedAt,
+        })
+        .select()
+        .single();
+      sourceLogId = log?.id || null;
+      console.log('ㅈ.ㅁ (direct) message_logs saved:', sourceLogId);
+    }
+
+    const result = await processDesignatedSection(message, sourceLogId);
 
     return NextResponse.json({
       success: true,
