@@ -494,24 +494,28 @@ export function parseDesignatedSection(message: string): DesignatedNoticeEntry[]
   }
 
   const results: DesignatedNoticeEntry[] = [];
+  const seen = new Set<string>();
 
   // 구분선 이후 줄들을 순회
   for (let i = dividerIndex + 1; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
 
-    // ㅡ (U+3161) 로 분리
-    const parts = line.split('ㅡ');
+    // ㅡ (U+3161) 또는 - (하이픈) 로 분리
+    const parts = line.split(/[ㅡ\-]/);
     if (parts.length < 2) continue;
 
     // 오른쪽: 점 제거 후 공백으로 분리 → 각각이 아가씨 이름 (숫자는 룸번호이므로 제외)
-    const rightRaw = parts.slice(1).join('ㅡ').replace(/\./g, '').trim();
+    const rightRaw = parts.slice(1).join('').replace(/\./g, '').trim();
     if (!rightRaw) continue;
 
     // 공백으로 분리하여 각 토큰 처리 (예: "검지 예서 403" → ["검지", "예서"])
     const tokens = rightRaw.split(/\s+/).filter(t => t && !/^\d+$/.test(t));
     for (const girlName of tokens) {
-      results.push({ girlName });
+      if (!seen.has(girlName)) {
+        seen.add(girlName);
+        results.push({ girlName });
+      }
     }
   }
 
