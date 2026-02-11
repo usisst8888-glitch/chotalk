@@ -14,16 +14,51 @@ function getKoreanTime(): string {
 }
 
 /**
- * ㅈ.ㅁ 섹션 처리 핵심 로직 (designated_notices 증분 업데이트만 담당)
- * message_logs 저장은 호출측(route.ts)에서 무조건 먼저 수행
+ * ㅈ.ㅁ 섹션 처리 핵심 로직
+ * 1) message_logs 무조건 저장 (맨 처음, 파싱/분석 전에)
+ * 2) designated_notices 증분 업데이트
  */
 export async function processDesignatedSection(
+  room: string,
+  sender: string,
   message: string,
-  sourceLogId: string | null
+  receivedAt: string
 ): Promise<{ processed: number; skipped: number; deduped: number; removed: number }> {
   const supabase = getSupabase();
   const result = { processed: 0, skipped: 0, deduped: 0, removed: 0 };
 
+  // ★ message_logs 무조건 저장 (파싱/슬롯매칭 전에 먼저!)
+  const { data: anySlot } = await supabase
+    .from('slots')
+    .select('id, user_id')
+    .eq('is_active', true)
+    .limit(1)
+    .single();
+
+  let sourceLogId: string | null = null;
+  if (anySlot) {
+    const { data: log, error: logError } = await supabase
+      .from('message_logs')
+      .insert({
+        slot_id: anySlot.id,
+        user_id: anySlot.user_id,
+        source_room: room || null,
+        sender_name: sender || null,
+        message: message,
+        received_at: receivedAt || null,
+      })
+      .select()
+      .single();
+
+    if (logError) {
+      console.error('ㅈ.ㅁ message_logs error:', logError);
+    } else {
+      sourceLogId = log?.id || null;
+      console.log('ㅈ.ㅁ message_logs saved:', sourceLogId);
+    }
+  }
+
+  // 파싱
   const entries = parseDesignatedSection(message);
   if (entries.length === 0) return result;
 
@@ -179,36 +214,8 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const supabase = getSupabase();
     const messageReceivedAt = receivedAt || getKoreanTime();
-
-    // message_logs 무조건 저장 (첫 번째 활성 슬롯 기준)
-    const { data: slots } = await supabase
-      .from('slots')
-      .select('id, user_id')
-      .eq('is_active', true)
-      .limit(1)
-      .single();
-
-    let sourceLogId: string | null = null;
-    if (slots) {
-      const { data: log } = await supabase
-        .from('message_logs')
-        .insert({
-          slot_id: slots.id,
-          user_id: slots.user_id,
-          source_room: room,
-          sender_name: sender,
-          message: message,
-          received_at: messageReceivedAt,
-        })
-        .select()
-        .single();
-      sourceLogId = log?.id || null;
-      console.log('ㅈ.ㅁ (direct) message_logs saved:', sourceLogId);
-    }
-
-    const result = await processDesignatedSection(message, sourceLogId);
+    const result = await processDesignatedSection(room, sender, message, messageReceivedAt);
 
     return NextResponse.json({
       success: true,
