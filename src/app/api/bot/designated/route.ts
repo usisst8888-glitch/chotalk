@@ -53,87 +53,131 @@ export async function processDesignatedSection(
     }
   }
 
-  // 기존 DB 상태 가져오기
+  // 기존 DB 레코드 가져오기
   const { data: currentNotices } = await supabase
     .from('designated_notices')
     .select('*');
 
-  const currentGirlNames = (currentNotices || []).map((n: any) => n.girl_name).sort();
-  const newGirlNamesSorted = [...newGirlNames].sort();
+  const currentRecords = currentNotices || [];
 
-  // 상태가 동일하면 skip (반복 메시지 dedup)
-  if (JSON.stringify(currentGirlNames) === JSON.stringify(newGirlNamesSorted)) {
-    console.log('ㅈ.ㅁ dedup: same state, skipping');
-    result.deduped = newGirlNames.length;
-    return result;
+  // 이름별 카운트: 새 메시지 vs DB
+  const newCount = new Map<string, number>();
+  for (const name of newGirlNames) {
+    newCount.set(name, (newCount.get(name) || 0) + 1);
   }
 
-  // 상태가 다르면 전체 갱신: 기존 → history 이동
-  if (currentNotices && currentNotices.length > 0) {
-    for (const notice of currentNotices) {
-      const { error: historyError } = await supabase
-        .from('designated_notices_history')
-        .insert({
-          original_id: notice.id,
-          slot_id: notice.slot_id,
-          user_id: notice.user_id,
-          shop_name: notice.shop_name,
-          girl_name: notice.girl_name,
-          kakao_id: notice.kakao_id,
-          target_room: notice.target_room,
-          source_log_id: notice.source_log_id,
-          sent_at: notice.sent_at,
-          send_success: notice.send_success,
-          created_at: notice.created_at,
-        });
+  const dbCount = new Map<string, number>();
+  const dbRecords = new Map<string, any[]>();
+  for (const notice of currentRecords) {
+    dbCount.set(notice.girl_name, (dbCount.get(notice.girl_name) || 0) + 1);
+    if (!dbRecords.has(notice.girl_name)) dbRecords.set(notice.girl_name, []);
+    dbRecords.get(notice.girl_name)!.push(notice);
+  }
 
-      if (!historyError) {
-        await supabase.from('designated_notices').delete().eq('id', notice.id);
-        console.log(`ㅈ.ㅁ removed: "${notice.girl_name}" → history`);
-        result.removed++;
+  // 1. DB에만 있고 새 메시지에 없는 이름 → 전부 history로 이동
+  for (const [name, records] of dbRecords) {
+    if (!newCount.has(name)) {
+      for (const notice of records) {
+        const { error: historyError } = await supabase
+          .from('designated_notices_history')
+          .insert({
+            original_id: notice.id,
+            slot_id: notice.slot_id,
+            user_id: notice.user_id,
+            shop_name: notice.shop_name,
+            girl_name: notice.girl_name,
+            kakao_id: notice.kakao_id,
+            target_room: notice.target_room,
+            source_log_id: notice.source_log_id,
+            sent_at: notice.sent_at,
+            send_success: notice.send_success,
+            created_at: notice.created_at,
+          });
+        if (!historyError) {
+          await supabase.from('designated_notices').delete().eq('id', notice.id);
+          console.log(`ㅈ.ㅁ removed: "${name}" → history`);
+          result.removed++;
+        }
       }
     }
   }
 
-  // 새 엔트리 전부 INSERT (중복 이름도 각각 별도 세션)
-  for (const girlName of newGirlNames) {
-    const matchedSlot = slots.find(s => s.girl_name === girlName)!;
-
-    // message_logs에 원본 메시지 저장
-    const { data: log, error: logError } = await supabase
-      .from('message_logs')
-      .insert({
-        slot_id: matchedSlot.id,
-        user_id: matchedSlot.user_id,
-        source_room: room,
-        sender_name: sender,
-        message: message,
-        received_at: receivedAt,
-      })
-      .select()
-      .single();
-
-    if (logError) {
-      console.error(`ㅈ.ㅁ message_logs error for "${girlName}":`, logError);
+  // 2. 양쪽 다 있지만 DB가 더 많으면 → 초과분 history로 이동
+  for (const [name, nc] of newCount) {
+    const dc = dbCount.get(name) || 0;
+    if (dc > nc) {
+      const records = dbRecords.get(name) || [];
+      const toRemove = records.slice(nc); // 앞에서 nc개는 유지, 나머지 제거
+      for (const notice of toRemove) {
+        const { error: historyError } = await supabase
+          .from('designated_notices_history')
+          .insert({
+            original_id: notice.id,
+            slot_id: notice.slot_id,
+            user_id: notice.user_id,
+            shop_name: notice.shop_name,
+            girl_name: notice.girl_name,
+            kakao_id: notice.kakao_id,
+            target_room: notice.target_room,
+            source_log_id: notice.source_log_id,
+            sent_at: notice.sent_at,
+            send_success: notice.send_success,
+            created_at: notice.created_at,
+          });
+        if (!historyError) {
+          await supabase.from('designated_notices').delete().eq('id', notice.id);
+          console.log(`ㅈ.ㅁ removed excess: "${name}" → history`);
+          result.removed++;
+        }
+      }
     }
+  }
 
-    const { error: insertError } = await supabase
-      .from('designated_notices')
-      .insert({
-        slot_id: matchedSlot.id,
-        user_id: matchedSlot.user_id,
-        shop_name: matchedSlot.shop_name,
-        girl_name: matchedSlot.girl_name,
-        kakao_id: matchedSlot.kakao_id,
-        target_room: matchedSlot.target_room,
-        source_log_id: log?.id || null,
-      });
+  // 3. 새 메시지에 더 많거나 새로 추가된 이름 → 부족분만 INSERT
+  for (const [name, nc] of newCount) {
+    const dc = dbCount.get(name) || 0;
+    const toAdd = nc - dc;
+    if (toAdd <= 0) continue;
 
-    if (insertError) {
-      console.error(`ㅈ.ㅁ insert error for "${girlName}":`, insertError);
-    } else {
-      console.log(`ㅈ.ㅁ saved: "${girlName}"`);
-      result.processed++;
+    const matchedSlot = slots.find(s => s.girl_name === name)!;
+
+    for (let i = 0; i < toAdd; i++) {
+      // message_logs에 원본 메시지 저장
+      const { data: log, error: logError } = await supabase
+        .from('message_logs')
+        .insert({
+          slot_id: matchedSlot.id,
+          user_id: matchedSlot.user_id,
+          source_room: room,
+          sender_name: sender,
+          message: message,
+          received_at: receivedAt,
+        })
+        .select()
+        .single();
+
+      if (logError) {
+        console.error(`ㅈ.ㅁ message_logs error for "${name}":`, logError);
+      }
+
+      const { error: insertError } = await supabase
+        .from('designated_notices')
+        .insert({
+          slot_id: matchedSlot.id,
+          user_id: matchedSlot.user_id,
+          shop_name: matchedSlot.shop_name,
+          girl_name: matchedSlot.girl_name,
+          kakao_id: matchedSlot.kakao_id,
+          target_room: matchedSlot.target_room,
+          source_log_id: log?.id || null,
+        });
+
+      if (insertError) {
+        console.error(`ㅈ.ㅁ insert error for "${name}":`, insertError);
+      } else {
+        console.log(`ㅈ.ㅁ saved: "${name}"`);
+        result.processed++;
+      }
     }
   }
 
