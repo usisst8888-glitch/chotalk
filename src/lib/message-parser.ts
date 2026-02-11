@@ -373,40 +373,40 @@ export function parseGirlSignals(
   }
   const beforeSection = message.substring(prevGirlEndIndex, girlIndex);
 
-  // 앞뒤 섹션 합쳐서 신호 감지 (이름 앞뒤에 붙거나 띄어쓰기로 구분된 경우 모두)
-  const girlSection = beforeSection + afterSection;
+  // 신호 감지는 afterSection(아가씨 이름 뒤~다음 아가씨 이름 전)만 사용
+  // beforeSection을 포함하면 앞 아가씨의 신호가 현재 아가씨에게 오염됨
+  // 예: "한채2ㅇㅈ 달래 1ㄲ" → beforeSection에 ㅇㅈ이 포함되어 달래의 ㄲ이 차단되는 버그
 
   // ㄱㅌ (취소) 신호 확인 - 가장 먼저 체크 (세션 삭제)
-  if (hasSignal(girlSection, MESSAGE_SIGNALS.CANCEL.code)) {
+  if (hasSignal(afterSection, MESSAGE_SIGNALS.CANCEL.code)) {
     result.isCancel = true;
     // 취소면 다른 신호는 무시
     return result;
   }
 
   // ㅎㅅㄱㅈㅈㅎ/현시간재진행 (새 세션) 신호 확인 - 가장 긴 패턴
-  if (hasSignalWithAliases(girlSection, MESSAGE_SIGNALS.NEW_SESSION)) {
+  if (hasSignalWithAliases(afterSection, MESSAGE_SIGNALS.NEW_SESSION)) {
     result.isNewSession = true;
     // 새 세션이면 다른 신호는 무시
     return result;
   }
 
   // ㅈㅈㅎ/재진행 (재개) 신호 확인 - ㅈㅈ보다 먼저 체크 (더 긴 패턴)
-  if (hasSignalWithAliases(girlSection, MESSAGE_SIGNALS.RESUME)) {
+  if (hasSignalWithAliases(afterSection, MESSAGE_SIGNALS.RESUME)) {
     result.isResume = true;
     // 재진행이면 ㅈㅈ은 무시
     return result;
   }
 
   // ㄲ (종료) 신호 확인
-  // - 구간 또는 메시지 전체에 ㄲ이 있으면 종료 후보
-  // - 단, ㅇㅈ(연장)/ㅈㅁㅅㅅ(지명수수) 신호가 구간에 있으면 종료가 아님
-  //   (미등록 아가씨가 뒤에 있으면 구간에 ㄲ과 ㅇㅈ이 동시에 포함될 수 있음)
+  // - 아가씨 구간 또는 메시지 전체에 ㄲ이 있으면 종료 후보
+  // - 단, ㅇㅈ(연장)/ㅈㅁㅅㅅ(지명순번삭제) 신호가 구간에 있으면 종료가 아님
   // - 이용시간은 항상 아가씨 이름 바로 뒤 첫 번째 숫자
-  const hasEndInSection = hasSignal(girlSection, MESSAGE_SIGNALS.END.code);
+  const hasEndInSection = hasSignal(afterSection, MESSAGE_SIGNALS.END.code);
   const hasEndInMessage = hasSignal(message, MESSAGE_SIGNALS.END.code);
-  const hasExtension = hasSignal(girlSection, MESSAGE_SIGNALS.EXTENSION.code);
-  const hasDesignatedFee = hasSignal(girlSection, MESSAGE_SIGNALS.DESIGNATED_FEE.code);
-  const hasDesignatedHalfFee = hasSignal(girlSection, MESSAGE_SIGNALS.DESIGNATED_HALF_FEE.code);
+  const hasExtension = hasSignal(afterSection, MESSAGE_SIGNALS.EXTENSION.code);
+  const hasDesignatedFee = hasSignal(afterSection, MESSAGE_SIGNALS.DESIGNATED_FEE.code);
+  const hasDesignatedHalfFee = hasSignal(afterSection, MESSAGE_SIGNALS.DESIGNATED_HALF_FEE.code);
 
   if ((hasEndInSection || hasEndInMessage) && !hasExtension && !hasDesignatedFee && !hasDesignatedHalfFee) {
     result.isEnd = true;
@@ -417,27 +417,27 @@ export function parseGirlSignals(
   }
 
   // ㅈㅈ (수정) 신호 확인
-  if (hasSignal(girlSection, MESSAGE_SIGNALS.CORRECTION.code)) {
+  if (hasSignal(afterSection, MESSAGE_SIGNALS.CORRECTION.code)) {
     result.isCorrection = true;
   }
 
   // ㅈㅁㅂㅅㅅ (지명반순번삭제) 신호 확인 - ㅈㅁㅅㅅ/ㅈㅁ보다 먼저 체크! (가장 긴 패턴)
-  if (hasSignal(girlSection, MESSAGE_SIGNALS.DESIGNATED_HALF_FEE.code)) {
+  if (hasSignal(afterSection, MESSAGE_SIGNALS.DESIGNATED_HALF_FEE.code)) {
     result.isDesignatedHalfFee = true;
   }
 
   // ㅈㅁㅅㅅ (지명순번삭제) 신호 확인 - ㅈㅁ보다 먼저 체크! (시작으로 잡으면 안 됨)
-  if (!result.isDesignatedHalfFee && hasSignal(girlSection, MESSAGE_SIGNALS.DESIGNATED_FEE.code)) {
+  if (!result.isDesignatedHalfFee && hasSignal(afterSection, MESSAGE_SIGNALS.DESIGNATED_FEE.code)) {
     result.isDesignatedFee = true;
   }
 
   // ㅈㅁ (지명) 신호 확인 - ㅈㅁㅅㅅ(순번삭제)/ㅈㅁㅂㅅㅅ(반순번삭제)가 아닐 때만
-  if (!result.isDesignatedFee && !result.isDesignatedHalfFee && hasSignal(girlSection, MESSAGE_SIGNALS.DESIGNATED.code)) {
+  if (!result.isDesignatedFee && !result.isDesignatedHalfFee && hasSignal(afterSection, MESSAGE_SIGNALS.DESIGNATED.code)) {
     result.isDesignated = true;
   }
 
   // ㅇㅈ (연장) 신호 확인 - 시작으로 잡으면 안 됨
-  if (hasSignal(girlSection, MESSAGE_SIGNALS.EXTENSION.code)) {
+  if (hasSignal(afterSection, MESSAGE_SIGNALS.EXTENSION.code)) {
     result.isExtension = true;
   }
 

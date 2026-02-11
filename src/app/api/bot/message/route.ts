@@ -447,6 +447,9 @@ export async function POST(request: NextRequest) {
       const lines = message.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0);
       const girlLines = lines.filter((line: string) => line.includes(slot.girl_name));
 
+      // 원본 메시지 첫 줄이 ㅈㅈ로 시작하면, 전체 메시지가 정정
+      const messageStartsWithCorrection = lines.length > 0 && lines[0].startsWith('ㅈㅈ');
+
       // 여러 줄이면 각 줄별로 처리, 한 줄이면 원본 메시지로 처리
       const messagesToProcess = girlLines.length > 1 ? girlLines : [message];
 
@@ -455,6 +458,12 @@ export async function POST(request: NextRequest) {
       for (const lineMsg of messagesToProcess) {
         const lineParsed = parseMessage(lineMsg, girlNames);
         const lineSignals = parseGirlSignals(lineMsg, slot.girl_name, girlNames);
+
+        // 원본 메시지 첫 줄이 ㅈㅈ로 시작했으면, ㄲ이 있는 아가씨에게만 정정 적용
+        // ㄲ이 없는 아가씨는 새 시작일 수 있으므로 정정을 적용하지 않음
+        if (messageStartsWithCorrection && lineSignals.isEnd) {
+          lineSignals.isCorrection = true;
+        }
 
         // 우선순위:
         // 0. ㄱㅌ(취소) → trigger_type을 'canceled'로 변경
