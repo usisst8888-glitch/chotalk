@@ -470,23 +470,22 @@ export function formatParsedMessage(parsed: ParsedMessage): string {
 
 export interface DesignatedNoticeEntry {
   girlName: string;         // 점 제거된 아가씨 이름 (유라)
-  roomNumber: string | null; // 점 제거된 룸번호 (403) 또는 null
 }
 
 /**
- * 게시판 메시지에서 ㅈㅁ 섹션을 파싱하여 지명된 아가씨 목록 반환
+ * 게시판 메시지에서 ㅈ.ㅁ 섹션을 파싱하여 지명된 아가씨 목록 반환
  *
  * 메시지 예시:
  * ➖➖➖➖ㅈ.ㅁ➖➖➖➖
  * 동.생 ㅡ 유.라
  * 하.유호 ㅡ 주.은 4.03
  *
- * → [{ girlName: "유라", roomNumber: null }, { girlName: "주은", roomNumber: "403" }]
+ * → [{ girlName: "유라" }, { girlName: "주은" }]
  */
 export function parseDesignatedSection(message: string): DesignatedNoticeEntry[] {
   const lines = message.split('\n');
 
-  // ➖ 와 ㅈ.ㅁ 또는 ㅈㅁ 를 포함하는 구분선 찾기
+  // ➖ 와 ㅈ.ㅁ 를 포함하는 구분선 찾기
   const dividerPattern = /➖+\s*ㅈ\.?ㅁ\s*➖+/;
   const dividerIndex = lines.findIndex(line => dividerPattern.test(line));
 
@@ -505,24 +504,15 @@ export function parseDesignatedSection(message: string): DesignatedNoticeEntry[]
     const parts = line.split('ㅡ');
     if (parts.length < 2) continue;
 
-    // 오른쪽: 아가씨 이름 + 선택적 룸번호
+    // 오른쪽: 점 제거 후 아가씨 이름만 추출 (숫자는 룸번호이므로 제거)
     const rightRaw = parts.slice(1).join('ㅡ').replace(/\./g, '').trim();
     if (!rightRaw) continue;
 
-    // 끝에 숫자가 있으면 룸번호로 분리
-    const match = rightRaw.match(/^(.+?)\s+(\d+)$/);
+    // 숫자(룸번호) 제거하고 이름만 추출
+    const girlName = rightRaw.replace(/\s*\d+$/, '').trim();
+    if (!girlName) continue;
 
-    if (match) {
-      results.push({
-        girlName: match[1].trim(),
-        roomNumber: match[2],
-      });
-    } else {
-      results.push({
-        girlName: rightRaw.trim(),
-        roomNumber: null,
-      });
-    }
+    results.push({ girlName });
   }
 
   return results;

@@ -98,7 +98,6 @@ export async function processDesignatedSection(
         user_id: matchedSlot.user_id,
         shop_name: matchedSlot.shop_name,
         girl_name: matchedSlot.girl_name,
-        room_number: entry.roomNumber,
         kakao_id: matchedSlot.kakao_id,
         target_room: matchedSlot.target_room,
         source_log_id: log?.id || null,
@@ -107,7 +106,7 @@ export async function processDesignatedSection(
     if (insertError) {
       console.error(`ㅈ.ㅁ insert error for "${entry.girlName}":`, insertError);
     } else {
-      console.log(`ㅈ.ㅁ saved: "${entry.girlName}" room=${entry.roomNumber || 'none'}`);
+      console.log(`ㅈ.ㅁ saved: "${entry.girlName}"`);;
       result.processed++;
     }
   }
