@@ -24,7 +24,7 @@ export async function processDesignatedSection(
   receivedAt: string
 ): Promise<{ processed: number; skipped: number; deduped: number }> {
   const supabase = getSupabase();
-  const result = { processed: 0, skipped: 0, deduped: 0 };
+  const result = { processed: 0, skipped: 0, deduped: 0, removed: 0 };
 
   const entries = parseDesignatedSection(message);
   if (entries.length === 0) return result;
@@ -40,6 +40,46 @@ export async function processDesignatedSection(
   if (slotsError || !slots) {
     console.error('ㅈ.ㅁ slots query error:', slotsError);
     return result;
+  }
+
+  // 새 메시지에서 파싱된 아가씨 이름 목록
+  const newGirlNames = entries.map(e => e.girlName);
+
+  // 기존 미발송 레코드 중 새 메시지에 없는 이름 → history로 이동
+  const { data: currentNotices } = await supabase
+    .from('designated_notices')
+    .select('*')
+    .is('sent_at', null);
+
+  if (currentNotices && currentNotices.length > 0) {
+    for (const notice of currentNotices) {
+      if (!newGirlNames.includes(notice.girl_name)) {
+        // history로 이동
+        const { error: historyError } = await supabase
+          .from('designated_notices_history')
+          .insert({
+            original_id: notice.id,
+            slot_id: notice.slot_id,
+            user_id: notice.user_id,
+            shop_name: notice.shop_name,
+            girl_name: notice.girl_name,
+            kakao_id: notice.kakao_id,
+            target_room: notice.target_room,
+            source_log_id: notice.source_log_id,
+            sent_at: notice.sent_at,
+            send_success: notice.send_success,
+            created_at: notice.created_at,
+          });
+
+        if (!historyError) {
+          await supabase.from('designated_notices').delete().eq('id', notice.id);
+          console.log(`ㅈ.ㅁ removed: "${notice.girl_name}" → history`);
+          result.removed++;
+        } else {
+          console.error(`ㅈ.ㅁ history error for "${notice.girl_name}":`, historyError);
+        }
+      }
+    }
   }
 
   for (const entry of entries) {
