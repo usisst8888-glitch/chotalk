@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
 import { parseMessage, parseGirlSignals, extractManualTime } from '@/lib/message-parser';
+import { processDesignatedSection } from '@/app/api/bot/designated/route';
 
 // ============================================================
 // 한국 시간 (KST) 헬퍼 함수
@@ -391,6 +392,11 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('Active slots found:', slots.length, 'names:', slots.map(s => s.girl_name));
+
+    // ㅈ.ㅁ(지명) 섹션 감지 → 별도 핸들러로 처리
+    if (message.includes('ㅈ.ㅁ')) {
+      await processDesignatedSection(room, sender, message, messageReceivedAt);
+    }
 
     // 메시지 파싱
     const girlNames = slots.map(slot => slot.girl_name);
@@ -1136,3 +1142,4 @@ async function updateStatusBoard(
     console.error('Status board update error:', error);
   }
 }
+

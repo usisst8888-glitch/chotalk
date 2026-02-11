@@ -463,3 +463,67 @@ export function formatParsedMessage(parsed: ParsedMessage): string {
 
   return parts.join(' | ');
 }
+
+// ============================================================
+// ㅈㅁ(지명) 섹션 파싱
+// ============================================================
+
+export interface DesignatedNoticeEntry {
+  girlName: string;         // 점 제거된 아가씨 이름 (유라)
+  roomNumber: string | null; // 점 제거된 룸번호 (403) 또는 null
+}
+
+/**
+ * 게시판 메시지에서 ㅈㅁ 섹션을 파싱하여 지명된 아가씨 목록 반환
+ *
+ * 메시지 예시:
+ * ➖➖➖➖ㅈ.ㅁ➖➖➖➖
+ * 동.생 ㅡ 유.라
+ * 하.유호 ㅡ 주.은 4.03
+ *
+ * → [{ girlName: "유라", roomNumber: null }, { girlName: "주은", roomNumber: "403" }]
+ */
+export function parseDesignatedSection(message: string): DesignatedNoticeEntry[] {
+  const lines = message.split('\n');
+
+  // ➖ 와 ㅈ.ㅁ 또는 ㅈㅁ 를 포함하는 구분선 찾기
+  const dividerPattern = /➖+\s*ㅈ\.?ㅁ\s*➖+/;
+  const dividerIndex = lines.findIndex(line => dividerPattern.test(line));
+
+  if (dividerIndex === -1) {
+    return [];
+  }
+
+  const results: DesignatedNoticeEntry[] = [];
+
+  // 구분선 이후 줄들을 순회
+  for (let i = dividerIndex + 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    // ㅡ (U+3161) 로 분리
+    const parts = line.split('ㅡ');
+    if (parts.length < 2) continue;
+
+    // 오른쪽: 아가씨 이름 + 선택적 룸번호
+    const rightRaw = parts.slice(1).join('ㅡ').replace(/\./g, '').trim();
+    if (!rightRaw) continue;
+
+    // 끝에 숫자가 있으면 룸번호로 분리
+    const match = rightRaw.match(/^(.+?)\s+(\d+)$/);
+
+    if (match) {
+      results.push({
+        girlName: match[1].trim(),
+        roomNumber: match[2],
+      });
+    } else {
+      results.push({
+        girlName: rightRaw.trim(),
+        roomNumber: null,
+      });
+    }
+  }
+
+  return results;
+}
