@@ -53,6 +53,31 @@ export async function processDesignatedSection(
     }
   }
 
+  if (newGirlNames.length === 0) return result;
+
+  // message_logs에 원본 메시지 저장 (매번, 첫 번째 매칭 슬롯 기준)
+  const firstSlot = slots.find(s => s.girl_name === newGirlNames[0])!;
+  const { data: log, error: logError } = await supabase
+    .from('message_logs')
+    .insert({
+      slot_id: firstSlot.id,
+      user_id: firstSlot.user_id,
+      source_room: room,
+      sender_name: sender,
+      message: message,
+      received_at: receivedAt,
+    })
+    .select()
+    .single();
+
+  if (logError) {
+    console.error('ㅈ.ㅁ message_logs error:', logError);
+  } else {
+    console.log('ㅈ.ㅁ message_logs saved:', log?.id);
+  }
+
+  const sourceLogId = log?.id || null;
+
   // 기존 DB 레코드 가져오기
   const { data: currentNotices } = await supabase
     .from('designated_notices')
@@ -142,24 +167,6 @@ export async function processDesignatedSection(
     const matchedSlot = slots.find(s => s.girl_name === name)!;
 
     for (let i = 0; i < toAdd; i++) {
-      // message_logs에 원본 메시지 저장
-      const { data: log, error: logError } = await supabase
-        .from('message_logs')
-        .insert({
-          slot_id: matchedSlot.id,
-          user_id: matchedSlot.user_id,
-          source_room: room,
-          sender_name: sender,
-          message: message,
-          received_at: receivedAt,
-        })
-        .select()
-        .single();
-
-      if (logError) {
-        console.error(`ㅈ.ㅁ message_logs error for "${name}":`, logError);
-      }
-
       const { error: insertError } = await supabase
         .from('designated_notices')
         .insert({
@@ -169,7 +176,7 @@ export async function processDesignatedSection(
           girl_name: matchedSlot.girl_name,
           kakao_id: matchedSlot.kakao_id,
           target_room: matchedSlot.target_room,
-          source_log_id: log?.id || null,
+          source_log_id: sourceLogId,
         });
 
       if (insertError) {
