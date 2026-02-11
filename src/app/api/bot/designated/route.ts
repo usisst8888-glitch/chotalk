@@ -45,11 +45,10 @@ export async function processDesignatedSection(
   // 새 메시지에서 파싱된 아가씨 이름 목록
   const newGirlNames = entries.map(e => e.girlName);
 
-  // 기존 미발송 레코드 중 새 메시지에 없는 이름 → history로 이동
+  // 기존 레코드 중 새 메시지에 없는 이름 → history로 이동
   const { data: currentNotices } = await supabase
     .from('designated_notices')
-    .select('*')
-    .is('sent_at', null);
+    .select('*');
 
   if (currentNotices && currentNotices.length > 0) {
     for (const notice of currentNotices) {
@@ -98,16 +97,15 @@ export async function processDesignatedSection(
       continue;
     }
 
-    // 중복 방지: 같은 slot_id로 미발송 레코드가 이미 있으면 skip
+    // 중복 방지: 같은 slot_id로 레코드가 이미 있으면 skip (발송 여부 무관)
     const { data: existing } = await supabase
       .from('designated_notices')
       .select('id')
       .eq('slot_id', matchedSlot.id)
-      .is('sent_at', null)
       .limit(1);
 
     if (existing && existing.length > 0) {
-      console.log(`ㅈ.ㅁ dedup: "${entry.girlName}" already has unsent notice`);
+      console.log(`ㅈ.ㅁ dedup: "${entry.girlName}" already exists`);
       result.deduped++;
       continue;
     }
