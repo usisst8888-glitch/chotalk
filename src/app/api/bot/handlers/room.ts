@@ -1,12 +1,39 @@
 import { getSupabase } from '@/lib/supabase';
 import { extractRoomNumber, parseTransfer } from '@/lib/message-parser';
 import { MESSAGE_SIGNALS, hasSignalWithAliases } from '@/lib/ticket-config';
-import { checkAndCloseRoom, getKoreanTime } from './shared';
+import { getOrCreateRoom, checkAndCloseRoom, getKoreanTime } from './shared';
 
 // ============================================================
-// 방(Room) 관련 핸들러 (status_board 세션 이동 + keepAliveRooms)
-// rooms 테이블 생성은 /api/bot/room에서 독립 처리
+// 방(Room) 전담 핸들러 (status_board와 독립적으로 rooms 테이블 관리)
+// shop_name = source_room (카카오톡 방 이름)
 // ============================================================
+
+// ============================================================
+// 방 사전생성: 메시지에서 모든 방번호 추출 → rooms 테이블에 저장
+// ============================================================
+
+export async function ensureRoomsExist(
+  supabase: ReturnType<typeof getSupabase>,
+  lines: string[],
+  shopName: string | null,
+  receivedAt: string
+): Promise<string[]> {
+  const allRoomNumbers = new Set<string>();
+
+  for (const line of lines) {
+    const roomNum = extractRoomNumber(line);
+    if (roomNum) {
+      allRoomNumbers.add(roomNum);
+    }
+  }
+
+  for (const roomNum of allRoomNumbers) {
+    await getOrCreateRoom(supabase, roomNum, shopName, receivedAt);
+  }
+
+  console.log('ensureRoomsExist:', [...allRoomNumbers]);
+  return [...allRoomNumbers];
+}
 
 // ============================================================
 // keepAliveRooms 구성: 미등록 아가씨의 ㅇㅈ/ㅈㅈㅎ 감지
