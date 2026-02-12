@@ -86,14 +86,25 @@ export async function processDesignatedSection(
     }
   }
 
-  if (newGirlNames.length === 0) return result;
-
-  // 기존 DB 레코드 가져오기
-  const { data: currentNotices } = await supabase
+  // 기존 DB 레코드 가져오기 (제거 로직은 newGirlNames가 비어도 실행해야 함)
+  const { data: currentNotices, error: currentError } = await supabase
     .from('designated_notices')
     .select('*');
 
+  if (currentError) {
+    console.error('ㅈ.ㅁ designated_notices 조회 에러:', currentError);
+  }
+
   const currentRecords = currentNotices || [];
+
+  console.log('ㅈ.ㅁ 비교:', {
+    newGirlNames,
+    dbRecordCount: currentRecords.length,
+    dbGirlNames: currentRecords.map((n: any) => n.girl_name),
+  });
+
+  // 새 메시지에 매칭되는 이름도 없고 DB에도 레코드가 없으면 조기 리턴
+  if (newGirlNames.length === 0 && currentRecords.length === 0) return result;
 
   // 이름별 카운트: 새 메시지 vs DB
   const newCount = new Map<string, number>();
@@ -128,7 +139,9 @@ export async function processDesignatedSection(
             send_success: notice.send_success,
             created_at: notice.created_at,
           });
-        if (!historyError) {
+        if (historyError) {
+          console.error(`ㅈ.ㅁ history INSERT 실패 "${name}":`, historyError);
+        } else {
           await supabase.from('designated_notices').delete().eq('id', notice.id);
           console.log(`ㅈ.ㅁ removed: "${name}" → history`);
           result.removed++;
@@ -159,7 +172,9 @@ export async function processDesignatedSection(
             send_success: notice.send_success,
             created_at: notice.created_at,
           });
-        if (!historyError) {
+        if (historyError) {
+          console.error(`ㅈ.ㅁ history INSERT 실패 (excess) "${name}":`, historyError);
+        } else {
           await supabase.from('designated_notices').delete().eq('id', notice.id);
           console.log(`ㅈ.ㅁ removed excess: "${name}" → history`);
           result.removed++;
