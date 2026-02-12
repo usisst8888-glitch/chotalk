@@ -102,7 +102,7 @@ export async function checkAndCloseRoom(
   if (!activeGirls || activeGirls.length === 0) {
     const { error: updateError } = await supabase
       .from('rooms')
-      .update({ is_active: false })
+      .update({ is_active: false, room_end_time: getKoreanTime() })
       .eq('room_number', roomNumber)
       .eq('shop_name', shopName || '')
       .eq('is_active', true);

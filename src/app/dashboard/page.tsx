@@ -56,7 +56,7 @@ export default function DashboardPage() {
   const [purchaseForm, setPurchaseForm] = useState({ depositorName: '', slotCount: 1 });
   const [purchaseSubmitting, setPurchaseSubmitting] = useState(false);
   const [extendForm, setExtendForm] = useState({ depositorName: '' });
-  const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions'>('slots');
+  const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'rooms'>('slots');
   // 관리자용 회원관리
   const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; role: string; slot_count: number; created_at: string }>>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -78,6 +78,9 @@ export default function DashboardPage() {
   const [eventTimes, setEventTimes] = useState<Array<{ id: string; shop_name: string; start_time: string; end_time: string; is_active: boolean; address: string | null }>>([]);
   const [eventTimesLoading, setEventTimesLoading] = useState(false);
   const [editingEventTime, setEditingEventTime] = useState<string | null>(null);
+  // 관리자용 방상태 관리
+  const [rooms, setRooms] = useState<Array<{ id: string; room_number: string; shop_name: string; room_start_time: string; room_end_time: string | null; is_active: boolean; created_at: string }>>([]);
+  const [roomsLoading, setRoomsLoading] = useState(false);
 
   useEffect(() => {
     fetchUser();
@@ -271,6 +274,22 @@ export default function DashboardPage() {
       console.error('Failed to fetch extension requests:', error);
     } finally {
       setExtensionsLoading(false);
+    }
+  };
+
+  // 관리자용: 방상태 조회
+  const fetchRooms = async () => {
+    setRoomsLoading(true);
+    try {
+      const res = await fetch('/api/admin/rooms');
+      if (res.ok) {
+        const data = await res.json();
+        setRooms(data.rooms || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch rooms:', error);
+    } finally {
+      setRoomsLoading(false);
     }
   };
 
@@ -774,6 +793,19 @@ export default function DashboardPage() {
                   }`}
                 >
                   연장 요청
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('rooms');
+                    fetchRooms();
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    activeTab === 'rooms'
+                      ? 'bg-cyan-600 text-white'
+                      : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
+                  }`}
+                >
+                  방상태
                 </button>
               </>
             )}
@@ -1768,6 +1800,66 @@ export default function DashboardPage() {
                           >
                             승인
                           </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'rooms' && user?.role === 'admin' && (
+          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-white">방상태</h2>
+              <button
+                onClick={fetchRooms}
+                className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium rounded-lg transition"
+              >
+                새로고침
+              </button>
+            </div>
+            {roomsLoading ? (
+              <p className="text-neutral-500 text-center py-8">로딩 중...</p>
+            ) : rooms.length === 0 ? (
+              <p className="text-neutral-500 text-center py-8">등록된 방이 없습니다.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[800px]">
+                  <thead className="bg-neutral-800/50">
+                    <tr>
+                      <th className="w-[80px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">방번호</th>
+                      <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">가게명</th>
+                      <th className="w-[80px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">상태</th>
+                      <th className="w-[160px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">시작시간</th>
+                      <th className="w-[160px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">종료시간</th>
+                      <th className="w-[160px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">생성일</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-800">
+                    {rooms.map((room) => (
+                      <tr key={room.id} className="hover:bg-neutral-800/30">
+                        <td className="px-4 py-3 text-center text-white font-medium">{room.room_number}</td>
+                        <td className="px-4 py-3 text-center text-neutral-300">{room.shop_name || '-'}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                            room.is_active
+                              ? 'bg-green-600/20 text-green-400 border border-green-600/30'
+                              : 'bg-neutral-700/30 text-neutral-500 border border-neutral-700/30'
+                          }`}>
+                            {room.is_active ? '활성' : '종료'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center text-neutral-400 text-sm">
+                          {room.room_start_time ? new Date(room.room_start_time).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-center text-neutral-400 text-sm">
+                          {room.room_end_time ? new Date(room.room_end_time).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-center text-neutral-400 text-sm">
+                          {new Date(room.created_at).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                         </td>
                       </tr>
                     ))}
