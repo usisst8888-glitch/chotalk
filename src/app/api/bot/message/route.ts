@@ -476,23 +476,43 @@ export async function POST(request: NextRequest) {
           results.push({ ...result, logId: log?.id });
 
         } else if (messageStartsWithCorrection && lineParsed.roomNumber) {
-          // ㅈㅈ 메시지: DB에서 진행중인 세션 유무로 정정/신규 판단
+          // ㅈㅈ 메시지: 무조건 정정. 세션 없으면 신규 생성.
           const { data: activeSession } = await supabase
             .from('status_board')
-            .select('id')
+            .select('id, room_number')
             .eq('slot_id', slot.id)
             .eq('is_in_progress', true)
             .single();
 
           if (!activeSession) {
-            console.log('ㅈㅈ 메시지 - 진행중 세션 없음, 신규 생성:', slot.girl_name, '방:', lineParsed.roomNumber);
+            // 세션 없음 → 신규 생성
+            console.log('ㅈㅈ 정정 - 세션 없음, 신규 생성:', slot.girl_name, '방:', lineParsed.roomNumber);
             const result = await handleSessionStart(
               supabase, slot, lineParsed, lineSignals, messageReceivedAt, log?.id
             );
             results.push({ ...result, logId: log?.id });
           } else {
-            console.log('ㅈㅈ 메시지 - 이미 진행중:', slot.girl_name, '→ 무시');
-            results.push({ type: 'ignored', slotId: slot.id, girlName: slot.girl_name, reason: '이미 진행중인 세션 있음', logId: log?.id });
+            // 세션 있음 → 정정 (시간패턴 있으면 start_time 수정)
+            const corrGirlIdx = lineMsg.lastIndexOf(slot.girl_name);
+            const corrAfterGirl = corrGirlIdx >= 0 ? lineMsg.substring(corrGirlIdx + slot.girl_name.length) : lineMsg;
+            const manualTime = extractManualTime(corrAfterGirl, messageReceivedAt, { allowTwoDigit: true });
+
+            if (manualTime) {
+              await supabase
+                .from('status_board')
+                .update({
+                  start_time: manualTime,
+                  data_changed: true,
+                  updated_at: getKoreanTime(),
+                })
+                .eq('id', activeSession.id);
+
+              console.log('ㅈㅈ 정정 - start_time 수정:', slot.girl_name, '방:', activeSession.room_number, '→', manualTime);
+              results.push({ type: 'correction_time', slotId: slot.id, girlName: slot.girl_name, roomNumber: activeSession.room_number, newStartTime: manualTime, logId: log?.id });
+            } else {
+              console.log('ㅈㅈ 정정 - 시간패턴 없음, 무시:', slot.girl_name);
+              results.push({ type: 'ignored', slotId: slot.id, girlName: slot.girl_name, reason: 'ㅈㅈ 정정 시간패턴 없음', logId: log?.id });
+            }
           }
 
         } else {
