@@ -475,6 +475,26 @@ export async function POST(request: NextRequest) {
           );
           results.push({ ...result, logId: log?.id });
 
+        } else if (messageStartsWithCorrection && lineParsed.roomNumber) {
+          // ㅈㅈ 메시지: DB에서 진행중인 세션 유무로 정정/신규 판단
+          const { data: activeSession } = await supabase
+            .from('status_board')
+            .select('id')
+            .eq('slot_id', slot.id)
+            .eq('is_in_progress', true)
+            .single();
+
+          if (!activeSession) {
+            console.log('ㅈㅈ 메시지 - 진행중 세션 없음, 신규 생성:', slot.girl_name, '방:', lineParsed.roomNumber);
+            const result = await handleSessionStart(
+              supabase, slot, lineParsed, lineSignals, messageReceivedAt, log?.id
+            );
+            results.push({ ...result, logId: log?.id });
+          } else {
+            console.log('ㅈㅈ 메시지 - 이미 진행중:', slot.girl_name, '→ 무시');
+            results.push({ type: 'ignored', slotId: slot.id, girlName: slot.girl_name, reason: '이미 진행중인 세션 있음', logId: log?.id });
+          }
+
         } else {
           results.push({
             type: 'message',
