@@ -469,14 +469,9 @@ export async function POST(request: NextRequest) {
             results.push({ type: 'ignored', slotId: slot.id, girlName: slot.girl_name, reason: 'ㅈㅈ 시간패턴 없음', logId: log?.id });
           }
 
-        } else if (lineParsed.roomNumber && !lineSignals.isEnd && !lineSignals.isExtension && !lineSignals.isDesignatedFee && !lineSignals.isDesignatedHalfFee && !lineSignals.isCorrection) {
-          const result = await handleSessionStart(
-            supabase, slot, lineParsed, lineSignals, messageReceivedAt, log?.id
-          );
-          results.push({ ...result, logId: log?.id });
-
         } else if (messageStartsWithCorrection && lineParsed.roomNumber) {
           // ㅈㅈ 메시지: 무조건 정정. 세션 없으면 신규 생성.
+          // ★ 일반 시작보다 먼저 체크해야 ㅈㅈ 컨텍스트가 우선됨
           const { data: activeSession } = await supabase
             .from('status_board')
             .select('id, room_number')
@@ -514,6 +509,12 @@ export async function POST(request: NextRequest) {
               results.push({ type: 'ignored', slotId: slot.id, girlName: slot.girl_name, reason: 'ㅈㅈ 정정 시간패턴 없음', logId: log?.id });
             }
           }
+
+        } else if (lineParsed.roomNumber && !lineSignals.isEnd && !lineSignals.isExtension && !lineSignals.isDesignatedFee && !lineSignals.isDesignatedHalfFee && !lineSignals.isCorrection) {
+          const result = await handleSessionStart(
+            supabase, slot, lineParsed, lineSignals, messageReceivedAt, log?.id
+          );
+          results.push({ ...result, logId: log?.id });
 
         } else {
           results.push({
