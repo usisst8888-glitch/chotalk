@@ -153,12 +153,6 @@ export async function updateStatusBoard(
       console.log('Correction mode - existingBySlot:', existingBySlot, 'roomFilter:', data.roomNumber, 'error:', findError);
 
       if (existingBySlot) {
-        // 수동 지정 시간이 있으면 사용, 없으면 기존 start_time 유지
-        const newStartTime = data.manualStartTime || existingBySlot.start_time || data.startTime;
-
-        // rooms 테이블 등록 (기존 방번호 사용)
-        await getOrCreateRoom(supabase, existingBySlot.room_number, data.shopName, newStartTime);
-
         // ㅈㅈ(수정) + ㄲ(종료) 조합 처리:
         // - trigger_type이 변경되면 → trigger_type만 변경 (data_changed = false)
         // - trigger_type이 동일하면 → data_changed = true (재발송 트리거)

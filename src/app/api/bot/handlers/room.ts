@@ -1,42 +1,12 @@
 import { getSupabase } from '@/lib/supabase';
 import { extractRoomNumber, parseTransfer } from '@/lib/message-parser';
 import { MESSAGE_SIGNALS, hasSignalWithAliases } from '@/lib/ticket-config';
-import { getOrCreateRoom, checkAndCloseRoom, getKoreanTime } from './shared';
+import { checkAndCloseRoom, getKoreanTime } from './shared';
 
 // ============================================================
-// 방(Room) 전담 핸들러
-// - ensureRoomsExist: 메시지 내 모든 방번호 사전생성
-// - buildKeepAliveRooms: ㅇㅈ/ㅈㅈㅎ 감지하여 방 닫힘 방지
-// - handleTransfer: ㅌㄹㅅ 방이동 처리
+// 방(Room) 관련 핸들러 (status_board 세션 이동 + keepAliveRooms)
+// rooms 테이블 생성은 /api/bot/room에서 독립 처리
 // ============================================================
-
-// ============================================================
-// 방 사전생성: 메시지에서 모든 방번호 추출 → rooms 테이블에 저장
-// 아가씨 매칭 전에 실행하여 미등록 아가씨만 있는 방도 생성
-// ============================================================
-
-export async function ensureRoomsExist(
-  supabase: ReturnType<typeof getSupabase>,
-  lines: string[],
-  shopName: string | null,
-  receivedAt: string
-): Promise<string[]> {
-  const allRoomNumbers = new Set<string>();
-
-  for (const line of lines) {
-    const roomNum = extractRoomNumber(line);
-    if (roomNum) {
-      allRoomNumbers.add(roomNum);
-    }
-  }
-
-  for (const roomNum of allRoomNumbers) {
-    await getOrCreateRoom(supabase, roomNum, shopName, receivedAt);
-  }
-
-  console.log('ensureRoomsExist:', [...allRoomNumbers]);
-  return [...allRoomNumbers];
-}
 
 // ============================================================
 // keepAliveRooms 구성: 미등록 아가씨의 ㅇㅈ/ㅈㅈㅎ 감지
@@ -78,8 +48,9 @@ export function buildKeepAliveRooms(
 }
 
 // ============================================================
-// ㅌㄹㅅ(방이동) 처리
+// ㅌㄹㅅ(방이동) 처리 - status_board 세션 이동만 담당
 // fromRoom의 모든 활성 세션을 toRoom으로 이동 (시간 유지!)
+// rooms 테이블 생성은 /api/bot/room에서 독립 처리
 // ============================================================
 
 export interface TransferHandlerResult {
@@ -94,14 +65,10 @@ export async function handleTransfer(
   fromRoom: string,
   toRoom: string,
   shopName: string | null,
-  receivedAt: string
 ): Promise<TransferHandlerResult> {
   console.log('handleTransfer:', fromRoom, '→', toRoom, 'shop:', shopName);
 
-  // 1. 새 방 생성/조회
-  await getOrCreateRoom(supabase, toRoom, shopName, receivedAt);
-
-  // 2. fromRoom의 모든 활성 세션 → toRoom으로 이동 (start_time 유지!)
+  // 1. fromRoom의 모든 활성 세션 → toRoom으로 이동 (start_time 유지!)
   const { data: movedRecords, error: updateError } = await supabase
     .from('status_board')
     .update({
@@ -121,7 +88,7 @@ export async function handleTransfer(
   const movedCount = movedRecords?.length || 0;
   console.log('Transfer moved', movedCount, 'sessions from', fromRoom, 'to', toRoom);
 
-  // 3. 이전 방 닫기 (남은 세션 없으므로)
+  // 2. 이전 방 닫기 (남은 세션 없으므로)
   await checkAndCloseRoom(supabase, fromRoom, shopName);
 
   return {
@@ -140,7 +107,6 @@ export async function processTransfers(
   supabase: ReturnType<typeof getSupabase>,
   lines: string[],
   shopName: string | null,
-  receivedAt: string
 ): Promise<TransferHandlerResult[]> {
   const results: TransferHandlerResult[] = [];
 
@@ -148,7 +114,7 @@ export async function processTransfers(
     const transfer = parseTransfer(line);
     if (transfer) {
       const result = await handleTransfer(
-        supabase, transfer.fromRoom, transfer.toRoom, shopName, receivedAt
+        supabase, transfer.fromRoom, transfer.toRoom, shopName,
       );
       results.push(result);
     }

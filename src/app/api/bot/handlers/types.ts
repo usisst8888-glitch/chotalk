@@ -17,6 +17,7 @@ export interface HandlerContext {
   receivedAt: string;
   logId: string | undefined;
   keepAliveRooms?: Set<string>;
+  sourceRoom: string; // 카카오톡 방 이름 (= shop_name for rooms)
 }
 
 // 핸들러 반환 타입

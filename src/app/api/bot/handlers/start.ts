@@ -1,7 +1,7 @@
 import { ParsedMessage, extractManualTime } from '@/lib/message-parser';
 import { GirlSignalResult } from '@/lib/message-parser';
 import { HandlerContext, HandlerResult } from './types';
-import { getOrCreateRoom, updateStatusBoard } from './shared';
+import { updateStatusBoard } from './shared';
 
 // ============================================================
 // 세션 시작 처리 (status_board에 저장)
@@ -42,10 +42,7 @@ export async function handleSessionStart(
 
   console.log('handleSessionStart called for:', slot.girl_name, 'roomNumber:', parsed.roomNumber, 'isDesignated:', girlSignals.isDesignated, 'manualTime:', manualTime);
 
-  // 방 조회 또는 생성
-  const roomInfo = await getOrCreateRoom(supabase, parsed.roomNumber!, slot.shop_name, startTime);
-
-  // 상황판에 저장
+  // 상황판에 저장 (rooms 테이블 생성은 /api/bot/room에서 독립 처리)
   await updateStatusBoard(supabase, {
     slotId: slot.id,
     userId: slot.user_id,
@@ -71,6 +68,5 @@ export async function handleSessionStart(
     girlName: slot.girl_name,
     roomNumber: parsed.roomNumber,
     startTime: startTime,
-    isNewRoom: roomInfo.isNewRoom,
   };
 }

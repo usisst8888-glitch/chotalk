@@ -8,7 +8,7 @@ import { handleNewSession, handleResume } from '@/app/api/bot/handlers/session';
 import { handleSessionStart } from '@/app/api/bot/handlers/start';
 import { handleSessionEnd } from '@/app/api/bot/handlers/end';
 import { handleCorrectionWithTime, handleCorrectionCatchAll } from '@/app/api/bot/handlers/correction';
-import { ensureRoomsExist, buildKeepAliveRooms, processTransfers } from '@/app/api/bot/handlers/room';
+import { buildKeepAliveRooms, processTransfers } from '@/app/api/bot/handlers/room';
 import { HandlerContext } from '@/app/api/bot/handlers/types';
 
 // ============================================================
@@ -61,16 +61,13 @@ export async function POST(request: NextRequest) {
     // 방(Room) 사전처리: 아가씨 매칭 전에 실행
     // ============================================================
     const allLines = message.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0);
-    const shopName = slots[0]?.shop_name || null;
 
-    // 1. 모든 방번호에 대해 rooms 테이블에 사전생성
-    await ensureRoomsExist(supabase, allLines, shopName, messageReceivedAt);
-
-    // 2. 미등록 아가씨의 ㅇㅈ/ㅈㅈㅎ 감지 → 해당 방은 닫지 않음
+    // 1. 미등록 아가씨의 ㅇㅈ/ㅈㅈㅎ 감지 → 해당 방은 닫지 않음
     const keepAliveRooms = buildKeepAliveRooms(allLines, girlNames);
 
-    // 3. ㅌㄹㅅ(방이동) 감지 → 방 전체 이동 처리
-    const transferResults = await processTransfers(supabase, allLines, shopName, messageReceivedAt);
+    // 2. ㅌㄹㅅ(방이동) 감지 → status_board 세션 이동 처리
+    // (rooms 테이블 생성은 /api/bot/room에서 독립적으로 처리)
+    const transferResults = await processTransfers(supabase, allLines, room);
 
     // 매칭된 슬롯 찾기 (아가씨 이름 + 만료 확인)
     const matchedSlots = slots.filter(slot => {
@@ -152,7 +149,7 @@ export async function POST(request: NextRequest) {
       console.log('Processing', messagesToProcess.length, 'line(s) for', slot.girl_name);
 
       // 핸들러 컨텍스트 생성
-      const ctx: HandlerContext = { supabase, slot, receivedAt: messageReceivedAt, logId: log?.id, keepAliveRooms };
+      const ctx: HandlerContext = { supabase, slot, receivedAt: messageReceivedAt, logId: log?.id, keepAliveRooms, sourceRoom: room };
 
       for (const { line: lineMsg, effectiveRoom } of messagesToProcess) {
         const lineParsed = parseMessage(lineMsg, girlNames);
