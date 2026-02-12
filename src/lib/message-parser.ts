@@ -411,7 +411,13 @@ export function parseGirlSignals(
   if ((hasEndInSection || hasEndInMessage) && !hasExtension && !hasDesignatedFee && !hasDesignatedHalfFee) {
     result.isEnd = true;
     // ㄲ 바로 앞의 숫자를 추출 (예: "3시 ㄱㅈ 1.5 ㄲ" → 1.5, "3시"의 3이 아님)
-    const match = afterSection.match(/(\d+(?:\.\d+)?)[^\d]*ㄲ/);
+    // 1차: 아가씨 구간(afterSection)에서 찾기
+    let match = afterSection.match(/(\d+(?:\.\d+)?)[^\d]*ㄲ/);
+    if (!match) {
+      // 2차: "인혜 주디 1.5ㄲ" 같이 여러 아가씨가 ㄲ을 공유할 때
+      // 이름 뒤 전체(afterGirl)에서 가장 가까운 숫자+ㄲ 찾기
+      match = afterGirl.match(/(\d+(?:\.\d+)?)[^\d]*ㄲ/);
+    }
     if (match) {
       result.usageDuration = parseFloat(match[1]);
     }
