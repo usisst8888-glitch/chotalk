@@ -410,7 +410,8 @@ export function parseGirlSignals(
 
   if ((hasEndInSection || hasEndInMessage) && !hasExtension && !hasDesignatedFee && !hasDesignatedHalfFee) {
     result.isEnd = true;
-    const match = afterSection.match(/(\d+(?:\.\d+)?)/);
+    // ㄲ 바로 앞의 숫자를 추출 (예: "3시 ㄱㅈ 1.5 ㄲ" → 1.5, "3시"의 3이 아님)
+    const match = afterSection.match(/(\d+(?:\.\d+)?)[^\d]*ㄲ/);
     if (match) {
       result.usageDuration = parseFloat(match[1]);
     }
