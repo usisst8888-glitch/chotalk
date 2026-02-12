@@ -81,6 +81,7 @@ export default function DashboardPage() {
   // 관리자용 방상태 관리
   const [rooms, setRooms] = useState<Array<{ id: string; room_number: string; shop_name: string; room_start_time: string; room_end_time: string | null; is_active: boolean; created_at: string }>>([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
+  const [roomShopFilter, setRoomShopFilter] = useState<string>('all');
 
   useEffect(() => {
     fetchUser();
@@ -798,6 +799,7 @@ export default function DashboardPage() {
                   onClick={() => {
                     setActiveTab('rooms');
                     fetchRooms();
+                    if (eventTimes.length === 0) fetchEventTimes();
                   }}
                   className={`px-4 py-2 rounded-lg font-medium transition ${
                     activeTab === 'rooms'
@@ -1814,18 +1816,34 @@ export default function DashboardPage() {
           <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-white">방상태</h2>
-              <button
-                onClick={fetchRooms}
-                className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium rounded-lg transition"
-              >
-                새로고침
-              </button>
+              <div className="flex items-center gap-3">
+                <select
+                  value={roomShopFilter}
+                  onChange={(e) => setRoomShopFilter(e.target.value)}
+                  className="px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
+                >
+                  <option value="all">전체 가게</option>
+                  {eventTimes.map((et) => (
+                    <option key={et.id} value={et.shop_name}>{et.shop_name}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={fetchRooms}
+                  className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium rounded-lg transition"
+                >
+                  새로고침
+                </button>
+              </div>
             </div>
             {roomsLoading ? (
               <p className="text-neutral-500 text-center py-8">로딩 중...</p>
             ) : rooms.length === 0 ? (
               <p className="text-neutral-500 text-center py-8">등록된 방이 없습니다.</p>
-            ) : (
+            ) : (() => {
+              const filteredRooms = roomShopFilter === 'all' ? rooms : rooms.filter(r => r.shop_name === roomShopFilter);
+              return filteredRooms.length === 0 ? (
+                <p className="text-neutral-500 text-center py-8">해당 가게의 방이 없습니다.</p>
+              ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[800px]">
                   <thead className="bg-neutral-800/50">
@@ -1839,7 +1857,7 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-800">
-                    {rooms.map((room) => (
+                    {filteredRooms.map((room) => (
                       <tr key={room.id} className="hover:bg-neutral-800/30">
                         <td className="px-4 py-3 text-center text-white font-medium">{room.room_number}</td>
                         <td className="px-4 py-3 text-center text-neutral-300">{room.shop_name || '-'}</td>
@@ -1866,7 +1884,8 @@ export default function DashboardPage() {
                   </tbody>
                 </table>
               </div>
-            )}
+              );
+            })()}
           </div>
         )}
       </main>
