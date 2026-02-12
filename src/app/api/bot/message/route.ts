@@ -456,8 +456,8 @@ export async function POST(request: NextRequest) {
       // 원본 메시지 첫 줄이 ㅈㅈ로 시작하면, 전체 메시지가 정정
       const messageStartsWithCorrection = lines.length > 0 && lines[0].startsWith('ㅈㅈ');
 
-      // 여러 줄이면 각 줄별로 처리, 한 줄이면 원본 메시지로 처리
-      const messagesToProcess = girlLines.length > 1 ? girlLines : [message];
+      // 아가씨가 포함된 줄만 개별 처리 (줄바꿈 시 방번호가 다를 수 있으므로)
+      const messagesToProcess = girlLines.length > 0 ? girlLines : [message];
 
       console.log('Processing', messagesToProcess.length, 'line(s) for', slot.girl_name);
 
