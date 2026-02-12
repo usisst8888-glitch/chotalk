@@ -65,14 +65,14 @@ export function extractRoomNumber(message: string): string | null {
  * 종료 신호(ㄲ) 확인
  */
 export function isEndSignal(message: string): boolean {
-  return hasSignal(message, MESSAGE_SIGNALS.END.code);
+  return hasSignalWithAliases(message, MESSAGE_SIGNALS.END);
 }
 
 /**
  * 수정 신호(ㅈㅈ) 확인
  */
 export function isCorrectionSignal(message: string): boolean {
-  return hasSignal(message, MESSAGE_SIGNALS.CORRECTION.code);
+  return hasSignalWithAliases(message, MESSAGE_SIGNALS.CORRECTION);
 }
 
 /**
@@ -81,8 +81,8 @@ export function isCorrectionSignal(message: string): boolean {
  * 숫자와 ㄲ 사이에 다른 문자(날개 등)가 있어도 추출
  */
 export function extractUsageDuration(message: string): number | null {
-  // 패턴: 숫자(소수점 포함) + 임의의 문자(숫자 제외) + ㄲ
-  const match = message.match(/(\d+(?:\.\d+)?)[^\d]*ㄲ/);
+  // 패턴: 숫자(소수점 포함) + 임의의 문자(숫자 제외) + ㄲ 또는 끝
+  const match = message.match(/(\d+(?:\.\d+)?)[^\d]*(?:ㄲ|끝)/);
   if (match) {
     return parseFloat(match[1]);
   }
@@ -331,8 +331,9 @@ export function parseGirlSignals(
     usageDuration: null,
   };
 
-  // ㅈㅈ(수정)는 메시지 맨 앞에 prefix로 올 수 있음
-  if (message.startsWith(MESSAGE_SIGNALS.CORRECTION.code)) {
+  // ㅈㅈ/정정(수정)는 메시지 맨 앞에 prefix로 올 수 있음
+  if (message.startsWith(MESSAGE_SIGNALS.CORRECTION.code) ||
+      (MESSAGE_SIGNALS.CORRECTION.aliases && MESSAGE_SIGNALS.CORRECTION.aliases.some(a => message.startsWith(a)))) {
     result.isCorrection = true;
   }
 
@@ -402,29 +403,35 @@ export function parseGirlSignals(
   // - 아가씨 구간 또는 메시지 전체에 ㄲ이 있으면 종료 후보
   // - 단, ㅇㅈ(연장)/ㅈㅁㅅㅅ(지명순번삭제) 신호가 구간에 있으면 종료가 아님
   // - 이용시간은 항상 아가씨 이름 바로 뒤 첫 번째 숫자
-  const hasEndInSection = hasSignal(afterSection, MESSAGE_SIGNALS.END.code);
-  const hasEndInMessage = hasSignal(message, MESSAGE_SIGNALS.END.code);
+  const hasEndInSection = hasSignalWithAliases(afterSection, MESSAGE_SIGNALS.END);
+  const hasEndInMessage = hasSignalWithAliases(message, MESSAGE_SIGNALS.END);
   const hasExtension = hasSignal(afterSection, MESSAGE_SIGNALS.EXTENSION.code);
   const hasDesignatedFee = hasSignal(afterSection, MESSAGE_SIGNALS.DESIGNATED_FEE.code);
   const hasDesignatedHalfFee = hasSignal(afterSection, MESSAGE_SIGNALS.DESIGNATED_HALF_FEE.code);
 
   if ((hasEndInSection || hasEndInMessage) && !hasExtension && !hasDesignatedFee && !hasDesignatedHalfFee) {
     result.isEnd = true;
-    // ㄲ 바로 앞의 숫자를 추출 (예: "3시 ㄱㅈ 1.5 ㄲ" → 1.5, "3시"의 3이 아님)
-    // 1차: 아가씨 구간(afterSection)에서 찾기
-    let match = afterSection.match(/(\d+(?:\.\d+)?)[^\d]*ㄲ/);
+    // 1차: 아가씨 구간(afterSection)에서 숫자+ㄲ/끝 찾기
+    // 예: "유별1.5 ㄲ" → 1.5, "유별1.5 끝" → 1.5
+    let match = afterSection.match(/(\d+(?:\.\d+)?)[^\d]*(?:ㄲ|끝)/);
+    if (!match && !hasEndInSection && hasEndInMessage) {
+      // 2차: "달래 1 인혜 3 주디 2 유별1.5 ㄲ" 같이 각 아가씨별 개별 숫자가 있을 때
+      // afterSection에서 시간 패턴(시) 아닌 숫자 추출
+      // 예: 달래 구간 " 1 " → 1, 인혜 구간 " 3 " → 3
+      match = afterSection.match(/(\d+(?:\.\d+)?)(?!\s*시)/);
+    }
     if (!match) {
-      // 2차: "인혜 주디 1.5ㄲ" 같이 여러 아가씨가 ㄲ을 공유할 때
-      // 이름 뒤 전체(afterGirl)에서 가장 가까운 숫자+ㄲ 찾기
-      match = afterGirl.match(/(\d+(?:\.\d+)?)[^\d]*ㄲ/);
+      // 3차: "인혜 주디 1.5ㄲ" 같이 여러 아가씨가 ㄲ/끝을 공유할 때
+      // 이름 뒤 전체(afterGirl)에서 가장 가까운 숫자+ㄲ/끝 찾기
+      match = afterGirl.match(/(\d+(?:\.\d+)?)[^\d]*(?:ㄲ|끝)/);
     }
     if (match) {
       result.usageDuration = parseFloat(match[1]);
     }
   }
 
-  // ㅈㅈ (수정) 신호 확인
-  if (hasSignal(afterSection, MESSAGE_SIGNALS.CORRECTION.code)) {
+  // ㅈㅈ/정정 (수정) 신호 확인
+  if (hasSignalWithAliases(afterSection, MESSAGE_SIGNALS.CORRECTION)) {
     result.isCorrection = true;
   }
 

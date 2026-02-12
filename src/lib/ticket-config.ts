@@ -65,6 +65,7 @@ export const MESSAGE_SIGNALS = {
     code: 'ㄲ',
     type: 'end',
     description: '세션 종료',
+    aliases: ['끝'],
   },
 
   // 수정 신호
@@ -72,6 +73,7 @@ export const MESSAGE_SIGNALS = {
     code: 'ㅈㅈ',
     type: 'correction',
     description: '수정 (방번호 또는 이용시간 변경)',
+    aliases: ['정정'],
   },
 
   // 재진행 신호 (종료 → 시작으로 되돌리기)

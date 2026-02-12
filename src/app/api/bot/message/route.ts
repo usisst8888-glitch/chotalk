@@ -375,8 +375,8 @@ export async function POST(request: NextRequest) {
         .map((line: string, idx: number) => ({ line, idx }))
         .filter(({ line }: { line: string }) => line.includes(slot.girl_name));
 
-      // 원본 메시지 첫 줄이 ㅈㅈ로 시작하면, 전체 메시지가 정정
-      const messageStartsWithCorrection = lines.length > 0 && lines[0].startsWith('ㅈㅈ');
+      // 원본 메시지 첫 줄이 ㅈㅈ/정정으로 시작하면, 전체 메시지가 정정
+      const messageStartsWithCorrection = lines.length > 0 && (lines[0].startsWith('ㅈㅈ') || lines[0].startsWith('정정'));
 
       // 아가씨가 포함된 줄만 개별 처리 (줄바꿈 시 방번호가 다를 수 있으므로)
       const messagesToProcess = girlLineEntries.length > 0
