@@ -82,6 +82,8 @@ export default function DashboardPage() {
   const [rooms, setRooms] = useState<Array<{ id: string; room_number: string; shop_name: string; room_start_time: string; room_end_time: string | null; is_active: boolean; created_at: string }>>([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
   const [roomShopFilter, setRoomShopFilter] = useState<string>('all');
+  const [roomStatusFilter, setRoomStatusFilter] = useState<'all' | 'active' | 'ended'>('all');
+  const [roomSort, setRoomSort] = useState<'start_desc' | 'start_asc' | 'end_desc' | 'end_asc'>('start_desc');
 
   useEffect(() => {
     fetchUser();
@@ -1814,9 +1816,9 @@ export default function DashboardPage() {
 
         {activeTab === 'rooms' && user?.role === 'admin' && (
           <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
               <h2 className="text-xl font-bold text-white">방상태</h2>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
                 <select
                   value={roomShopFilter}
                   onChange={(e) => setRoomShopFilter(e.target.value)}
@@ -1826,6 +1828,25 @@ export default function DashboardPage() {
                   {eventTimes.map((et) => (
                     <option key={et.id} value={et.shop_name}>{et.shop_name}</option>
                   ))}
+                </select>
+                <select
+                  value={roomStatusFilter}
+                  onChange={(e) => setRoomStatusFilter(e.target.value as 'all' | 'active' | 'ended')}
+                  className="px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
+                >
+                  <option value="all">전체 상태</option>
+                  <option value="active">활성</option>
+                  <option value="ended">종료</option>
+                </select>
+                <select
+                  value={roomSort}
+                  onChange={(e) => setRoomSort(e.target.value as 'start_desc' | 'start_asc' | 'end_desc' | 'end_asc')}
+                  className="px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
+                >
+                  <option value="start_desc">시작시간 최신순</option>
+                  <option value="start_asc">시작시간 오래된순</option>
+                  <option value="end_desc">종료시간 최신순</option>
+                  <option value="end_asc">종료시간 오래된순</option>
                 </select>
                 <button
                   onClick={fetchRooms}
@@ -1840,12 +1861,24 @@ export default function DashboardPage() {
             ) : rooms.length === 0 ? (
               <p className="text-neutral-500 text-center py-8">등록된 방이 없습니다.</p>
             ) : (() => {
-              const filteredRooms = roomShopFilter === 'all' ? rooms : rooms.filter(r => r.shop_name === roomShopFilter);
+              const filteredRooms = rooms
+                .filter(r => roomShopFilter === 'all' || r.shop_name === roomShopFilter)
+                .filter(r => roomStatusFilter === 'all' || (roomStatusFilter === 'active' ? r.is_active : !r.is_active))
+                .sort((a, b) => {
+                  const getTime = (t: string | null) => t ? new Date(t).getTime() : 0;
+                  switch (roomSort) {
+                    case 'start_desc': return getTime(b.room_start_time) - getTime(a.room_start_time);
+                    case 'start_asc': return getTime(a.room_start_time) - getTime(b.room_start_time);
+                    case 'end_desc': return getTime(b.room_end_time) - getTime(a.room_end_time);
+                    case 'end_asc': return getTime(a.room_end_time) - getTime(b.room_end_time);
+                    default: return 0;
+                  }
+                });
               return filteredRooms.length === 0 ? (
-                <p className="text-neutral-500 text-center py-8">해당 가게의 방이 없습니다.</p>
+                <p className="text-neutral-500 text-center py-8">조건에 맞는 방이 없습니다.</p>
               ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[800px]">
+                <table className="w-full min-w-[640px]">
                   <thead className="bg-neutral-800/50">
                     <tr>
                       <th className="w-[80px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">방번호</th>
@@ -1853,7 +1886,6 @@ export default function DashboardPage() {
                       <th className="w-[80px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">상태</th>
                       <th className="w-[160px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">시작시간</th>
                       <th className="w-[160px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">종료시간</th>
-                      <th className="w-[160px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">생성일</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-800">
@@ -1875,9 +1907,6 @@ export default function DashboardPage() {
                         </td>
                         <td className="px-4 py-3 text-center text-neutral-400 text-sm">
                           {room.room_end_time ? new Date(room.room_end_time).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-center text-neutral-400 text-sm">
-                          {new Date(room.created_at).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                         </td>
                       </tr>
                     ))}
