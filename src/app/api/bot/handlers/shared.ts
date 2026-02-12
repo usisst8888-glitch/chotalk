@@ -72,11 +72,19 @@ export async function getOrCreateRoom(
 }
 
 // 방 종료 확인 (모든 아가씨가 ㄲ되었는지)
+// keepAliveRooms: 미등록 아가씨의 ㅇㅈ/ㅈㅈㅎ 신호가 있는 방 (닫지 않음)
 export async function checkAndCloseRoom(
   supabase: ReturnType<typeof getSupabase>,
   roomNumber: string,
-  shopName: string | null
+  shopName: string | null,
+  keepAliveRooms?: Set<string>
 ): Promise<void> {
+  // keepAliveRooms에 포함되면 방 안 닫음 (미등록 아가씨 진행 중)
+  if (keepAliveRooms?.has(roomNumber)) {
+    console.log('Room kept alive (unregistered ㅇㅈ/ㅈㅈㅎ):', roomNumber);
+    return;
+  }
+
   // 해당 방에서 아직 진행 중인 아가씨가 있는지 확인
   const { data: activeGirls, error } = await supabase
     .from('status_board')

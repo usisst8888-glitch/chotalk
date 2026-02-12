@@ -126,6 +126,13 @@ export const MESSAGE_SIGNALS = {
     type: 'designated_half_fee',
     description: '지명반순번삭제 (트리거 무시)',
   },
+
+  // 방이동 신호 (방 번호 변경, 시간 유지)
+  TRANSFER: {
+    code: 'ㅌㄹㅅ',
+    type: 'transfer',
+    description: '방이동 (해당 방의 모든 세션을 새 방으로 이동, 시간 유지)',
+  },
 } as const;
 
 // ============================================================

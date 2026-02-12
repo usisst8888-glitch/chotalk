@@ -16,6 +16,7 @@ export interface HandlerContext {
   slot: SlotInfo;
   receivedAt: string;
   logId: string | undefined;
+  keepAliveRooms?: Set<string>;
 }
 
 // 핸들러 반환 타입

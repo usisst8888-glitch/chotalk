@@ -479,6 +479,24 @@ export function formatParsedMessage(parsed: ParsedMessage): string {
 }
 
 // ============================================================
+// ㅌㄹㅅ(방이동) 파싱
+// ============================================================
+
+export interface TransferResult {
+  fromRoom: string;
+  toRoom: string;
+}
+
+/**
+ * 메시지에서 방이동(ㅌㄹㅅ) 패턴 추출
+ * 패턴: "603 ㅌㄹㅅ 905"
+ */
+export function parseTransfer(message: string): TransferResult | null {
+  const match = message.match(/(\d{3})\s*ㅌㄹㅅ\s*(\d{3})/);
+  return match ? { fromRoom: match[1], toRoom: match[2] } : null;
+}
+
+// ============================================================
 // ㅈㅁ(지명) 섹션 파싱
 // ============================================================
 

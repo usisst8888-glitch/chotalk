@@ -58,8 +58,8 @@ export async function handleSessionEnd(
     manualStartTime: manualStartTime,
   });
 
-  // 방 종료 체크 (모든 아가씨가 ㄲ 되었는지)
-  await checkAndCloseRoom(supabase, parsed.roomNumber!, slot.shop_name);
+  // 방 종료 체크 (모든 아가씨가 ㄲ 되었는지 + keepAliveRooms 체크)
+  await checkAndCloseRoom(supabase, parsed.roomNumber!, slot.shop_name, ctx.keepAliveRooms);
 
   return {
     type: 'end',
