@@ -2,8 +2,8 @@
 
 CREATE TABLE IF NOT EXISTS message_logs (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  slot_id UUID NOT NULL REFERENCES slots(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  slot_id UUID REFERENCES slots(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   source_room VARCHAR(255) NOT NULL,           -- 메시지 감지된 방 (초톡방)
   target_room VARCHAR(255),                    -- 발송할 채팅방 (슬롯에서 가져옴)
   kakao_id VARCHAR(100),                       -- 발송할 카카오톡 ID (어떤 폰이 발송할지)

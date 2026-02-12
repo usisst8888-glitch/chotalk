@@ -57,27 +57,12 @@ export async function POST(request: NextRequest) {
     const girlNames = slots.map(slot => slot.girl_name);
     const parsed = parseMessage(message, girlNames);
 
-    // ============================================================
-    // 방(Room) 사전처리: 아가씨 매칭 전에 실행
-    // shop_name = room (source_room, 카카오톡 방 이름)
-    // ============================================================
     const allLines = message.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0);
-
-    // 1. 방번호 사전생성 (구분선 ➖➖➖➖ 포함 메시지는 현황판이므로 방 생성 안 함)
-    if (!message.includes('➖➖➖➖')) {
-      await ensureRoomsExist(supabase, allLines, room, messageReceivedAt);
-    }
-
-    // 2. 미등록 아가씨의 ㅇㅈ/ㅈㅈㅎ 감지 → 해당 방은 닫지 않음
-    const keepAliveRooms = buildKeepAliveRooms(allLines, girlNames);
-
-    // 3. ㅌㄹㅅ(방이동) 감지 → status_board 세션 이동 처리
-    const transferResults = await processTransfers(supabase, allLines, room);
-
-    // ============================================================
-    // message_logs 저장 - 방번호가 있으면 저장 (아가씨 매칭과 무관)
-    // ============================================================
     const hasRoomNumber = allLines.some((line: string) => extractRoomNumber(line));
+
+    // ============================================================
+    // 1. message_logs 저장 (방번호가 있으면 저장, 아가씨 매칭과 무관)
+    // ============================================================
     let logId: string | undefined;
 
     if (hasRoomNumber) {
@@ -99,6 +84,19 @@ export async function POST(request: NextRequest) {
         console.log('message_logs inserted:', logId);
       }
     }
+
+    // ============================================================
+    // 2. rooms 사전생성 (message_logs 저장 후, ➖➖➖➖ 현황판 제외)
+    // ============================================================
+    if (hasRoomNumber && !message.includes('➖➖➖➖')) {
+      await ensureRoomsExist(supabase, allLines, room, messageReceivedAt);
+    }
+
+    // 3. 미등록 아가씨의 ㅇㅈ/ㅈㅈㅎ 감지 → 해당 방은 닫지 않음
+    const keepAliveRooms = buildKeepAliveRooms(allLines, girlNames);
+
+    // 4. ㅌㄹㅅ(방이동) 감지 → status_board 세션 이동 처리
+    const transferResults = await processTransfers(supabase, allLines, room);
 
     // ============================================================
     // 방번호 + 아가씨 매칭 → status_board 저장
