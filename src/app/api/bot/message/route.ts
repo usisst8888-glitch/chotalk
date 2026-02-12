@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
-import { parseMessage, parseGirlSignals, extractManualTime } from '@/lib/message-parser';
+import { parseMessage, parseGirlSignals, extractManualTime, extractRoomNumber } from '@/lib/message-parser';
 import { processDesignatedSection } from '@/app/api/bot/designated/route';
 
 // ============================================================
@@ -358,24 +358,42 @@ export async function POST(request: NextRequest) {
 
       // 같은 아가씨가 여러 줄에 나오는지 확인
       const lines = message.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0);
-      const girlLines = lines.filter((line: string) => line.includes(slot.girl_name));
+
+      // 각 줄의 유효 방번호 계산 (이전 줄에서 방번호 상속)
+      // 예: "603 태산\n연시 미쭈 1.5ㄲ\n905 이승기\n파이 ㄴㄱㅅㅌㅌ"
+      // → 줄0: 603, 줄1: 603(상속), 줄2: 905, 줄3: 905(상속)
+      let lastSeenRoom: string | null = null;
+      const lineEffectiveRooms: (string | null)[] = [];
+      for (const line of lines) {
+        const roomNum = extractRoomNumber(line);
+        if (roomNum) lastSeenRoom = roomNum;
+        lineEffectiveRooms.push(lastSeenRoom);
+      }
+
+      // 아가씨가 포함된 줄의 인덱스와 유효 방번호를 함께 추적
+      const girlLineEntries = lines
+        .map((line: string, idx: number) => ({ line, idx }))
+        .filter(({ line }: { line: string }) => line.includes(slot.girl_name));
 
       // 원본 메시지 첫 줄이 ㅈㅈ로 시작하면, 전체 메시지가 정정
       const messageStartsWithCorrection = lines.length > 0 && lines[0].startsWith('ㅈㅈ');
 
       // 아가씨가 포함된 줄만 개별 처리 (줄바꿈 시 방번호가 다를 수 있으므로)
-      const messagesToProcess = girlLines.length > 0 ? girlLines : [message];
+      const messagesToProcess = girlLineEntries.length > 0
+        ? girlLineEntries.map(({ line, idx }: { line: string; idx: number }) => ({ line, effectiveRoom: lineEffectiveRooms[idx] }))
+        : [{ line: message, effectiveRoom: parsed.roomNumber }];
 
       console.log('Processing', messagesToProcess.length, 'line(s) for', slot.girl_name);
 
-      for (const lineMsg of messagesToProcess) {
+      for (const { line: lineMsg, effectiveRoom } of messagesToProcess) {
         const lineParsed = parseMessage(lineMsg, girlNames);
         const lineSignals = parseGirlSignals(lineMsg, slot.girl_name, girlNames);
 
-        // 줄에 방번호가 없으면 전체 메시지의 방번호를 사용
-        // 예: "603 태산\n연시 미쭈 1.5ㄲ" → 미쭈 줄에 방번호 없음 → 603 사용
-        if (!lineParsed.roomNumber && parsed.roomNumber) {
-          lineParsed.roomNumber = parsed.roomNumber;
+        // 줄에 방번호가 없으면 가장 가까운 이전 줄의 방번호를 상속
+        // 예: "603 태산\n연시 미쭈 1.5ㄲ" → 미쭈 줄에 방번호 없음 → 603 상속
+        // 예: "603 태산\n905 이승기\n파이 ㄴㄱ" → 파이 줄에 방번호 없음 → 905 상속
+        if (!lineParsed.roomNumber && effectiveRoom) {
+          lineParsed.roomNumber = effectiveRoom;
         }
 
         // 원본 메시지 첫 줄이 ㅈㅈ로 시작했으면, ㄲ이 있는 아가씨에게만 정정 적용
