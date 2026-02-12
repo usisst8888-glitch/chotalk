@@ -74,36 +74,16 @@ export async function POST(request: NextRequest) {
     // 3. ㅌㄹㅅ(방이동) 감지 → status_board 세션 이동 처리
     const transferResults = await processTransfers(supabase, allLines, room);
 
-    // 매칭된 슬롯 찾기 (아가씨 이름 + 만료 확인)
-    const matchedSlots = slots.filter(slot => {
-      if (new Date(slot.expires_at) < new Date()) return false;
-      return message.includes(slot.girl_name);
-    });
+    // ============================================================
+    // message_logs 저장 - 방번호가 있으면 저장 (아가씨 매칭과 무관)
+    // ============================================================
+    const hasRoomNumber = allLines.some((line: string) => extractRoomNumber(line));
+    let logId: string | undefined;
 
-    if (matchedSlots.length === 0) {
-      // ㅌㄹㅅ 처리가 있었으면 성공 리턴
-      if (transferResults.length > 0) {
-        return NextResponse.json({ success: true, matched: 0, transfers: transferResults, message: '방이동 처리 완료' });
-      }
-      console.log('No matched slots. Message:', message, 'Available girls:', girlNames);
-      slots.forEach(slot => {
-        const isExpired = new Date(slot.expires_at) < new Date();
-        const isInMessage = message.includes(slot.girl_name);
-        console.log(`Slot ${slot.girl_name}: expired=${isExpired}, inMessage=${isInMessage}, expires_at=${slot.expires_at}`);
-      });
-      return NextResponse.json({ success: false, message: '매칭된 아가씨 없음' });
-    }
-
-    // 결과 처리
-    const results = [];
-
-    for (const slot of matchedSlots) {
-      // 1. message_logs에 원본 메시지 저장 (항상 - 한번만)
+    if (hasRoomNumber) {
       const { data: log, error: logError } = await supabase
         .from('message_logs')
         .insert({
-          slot_id: slot.id,
-          user_id: slot.user_id,
           source_room: room,
           sender_name: sender,
           message: message,
@@ -115,11 +95,32 @@ export async function POST(request: NextRequest) {
       if (logError) {
         console.error('message_logs insert error:', logError);
       } else {
-        console.log('message_logs inserted:', log?.id);
+        logId = log?.id;
+        console.log('message_logs inserted:', logId);
       }
+    }
 
+    // 매칭된 슬롯 찾기 (아가씨 이름 + 만료 확인)
+    const matchedSlots = slots.filter(slot => {
+      if (new Date(slot.expires_at) < new Date()) return false;
+      return message.includes(slot.girl_name);
+    });
+
+    if (matchedSlots.length === 0) {
+      // ㅌㄹㅅ 처리가 있었으면 성공 리턴
+      if (transferResults.length > 0) {
+        return NextResponse.json({ success: true, matched: 0, transfers: transferResults, logId, message: '방이동 처리 완료' });
+      }
+      // 방번호는 있지만 매칭 아가씨 없음 (message_logs는 이미 저장됨)
+      return NextResponse.json({ success: true, matched: 0, logId, message: hasRoomNumber ? '메시지 저장 완료 (매칭 아가씨 없음)' : '매칭된 아가씨 없음' });
+    }
+
+    // 결과 처리
+    const results = [];
+
+    for (const slot of matchedSlots) {
       // ====================================================
-      // 2. status_board 테이블 처리
+      // status_board 테이블 처리
       // 같은 아가씨가 여러 줄에 나올 수 있음 (예: 종료 + 새 시작)
       // 각 줄을 별도로 파싱하여 순차 처리
       // ====================================================
@@ -154,7 +155,7 @@ export async function POST(request: NextRequest) {
       console.log('Processing', messagesToProcess.length, 'line(s) for', slot.girl_name);
 
       // 핸들러 컨텍스트 생성
-      const ctx: HandlerContext = { supabase, slot, receivedAt: messageReceivedAt, logId: log?.id, keepAliveRooms, sourceRoom: room };
+      const ctx: HandlerContext = { supabase, slot, receivedAt: messageReceivedAt, logId, keepAliveRooms, sourceRoom: room };
 
       for (const { line: lineMsg, effectiveRoom } of messagesToProcess) {
         const lineParsed = parseMessage(lineMsg, girlNames);
@@ -182,36 +183,36 @@ export async function POST(request: NextRequest) {
 
         if (lineSignals.isCancel) {
           const result = await handleCancel(ctx, lineParsed.roomNumber);
-          results.push({ ...result, logId: log?.id });
+          results.push({ ...result, logId });
 
         } else if (lineSignals.isNewSession && lineParsed.roomNumber) {
           const result = await handleNewSession(ctx, lineParsed, lineSignals);
-          results.push({ ...result, logId: log?.id });
+          results.push({ ...result, logId });
 
         } else if (lineSignals.isResume) {
           const result = await handleResume(ctx);
-          results.push({ ...result, logId: log?.id });
+          results.push({ ...result, logId });
 
         } else if (lineSignals.isEnd && lineParsed.roomNumber) {
           const result = await handleSessionEnd(ctx, lineParsed, lineSignals);
-          results.push({ ...result, logId: log?.id });
+          results.push({ ...result, logId });
 
         } else if (lineSignals.isCorrection && lineParsed.roomNumber) {
           const result = await handleCorrectionWithTime(ctx, lineMsg, lineParsed.roomNumber);
-          results.push({ ...result, logId: log?.id });
+          results.push({ ...result, logId });
 
         } else if (messageStartsWithCorrection && lineParsed.roomNumber) {
           const result = await handleCorrectionCatchAll(ctx, lineMsg, lineParsed, lineSignals);
-          results.push({ ...result, logId: log?.id });
+          results.push({ ...result, logId });
 
         } else if (lineParsed.roomNumber && !lineSignals.isEnd && !lineSignals.isExtension && !lineSignals.isDesignatedFee && !lineSignals.isDesignatedHalfFee && !lineSignals.isCorrection) {
           const result = await handleSessionStart(ctx, lineParsed, lineSignals);
-          results.push({ ...result, logId: log?.id });
+          results.push({ ...result, logId });
 
         } else {
           results.push({
             type: 'message',
-            logId: log?.id,
+            logId,
             slotId: slot.id,
             girlName: slot.girl_name,
           });
