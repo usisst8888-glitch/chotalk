@@ -110,31 +110,24 @@ async function checkAndCloseRoom(
 }
 
 // ============================================================
-// 이벤트 계산 함수
+// 이벤트 계산 함수 (주석 처리 - 새로 구현 예정)
 // ============================================================
 
+/*
 interface EventCalculation {
   eventCount: number;
   isNewRoom: boolean;
 }
 
-// 이벤트 날짜 계산 (thresholdHour 기준으로 날짜 구분)
-// thresholdHour 이전 → 전날의 이벤트 날짜
-// thresholdHour 이후 → 오늘의 이벤트 날짜
 function getEventDate(time: Date, thresholdHour: number): Date {
   const eventDate = new Date(time);
   if (eventDate.getHours() < thresholdHour) {
-    // thresholdHour 이전이면 전날로 취급
     eventDate.setDate(eventDate.getDate() - 1);
   }
   eventDate.setHours(thresholdHour, 0, 0, 0);
   return eventDate;
 }
 
-// 아가씨가 이벤트 상태인지 확인
-// - 같은 이벤트 날짜에 이벤트 조건을 만족하는 시작이 있는지 확인
-// - 신규방: threshold~이벤트종료 사이 시작
-// - 기존방 (도파민만): 이벤트시작시간을 넘김 (종료 시간이 이벤트시작 이후)
 async function checkGirlEventStatus(
   supabase: ReturnType<typeof getSupabase>,
   slotId: string,
@@ -142,26 +135,17 @@ async function checkGirlEventStatus(
   currentTime: string,
   eventStartHour: number,
   eventEndHour: number,
-  newRoomOffset: number // 도파민: -1, 나머지: 0
+  newRoomOffset: number
 ): Promise<boolean> {
   const currentDate = new Date(currentTime);
   const newRoomThresholdHour = eventStartHour + newRoomOffset;
   const hasExistingRoomLogic = newRoomOffset !== 0;
   const eventDate = getEventDate(currentDate, newRoomThresholdHour);
 
-  // 이벤트 날짜 범위: thresholdHour 기준
   const eventDateStart = new Date(eventDate);
   const eventDateEnd = new Date(eventDate);
   eventDateEnd.setDate(eventDateEnd.getDate() + 1);
 
-  console.log('Checking girl event status:', {
-    slotId,
-    currentTime,
-    eventDateStart: eventDateStart.toISOString(),
-    eventDateEnd: eventDateEnd.toISOString(),
-  });
-
-  // 이 아가씨의 해당 이벤트 날짜 기록 조회 (end_time도 포함)
   const { data: records, error } = await supabase
     .from('status_board')
     .select('start_time, end_time, room_number, shop_name')
@@ -170,19 +154,12 @@ async function checkGirlEventStatus(
     .gte('start_time', eventDateStart.toISOString().slice(0, -1))
     .lt('start_time', eventDateEnd.toISOString().slice(0, -1));
 
-  if (error || !records || records.length === 0) {
-    console.log('No records found for event status check');
-    return false;
-  }
+  if (error || !records || records.length === 0) return false;
 
-  // 각 기록에서 이벤트 조건을 만족하는지 확인
   for (const record of records) {
     const startTime = new Date(record.start_time);
-    const startHour = startTime.getHours();
-    const startMin = startTime.getMinutes();
-    const startInMinutes = startHour * 60 + startMin;
+    const startInMinutes = startTime.getHours() * 60 + startTime.getMinutes();
 
-    // 해당 시작 시간의 방 정보 조회
     const { data: room } = await supabase
       .from('rooms')
       .select('room_start_time')
@@ -197,8 +174,6 @@ async function checkGirlEventStatus(
 
     const roomStartTime = new Date(room.room_start_time);
     const roomStartHour = roomStartTime.getHours();
-
-    // 신규방 판별
     const isNewRoom = roomStartHour >= newRoomThresholdHour ||
                       (roomStartTime.getDate() !== startTime.getDate() && roomStartHour < newRoomThresholdHour);
 
@@ -206,27 +181,15 @@ async function checkGirlEventStatus(
     const eventEndInMinutes = eventEndHour * 60;
 
     if (isNewRoom) {
-      // 신규방: threshold~이벤트종료 사이 시작하면 이벤트 ON
       const newRoomEventStart = newRoomThresholdHour * 60;
-      if (startInMinutes >= newRoomEventStart && startInMinutes < eventEndInMinutes) {
-        console.log('Event status ON - New room condition met:', record.start_time);
-        return true;
-      }
+      if (startInMinutes >= newRoomEventStart && startInMinutes < eventEndInMinutes) return true;
     } else if (hasExistingRoomLogic) {
-      // 기존방 (도파민만): 이벤트시작시간을 넘겼는지 확인
       if (record.end_time) {
         const endTime = new Date(record.end_time);
-        const endHour = endTime.getHours();
-        const endMin = endTime.getMinutes();
-        const endInMinutes = endHour * 60 + endMin;
-
-        if (endInMinutes > eventStartInMinutes) {
-          console.log('Event status ON - Existing room crossed event start:', record.start_time, '->', record.end_time);
-          return true;
-        }
+        const endInMinutes = endTime.getHours() * 60 + endTime.getMinutes();
+        if (endInMinutes > eventStartInMinutes) return true;
       }
     }
-    // 기존방 로직 없는 shop: 신규방 아니면 이벤트 상태 아님
   }
 
   return false;
@@ -245,7 +208,6 @@ async function calculateEventCount(
     return { eventCount: 0, isNewRoom: false };
   }
 
-  // 이벤트 시간 조회 (new_room_offset 포함)
   const { data: eventTime } = await supabase
     .from('event_times')
     .select('start_time, end_time, new_room_offset')
@@ -253,108 +215,53 @@ async function calculateEventCount(
     .eq('is_active', true)
     .single();
 
-  if (!eventTime) {
-    console.log('No event time found for shop:', shopName);
-    return { eventCount: 0, isNewRoom: false };
-  }
+  if (!eventTime) return { eventCount: 0, isNewRoom: false };
 
-  // 시간 파싱 (예: "15:00" → 15시 00분)
-  const [eventStartHour, eventStartMin] = eventTime.start_time.split(':').map(Number);
-  const [eventEndHour, eventEndMin] = eventTime.end_time.split(':').map(Number);
-  const newRoomOffset = eventTime.new_room_offset || 0; // 도파민: -1, 나머지: 0
+  const [eventStartHour] = eventTime.start_time.split(':').map(Number);
+  const [eventEndHour] = eventTime.end_time.split(':').map(Number);
+  const newRoomOffset = eventTime.new_room_offset || 0;
 
-  // 방 시작 시간 파싱
   const roomStart = new Date(roomStartTime);
   const girlStart = new Date(girlStartTime);
-
-  // 신규방 기준: 이벤트 시작 + offset (도파민: 15-1=14시, 나머지: 15+0=15시)
   const newRoomThresholdHour = eventStartHour + newRoomOffset;
   const roomStartHour = roomStart.getHours();
 
-  // 신규방 판별
   const isNewRoom = roomStartHour >= newRoomThresholdHour ||
                     (roomStart.getDate() !== girlStart.getDate() && roomStartHour < newRoomThresholdHour);
 
-  // 기존방 로직 적용 여부 (도파민만 기존방 로직 있음)
   const hasExistingRoomLogic = newRoomOffset !== 0;
-
-  console.log('Event calculation:', {
-    shopName,
-    eventTime: `${eventTime.start_time}-${eventTime.end_time}`,
-    roomStartTime,
-    girlStartTime,
-    girlEndTime,
-    usageDuration,
-    isNewRoom,
-    roomStartHour,
-    newRoomThresholdHour,
-  });
-
-  // 시간 계산을 위한 변수들
   const girlEnd = new Date(girlEndTime);
-  const girlStartHour = girlStart.getHours();
-  const girlStartMin = girlStart.getMinutes();
-  const girlStartInMinutes = girlStartHour * 60 + girlStartMin;
-
-  const girlEndHour = girlEnd.getHours();
-  const girlEndMin = girlEnd.getMinutes();
-  const girlEndInMinutes = girlEndHour * 60 + girlEndMin;
-
+  const girlStartInMinutes = girlStart.getHours() * 60 + girlStart.getMinutes();
+  const girlEndInMinutes = girlEnd.getHours() * 60 + girlEnd.getMinutes();
   const eventStartInMinutes = eventStartHour * 60;
   const eventEndInMinutes = eventEndHour * 60;
   const newRoomEventStart = newRoomThresholdHour * 60;
 
   let eventCount = 0;
 
-  // 먼저 이전에 이벤트 상태가 됐는지 확인
   const hasEventStatus = await checkGirlEventStatus(
-    supabase,
-    slotId,
-    shopName,
-    girlEndTime,
-    eventStartHour,
-    eventEndHour,
-    newRoomOffset
+    supabase, slotId, shopName, girlEndTime, eventStartHour, eventEndHour, newRoomOffset
   );
 
   if (hasEventStatus) {
-    // 이미 이벤트 상태 → 이번 세션 전체 이벤트!
     eventCount = usageDuration;
-    console.log('Girl already has event status - eventCount:', eventCount);
   } else if (isNewRoom) {
-    // 신규방: threshold~이벤트종료 사이 시작하면 전체 이벤트
     if (girlStartInMinutes >= newRoomEventStart && girlStartInMinutes < eventEndInMinutes) {
       eventCount = usageDuration;
-      console.log('New room - start within event window - eventCount:', eventCount);
     }
   } else if (hasExistingRoomLogic) {
-    // 기존방 로직 (도파민만): 이벤트시작시간을 넘기는 시간만 이벤트
     if (girlEndInMinutes > eventStartInMinutes) {
-      // 이벤트시작 넘김
       if (girlStartInMinutes >= eventStartInMinutes) {
-        // 시작도 이벤트시작 이후 → 전체 이벤트
         eventCount = usageDuration;
-        console.log('Existing room (dopamine) - start after event start - eventCount:', eventCount);
       } else {
-        // 시작은 이벤트시작 이전, 끝은 이벤트시작 이후 → 이벤트시작~끝 시간만 이벤트
-        const eventMinutes = girlEndInMinutes - eventStartInMinutes;
-        eventCount = eventMinutes / 60; // 시간 단위로 변환
-        console.log('Existing room (dopamine) - crossed event start - eventCount:', eventCount, 'minutes:', eventMinutes);
+        eventCount = (girlEndInMinutes - eventStartInMinutes) / 60;
       }
-    } else {
-      // 이벤트시작 안 넘김 → 이벤트 0
-      eventCount = 0;
-      console.log('Existing room (dopamine) - did not cross event start - eventCount: 0');
     }
-  } else {
-    // 기존방 로직 없음 (다른 shop들): 신규방 아니면 이벤트 0
-    eventCount = 0;
-    console.log('Existing room (no logic) - eventCount: 0');
   }
 
-  console.log('Event count calculated:', eventCount);
   return { eventCount, isNewRoom };
 }
+*/
 
 // ============================================================
 // 메신저봇R에서 메시지 수신
@@ -875,18 +782,10 @@ async function handleSessionEnd(
 
   const girlStartTime = existingRecord?.start_time || receivedAt;
 
-  // rooms 테이블에서 room_start_time 조회
-  const { data: room } = await supabase
-    .from('rooms')
-    .select('room_start_time')
-    .eq('room_number', parsed.roomNumber)
-    .eq('shop_name', slot.shop_name || '')
-    .eq('is_active', true)
-    .single();
-
-  const roomStartTime = room?.room_start_time || girlStartTime;
-
-  // 이벤트 계산
+  // 이벤트 계산 (주석 처리 - 새로 구현 예정)
+  const eventCount = 0;
+  const isNewRoom = false;
+  /*
   const { eventCount, isNewRoom } = await calculateEventCount(
     supabase,
     slot.id,
@@ -896,8 +795,9 @@ async function handleSessionEnd(
     receivedAt,
     girlSignals.usageDuration
   );
+  */
 
-  console.log('handleSessionEnd - eventCount:', eventCount, 'isNewRoom:', isNewRoom, 'manualStartTime:', manualStartTime);
+  console.log('handleSessionEnd - usageDuration:', girlSignals.usageDuration, 'manualStartTime:', manualStartTime);
 
   // 상황판 업데이트
   await updateStatusBoard(supabase, {
