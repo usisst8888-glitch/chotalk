@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
 import { parseDesignatedSection } from '@/lib/message-parser';
+import { getKoreanTime } from '@/app/api/bot/handlers/shared';
 
 // ============================================================
 // ㅈ.ㅁ(지명) 섹션 처리 엔드포인트
 // 게시판 메시지의 ➖➖ㅈ.ㅁ➖➖ 구분선 아래 아가씨 목록을 파싱하여 DB 저장
 // ============================================================
-
-function getKoreanTime(): string {
-  const now = new Date();
-  const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
-  return koreaTime.toISOString().slice(0, -1);
-}
 
 /**
  * ㅈ.ㅁ 섹션 처리 핵심 로직
