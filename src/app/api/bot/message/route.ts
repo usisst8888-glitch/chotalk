@@ -372,6 +372,12 @@ export async function POST(request: NextRequest) {
         const lineParsed = parseMessage(lineMsg, girlNames);
         const lineSignals = parseGirlSignals(lineMsg, slot.girl_name, girlNames);
 
+        // 줄에 방번호가 없으면 전체 메시지의 방번호를 사용
+        // 예: "603 태산\n연시 미쭈 1.5ㄲ" → 미쭈 줄에 방번호 없음 → 603 사용
+        if (!lineParsed.roomNumber && parsed.roomNumber) {
+          lineParsed.roomNumber = parsed.roomNumber;
+        }
+
         // 원본 메시지 첫 줄이 ㅈㅈ로 시작했으면, ㄲ이 있는 아가씨에게만 정정 적용
         // ㄲ이 없는 아가씨는 새 시작일 수 있으므로 정정을 적용하지 않음
         if (messageStartsWithCorrection && lineSignals.isEnd) {
