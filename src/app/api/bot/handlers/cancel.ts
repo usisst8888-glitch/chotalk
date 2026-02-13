@@ -1,4 +1,5 @@
 import { HandlerContext, HandlerResult } from './types';
+import { getKoreanTime } from './shared';
 
 // ============================================================
 // 취소 처리 (ㄱㅌ) - trigger_type을 'canceled'로 변경
@@ -49,7 +50,7 @@ export async function handleCancel(
     .update({
       trigger_type: 'canceled',
       is_in_progress: false,
-      updated_at: new Date().toISOString(),
+      updated_at: getKoreanTime(),
     })
     .eq('id', recentRecord.id);
 

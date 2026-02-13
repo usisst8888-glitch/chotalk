@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/jwt';
+import { getKoreanTime } from '@/app/api/bot/handlers/shared';
 
 // 관리자 권한 확인 헬퍼
 async function checkAdmin(request: NextRequest) {
@@ -116,7 +117,7 @@ export async function PATCH(request: NextRequest) {
     // 요청 상태 업데이트
     await supabase
       .from('slot_extension_requests')
-      .update({ status: 'approved', updated_at: new Date().toISOString() })
+      .update({ status: 'approved', updated_at: getKoreanTime() })
       .eq('id', requestId);
 
     return NextResponse.json({ message: '연장이 승인되었습니다.' });
