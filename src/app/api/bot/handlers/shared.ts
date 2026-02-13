@@ -171,8 +171,7 @@ export async function updateStatusBoard(
           source_log_id: data.sourceLogId || null,
           is_designated: data.isDesignated,
           updated_at: getKoreanTime(),
-          // trigger_type이 변경되면 data_changed는 false, 아니면 true
-          data_changed: !triggerTypeChanging,
+          data_changed: true,
         };
 
         // 수동 지정 시간이 있으면 start_time도 업데이트
