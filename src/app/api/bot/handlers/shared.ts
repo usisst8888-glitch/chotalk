@@ -220,6 +220,7 @@ export async function updateStatusBoard(
             source_log_id: data.sourceLogId || null,
             is_designated: data.isDesignated,
             updated_at: getKoreanTime(),
+            data_changed: true,
           })
           .eq('id', inProgressRecord.id);
 
@@ -288,6 +289,7 @@ export async function updateStatusBoard(
           trigger_type: 'start',
           source_log_id: data.sourceLogId || null,
           is_designated: data.isDesignated,
+          data_changed: true,
         });
 
       if (insertError) {
