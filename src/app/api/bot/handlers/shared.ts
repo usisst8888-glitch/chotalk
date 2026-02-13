@@ -73,46 +73,15 @@ export async function getOrCreateRoom(
 
 // 방 종료 확인 (모든 아가씨가 ㄲ되었는지)
 // keepAliveRooms: 미등록 아가씨의 ㅇㅈ/ㅈㅈㅎ 신호가 있는 방 (닫지 않음)
+// TODO: 방 종료 로직은 추후 별도 개발 (rooms와 status_board는 완전 별개)
 export async function checkAndCloseRoom(
-  supabase: ReturnType<typeof getSupabase>,
-  roomNumber: string,
-  shopName: string | null,
-  keepAliveRooms?: Set<string>
+  _supabase: ReturnType<typeof getSupabase>,
+  _roomNumber: string,
+  _shopName: string | null,
+  _keepAliveRooms?: Set<string>
 ): Promise<void> {
-  // keepAliveRooms에 포함되면 방 안 닫음 (미등록 아가씨 진행 중)
-  if (keepAliveRooms?.has(roomNumber)) {
-    console.log('Room kept alive (unregistered ㅇㅈ/ㅈㅈㅎ):', roomNumber);
-    return;
-  }
-
-  // 해당 방에서 아직 진행 중인 아가씨가 있는지 확인
-  const { data: activeGirls, error } = await supabase
-    .from('status_board')
-    .select('id')
-    .eq('room_number', roomNumber)
-    .eq('shop_name', shopName || '')
-    .eq('is_in_progress', true);
-
-  if (error) {
-    console.error('Check active girls error:', error);
-    return;
-  }
-
-  // 진행 중인 아가씨가 없으면 방 종료
-  if (!activeGirls || activeGirls.length === 0) {
-    const { error: updateError } = await supabase
-      .from('rooms')
-      .update({ is_active: false, room_end_time: getKoreanTime() })
-      .eq('room_number', roomNumber)
-      .eq('shop_name', shopName || '')
-      .eq('is_active', true);
-
-    if (updateError) {
-      console.error('Room close error:', updateError);
-    } else {
-      console.log('Room closed:', roomNumber, shopName);
-    }
-  }
+  // 보류: 방 종료 시점 로직 미정
+  return;
 }
 
 // ============================================================
