@@ -1,0 +1,1 @@
+ALTER TABLE status_board ADD COLUMN last_sent_at TIMESTAMP WITHOUT TIME ZONE;
