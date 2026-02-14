@@ -95,8 +95,26 @@ export async function POST(request: NextRequest) {
     // 3. 미등록 아가씨의 ㅇㅈ/ㅈㅈㅎ 감지 → 해당 방은 닫지 않음
     const keepAliveRooms = buildKeepAliveRooms(allLines, girlNames);
 
-    // 4. ㅌㄹㅅ(방이동) 감지 → status_board 세션 이동 처리
+    // 4. ㅌㄹㅅ(방이동) 감지 → rooms 테이블 처리
     const transferResults = await processTransfers(supabase, allLines, room);
+
+    // 4-1. ㅌㄹㅅ 발생 시 status_board에서 진행중인 세션 방번호 변경
+    for (const tr of transferResults) {
+      const { error: trError } = await supabase
+        .from('status_board')
+        .update({
+          room_number: tr.toRoom,
+          updated_at: getKoreanTime(),
+          data_changed: true,
+        })
+        .eq('room_number', tr.fromRoom)
+        .eq('shop_name', room || '')
+        .eq('is_in_progress', true);
+
+      if (trError) {
+        console.error('Transfer status_board update error:', trError);
+      }
+    }
 
     // ============================================================
     // 방번호 + 아가씨 매칭 → status_board 저장

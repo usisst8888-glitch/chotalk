@@ -95,36 +95,17 @@ export async function handleTransfer(
 ): Promise<TransferHandlerResult> {
   console.log('handleTransfer:', fromRoom, '→', toRoom, 'shop:', shopName);
 
-  // 1. status_board: 진행중인 세션의 방번호 변경
-  const { data: movedRecords, error: updateError } = await supabase
-    .from('status_board')
-    .update({
-      room_number: toRoom,
-      updated_at: getKoreanTime(),
-      data_changed: true,
-    })
-    .eq('room_number', fromRoom)
-    .eq('shop_name', shopName || '')
-    .eq('is_in_progress', true)
-    .select('id');
-
-  if (updateError) {
-    console.error('Transfer status_board update error:', updateError);
-  }
-
-  const movedCount = movedRecords?.length || 0;
-
-  // 2. rooms 테이블: 이전 방 닫기 + 새 방 생성
+  // rooms 테이블: 이전 방 닫기 + 새 방 생성
   await checkAndCloseRoom(supabase, fromRoom, shopName);
   await getOrCreateRoom(supabase, toRoom, shopName, getKoreanTime());
 
-  console.log('Transfer:', fromRoom, '→', toRoom, 'moved', movedCount, 'sessions');
+  console.log('Transfer: room', fromRoom, '→', toRoom);
 
   return {
     type: 'transfer',
     fromRoom,
     toRoom,
-    movedSessions: movedCount,
+    movedSessions: 0,
   };
 }
 
