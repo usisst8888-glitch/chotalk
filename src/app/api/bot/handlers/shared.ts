@@ -139,6 +139,7 @@ export async function updateStatusBoard(
           trigger_type: expectedTriggerType,
           source_log_id: data.sourceLogId || null,
           is_designated: data.isDesignated,
+          is_event: data.isEvent,
           updated_at: getKoreanTime(),
           data_changed: true,
         };
@@ -187,6 +188,7 @@ export async function updateStatusBoard(
             trigger_type: 'end',
             source_log_id: data.sourceLogId || null,
             is_designated: data.isDesignated,
+            is_event: data.isEvent,
             updated_at: getKoreanTime(),
             data_changed: true,
           })
@@ -257,6 +259,7 @@ export async function updateStatusBoard(
           trigger_type: 'start',
           source_log_id: data.sourceLogId || null,
           is_designated: data.isDesignated,
+          is_event: data.isEvent,
           data_changed: true,
         });
 

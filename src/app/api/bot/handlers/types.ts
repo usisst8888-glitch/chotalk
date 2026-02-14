@@ -46,4 +46,5 @@ export interface StatusBoardData {
   isDesignated: boolean;
   sourceLogId: string | undefined;
   manualStartTime?: string | null;
+  isEvent: boolean;
 }

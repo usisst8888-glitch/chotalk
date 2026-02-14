@@ -1,6 +1,7 @@
 import { ParsedMessage, GirlSignalResult, extractManualTime } from '@/lib/message-parser';
 import { HandlerContext, HandlerResult } from './types';
 import { updateStatusBoard, checkAndCloseRoom } from './shared';
+import { checkIsEvent } from './event';
 
 // ============================================================
 // 세션 종료 처리 (상황판만 업데이트)
@@ -32,7 +33,8 @@ export async function handleSessionEnd(
 
   const girlStartTime = existingRecord?.start_time || receivedAt;
 
-  // 이벤트 계산 (주석 처리 - 새로 구현 예정, _event-calc.ts 참조)
+  // 이벤트 적용 여부 확인
+  const isEvent = await checkIsEvent(supabase, slot.id, slot.shop_name, girlStartTime);
   const eventCount = 0;
   const isNewRoom = false;
 
@@ -56,6 +58,7 @@ export async function handleSessionEnd(
     isDesignated: girlSignals.isDesignated,
     sourceLogId: logId,
     manualStartTime: manualStartTime,
+    isEvent,
   });
 
   // 방 종료 체크 (모든 아가씨가 ㄲ 되었는지 + keepAliveRooms 체크)

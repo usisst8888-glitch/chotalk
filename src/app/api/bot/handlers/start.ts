@@ -2,6 +2,7 @@ import { ParsedMessage, extractManualTime } from '@/lib/message-parser';
 import { GirlSignalResult } from '@/lib/message-parser';
 import { HandlerContext, HandlerResult } from './types';
 import { updateStatusBoard } from './shared';
+import { checkIsEvent } from './event';
 
 // ============================================================
 // 세션 시작 처리 (status_board에 저장)
@@ -42,6 +43,9 @@ export async function handleSessionStart(
 
   console.log('handleSessionStart called for:', slot.girl_name, 'roomNumber:', parsed.roomNumber, 'isDesignated:', girlSignals.isDesignated, 'manualTime:', manualTime);
 
+  // 이벤트 적용 여부 확인
+  const isEvent = await checkIsEvent(supabase, slot.id, slot.shop_name, startTime);
+
   // 상황판에 저장 (rooms 테이블 생성은 /api/bot/room에서 독립 처리)
   await updateStatusBoard(supabase, {
     slotId: slot.id,
@@ -60,6 +64,7 @@ export async function handleSessionStart(
     isDesignated: girlSignals.isDesignated,
     sourceLogId: logId,
     manualStartTime: girlSignals.isCorrection ? manualTime : null,
+    isEvent,
   });
 
   return {
