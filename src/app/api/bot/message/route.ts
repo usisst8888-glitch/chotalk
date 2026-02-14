@@ -95,10 +95,58 @@ export async function POST(request: NextRequest) {
     // 3. 미등록 아가씨의 ㅇㅈ/ㅈㅈㅎ 감지 → 해당 방은 닫지 않음
     const keepAliveRooms = buildKeepAliveRooms(allLines, girlNames);
 
-    // 4. ㅌㄹㅅ(방이동) 감지 → rooms 테이블 처리
+    // 4. ㅌㄹㅅ 취소 감지 (ㅌㄹㅅ ㅊㅅ, ㅌㄹㅅ 취소, ㅈㅈ ㅌㄹㅅ 취소)
+    const isTransferCancel = /ㅌㄹㅅ\s*(ㅊㅅ|취소)/.test(message);
+    if (isTransferCancel) {
+      // 가장 최근 미취소 transfer_logs 찾기
+      const { data: lastTransfer } = await supabase
+        .from('transfer_logs')
+        .select('id, from_room, to_room')
+        .eq('shop_name', room || '')
+        .eq('is_canceled', false)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (lastTransfer) {
+        // status_board: toRoom → fromRoom으로 되돌리기
+        await supabase
+          .from('status_board')
+          .update({
+            room_number: lastTransfer.from_room,
+            updated_at: getKoreanTime(),
+            data_changed: true,
+          })
+          .eq('room_number', lastTransfer.to_room)
+          .eq('shop_name', room || '')
+          .eq('is_in_progress', true);
+
+        // transfer_logs 취소 처리
+        await supabase
+          .from('transfer_logs')
+          .update({ is_canceled: true })
+          .eq('id', lastTransfer.id);
+
+        console.log('Transfer canceled:', lastTransfer.to_room, '→', lastTransfer.from_room);
+
+        return NextResponse.json({
+          success: true,
+          type: 'transfer_cancel',
+          fromRoom: lastTransfer.to_room,
+          toRoom: lastTransfer.from_room,
+          logId,
+          message: '방이동 취소 완료',
+        });
+      } else {
+        console.log('Transfer cancel - no recent transfer found');
+        return NextResponse.json({ success: false, message: '취소할 방이동 기록 없음' });
+      }
+    }
+
+    // 5. ㅌㄹㅅ(방이동) 감지 → rooms 테이블 처리
     const transferResults = await processTransfers(supabase, allLines, room);
 
-    // 4-1. ㅌㄹㅅ 발생 시 status_board에서 진행중인 세션 방번호 변경
+    // 5-1. ㅌㄹㅅ 발생 시 status_board 방번호 변경 + transfer_logs 기록
     for (const tr of transferResults) {
       const { error: trError } = await supabase
         .from('status_board')
@@ -114,6 +162,14 @@ export async function POST(request: NextRequest) {
       if (trError) {
         console.error('Transfer status_board update error:', trError);
       }
+
+      // transfer_logs에 기록 (취소 시 되돌리기용)
+      await supabase.from('transfer_logs').insert({
+        from_room: tr.fromRoom,
+        to_room: tr.toRoom,
+        shop_name: room || '',
+        created_at: getKoreanTime(),
+      });
     }
 
     // ============================================================
