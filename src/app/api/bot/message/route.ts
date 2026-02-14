@@ -231,6 +231,9 @@ export async function POST(request: NextRequest) {
       const ctx: HandlerContext = { supabase, slot, receivedAt: messageReceivedAt, logId, keepAliveRooms, sourceRoom: room };
 
       for (const { line: lineMsg, effectiveRoom } of messagesToProcess) {
+        // ㅌㄹㅅ 라인은 step 5에서 이미 처리됨 → 세션 처리 skip
+        if (/ㅁ?ㅌㄹㅅ/.test(lineMsg) && !/ㅁ?ㅌㄹㅅ\s*(ㅊㅅ|취소)/.test(lineMsg)) continue;
+
         const lineParsed = parseMessage(lineMsg, girlNames);
         const lineSignals = parseGirlSignals(lineMsg, slot.girl_name, girlNames);
 
