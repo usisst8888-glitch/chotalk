@@ -6,3 +6,5 @@ CREATE TABLE transfer_logs (
   is_canceled BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
 );
+
+ALTER TABLE transfer_logs ENABLE ROW LEVEL SECURITY;

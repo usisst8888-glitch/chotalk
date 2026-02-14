@@ -488,12 +488,15 @@ export interface TransferResult {
 }
 
 /**
- * 메시지에서 방이동(ㅌㄹㅅ) 패턴 추출
- * 패턴: "603 ㅌㄹㅅ 905"
+ * 메시지에서 방이동(ㅌㄹㅅ/ㅁㅌㄹㅅ) 패턴 추출
+ * ㅁㅌㄹㅅ는 ㅌㄹㅅ 오타로 동일하게 처리
+ * 첫 번째 3자리 = from, 두 번째 3자리 = to
  */
 export function parseTransfer(message: string): TransferResult | null {
-  const match = message.match(/(\d{3})\s*ㅌㄹㅅ\s*(\d{3})/);
-  return match ? { fromRoom: match[1], toRoom: match[2] } : null;
+  if (!/ㅁ?ㅌㄹㅅ/.test(message)) return null;
+  const rooms = message.match(/\d{3}/g);
+  if (!rooms || rooms.length < 2) return null;
+  return { fromRoom: rooms[0], toRoom: rooms[1] };
 }
 
 // ============================================================

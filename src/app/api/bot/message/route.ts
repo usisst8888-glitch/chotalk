@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     const keepAliveRooms = buildKeepAliveRooms(allLines, girlNames);
 
     // 4. ㅌㄹㅅ 취소 감지 (ㅌㄹㅅ ㅊㅅ, ㅌㄹㅅ 취소, ㅈㅈ ㅌㄹㅅ 취소)
-    const isTransferCancel = /ㅌㄹㅅ\s*(ㅊㅅ|취소)/.test(message);
+    const isTransferCancel = /ㅁ?ㅌㄹㅅ\s*(ㅊㅅ|취소)/.test(message);
     if (isTransferCancel) {
       // 가장 최근 미취소 transfer_logs 찾기
       const { data: lastTransfer } = await supabase
