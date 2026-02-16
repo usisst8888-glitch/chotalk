@@ -70,21 +70,20 @@ export async function PATCH(
     const body = await request.json();
     const supabase = getSupabase();
 
-    // is_event 전체 일괄 업데이트 (개별이 아닌 슬롯 전체)
-    if (body.is_event !== undefined && body.bulkEvent) {
+    // 전체 재발송: 해당 슬롯의 모든 레코드 data_changed = true
+    if (body.bulkResend) {
       const { error: bulkError } = await supabase
         .from('status_board')
         .update({
-          is_event: body.is_event,
           data_changed: true,
           updated_at: getKoreanTime(),
         })
         .eq('slot_id', slotId);
 
       if (bulkError) {
-        return NextResponse.json({ error: '이벤트 일괄 수정 실패' }, { status: 500 });
+        return NextResponse.json({ error: '재발송 처리 실패' }, { status: 500 });
       }
-      return NextResponse.json({ message: '이벤트 일괄 수정 완료, 재발송 예정' });
+      return NextResponse.json({ message: '전체 재발송 예정' });
     }
 
     // recordId가 있으면 해당 레코드, 없으면 가장 최근 레코드

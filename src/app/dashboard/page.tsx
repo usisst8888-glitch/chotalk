@@ -37,15 +37,14 @@ export default function DashboardPage() {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [statusRecords, setStatusRecords] = useState<Array<{
     id: string; room_number: string; girl_name: string; start_time: string;
-    usage_duration: number | null; is_designated: boolean; is_event: boolean; event_count: number | null;
+    usage_duration: number | null; is_designated: boolean; event_count: number | null;
     trigger_type: string; is_in_progress: boolean; created_at: string;
   }>>([]);
   const [selectedStatusRecord, setSelectedStatusRecord] = useState<{
     id: string; room_number: string; girl_name: string; start_time: string;
-    usage_duration: number | null; is_designated: boolean; is_event: boolean; event_count: number | null;
+    usage_duration: number | null; is_designated: boolean; event_count: number | null;
     trigger_type: string; is_in_progress: boolean; created_at: string;
   } | null>(null);
-  const [isEventEnabled, setIsEventEnabled] = useState(false);
   const [statusForm, setStatusForm] = useState({
     room_number: '', start_time: '', usage_duration: '',
     is_designated: false, event_count: '',
@@ -448,7 +447,6 @@ export default function DashboardPage() {
       }
       const data = await res.json();
       setStatusRecords(data.records);
-      setIsEventEnabled(data.records.some((r: { is_event: boolean }) => r.is_event));
       setSelectedStatusRecord(null);
       setShowStatusModal(true);
     } catch {
@@ -467,24 +465,28 @@ export default function DashboardPage() {
     });
   };
 
-  const handleToggleEvent = async () => {
+  const handleBulkResend = async () => {
     if (!selectedSlot) return;
-    const newValue = !isEventEnabled;
+    setSubmitting(true);
     try {
       const res = await fetch(`/api/status-board/${selectedSlot.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_event: newValue, bulkEvent: true }),
+        body: JSON.stringify({ bulkResend: true }),
       });
       if (res.ok) {
-        setIsEventEnabled(newValue);
-        setStatusRecords(prev => prev.map(r => ({ ...r, is_event: newValue })));
+        setShowStatusModal(false);
+        setStatusRecords([]);
+        setSelectedSlot(null);
+        alert('전체 재발송 예정입니다.');
       } else {
         const data = await res.json();
-        alert(data.error || '이벤트 수정에 실패했습니다.');
+        alert(data.error || '재발송 처리에 실패했습니다.');
       }
     } catch {
       alert('서버 오류가 발생했습니다.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -2285,22 +2287,6 @@ export default function DashboardPage() {
 
             {!selectedStatusRecord ? (
               <>
-                {/* 이벤트 전체 적용 토글 */}
-                <div className="flex items-center justify-between bg-neutral-800 border border-neutral-700 rounded-xl p-3 mb-4">
-                  <span className="text-sm font-medium text-neutral-300">이벤트 적용</span>
-                  <button
-                    type="button"
-                    onClick={handleToggleEvent}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-                      isEventEnabled ? 'bg-indigo-600' : 'bg-neutral-600'
-                    }`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                      isEventEnabled ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
-                  </button>
-                </div>
-
                 {/* 레코드 리스트 */}
                 <div className="flex-1 overflow-y-auto space-y-2 mb-4">
                   {statusRecords.map((record) => (
@@ -2330,17 +2316,26 @@ export default function DashboardPage() {
                   ))}
                 </div>
 
-                {/* 닫기 버튼 */}
-                <button
-                  onClick={() => {
-                    setShowStatusModal(false);
-                    setStatusRecords([]);
-                    setSelectedSlot(null);
-                  }}
-                  className="w-full py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
-                >
-                  닫기
-                </button>
+                {/* 버튼 */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowStatusModal(false);
+                      setStatusRecords([]);
+                      setSelectedSlot(null);
+                    }}
+                    className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
+                  >
+                    닫기
+                  </button>
+                  <button
+                    onClick={handleBulkResend}
+                    disabled={submitting}
+                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
+                  >
+                    {submitting ? '처리 중...' : '재발송'}
+                  </button>
+                </div>
               </>
             ) : (
               <>
@@ -2424,7 +2419,7 @@ export default function DashboardPage() {
                     disabled={submitting}
                     className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
                   >
-                    {submitting ? '처리 중...' : '재발송'}
+                    {submitting ? '처리 중...' : '수정완료'}
                   </button>
                 </div>
               </>
