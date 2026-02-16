@@ -35,7 +35,7 @@ export default function GuidePage() {
             <p>2. <span className="text-yellow-400">아가씨 닉네임</span>과 <span className="text-yellow-400">채팅방 이름</span>을 정확하게 입력합니다.</p>
             <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-xl p-4 mt-3">
               <p className="text-yellow-400 text-sm">
-                초톡, 도촉 단톡방에 있는 정확한 이름과 채팅방 이름을 입력해주셔야 자동 발송이 가능합니다.
+                초이스톡 단톡방에 있는 정확한 아가씨 닉네임을 입력해주셔야 자동 발송이 가능합니다.
               </p>
             </div>
           </div>
@@ -55,10 +55,6 @@ export default function GuidePage() {
             <div className="flex items-start gap-3">
               <span className="px-2 py-1 bg-yellow-600/20 text-yellow-400 rounded text-sm font-medium">연장</span>
               <p>슬롯 기간을 연장합니다. 계좌번호 안내가 표시됩니다.</p>
-            </div>
-            <div className="flex items-start gap-3">
-              <span className="px-2 py-1 bg-red-600/20 text-red-400 rounded text-sm font-medium">삭제</span>
-              <p>슬롯을 삭제합니다. 삭제된 슬롯은 복구할 수 없습니다.</p>
             </div>
           </div>
         </section>
