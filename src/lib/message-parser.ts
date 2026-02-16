@@ -411,9 +411,10 @@ export function parseGirlSignals(
 
   if ((hasEndInSection || hasEndInMessage) && !hasExtension && !hasDesignatedFee && !hasDesignatedHalfFee) {
     result.isEnd = true;
-    // 1차: 아가씨 구간(afterSection)에서 숫자+ㄲ/끝 찾기
-    // 예: "유별1.5 ㄲ" → 1.5, "유별1.5 끝" → 1.5
-    let match = afterSection.match(/(\d+(?:\.\d+)?)[^\d]*(?:ㄲ|끝)/);
+    // 1차: 아가씨 구간(afterSection)에서 첫 번째 숫자 + ㄲ/끝 찾기
+    // .*? (non-greedy)로 첫 번째 숫자를 우선 매칭
+    // 예: " 2 빈희 1.5ㄲ" → 2 (첫 번째 숫자), "유별1.5 ㄲ" → 1.5
+    let match = afterSection.match(/(\d+(?:\.\d+)?).*?(?:ㄲ|끝)/);
     if (!match && !hasEndInSection && hasEndInMessage) {
       // 2차: "달래 1 인혜 3 주디 2 유별1.5 ㄲ" 같이 각 아가씨별 개별 숫자가 있을 때
       // afterSection에서 시간 패턴(시) 아닌 숫자 추출
