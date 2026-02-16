@@ -37,6 +37,7 @@ export async function handleNewSession(
       trigger_type: 'start',
       source_log_id: logId || null,
       is_designated: girlSignals.isDesignated,
+      data_changed: true,
     });
 
   if (insertError) {

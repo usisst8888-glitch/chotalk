@@ -51,6 +51,7 @@ export async function handleCancel(
       trigger_type: 'canceled',
       is_in_progress: false,
       updated_at: getKoreanTime(),
+      data_changed: true,
     })
     .eq('id', recentRecord.id);
 
