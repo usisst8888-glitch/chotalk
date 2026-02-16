@@ -491,30 +491,34 @@ export default function DashboardPage() {
 
   const handleForceEnd = async () => {
     if (!selectedSlot || !selectedStatusRecord) return;
-    if (!statusForm.usage_duration) {
-      alert('이용시간을 입력해주세요.');
-      return;
-    }
     setSubmitting(true);
     try {
+      const hasUsageDuration = !!statusForm.usage_duration;
+      const payload: Record<string, unknown> = {
+        recordId: selectedStatusRecord.id,
+        room_number: statusForm.room_number,
+        start_time: selectedStatusRecord.start_time ? selectedStatusRecord.start_time.slice(0, 11) + statusForm.start_time + ':00' : null,
+        is_designated: statusForm.is_designated,
+      };
+      // 이용시간이 있으면 종료 처리 (forceEnd), 없으면 일반 수정
+      if (hasUsageDuration) {
+        payload.forceEnd = true;
+        payload.usage_duration = parseFloat(statusForm.usage_duration);
+      }
       const res = await fetch(`/api/status-board/${selectedSlot.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          forceEnd: true,
-          recordId: selectedStatusRecord.id,
-          usage_duration: parseFloat(statusForm.usage_duration),
-        }),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         setShowStatusModal(false);
         setStatusRecords([]);
         setSelectedStatusRecord(null);
         setSelectedSlot(null);
-        alert('강제 종료 완료! 재발송 예정입니다.');
+        alert('수정 완료! 재발송 예정입니다.');
       } else {
         const data = await res.json();
-        alert(data.error || '강제 종료에 실패했습니다.');
+        alert(data.error || '수정에 실패했습니다.');
       }
     } catch {
       alert('서버 오류가 발생했습니다.');
@@ -2361,7 +2365,7 @@ export default function DashboardPage() {
                   {/* 이용시간 */}
                   <div>
                     <label className="block text-sm font-medium text-neutral-400 mb-1">
-                      이용시간{selectedStatusRecord.is_in_progress && ' (강제종료용)'}
+                      이용시간{selectedStatusRecord.is_in_progress && ' (입력 시 종료 처리)'}
                     </label>
                     <input
                       type="text"
@@ -2401,9 +2405,9 @@ export default function DashboardPage() {
                     <button
                       onClick={handleForceEnd}
                       disabled={submitting}
-                      className="flex-1 py-3 bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
+                      className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
                     >
-                      {submitting ? '처리 중...' : '강제종료'}
+                      {submitting ? '처리 중...' : '수정하기'}
                     </button>
                   ) : (
                     <button

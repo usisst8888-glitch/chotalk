@@ -100,23 +100,28 @@ export async function PATCH(
 
     // 강제 종료: 진행 중인 레코드를 종료 처리 (ㄲ 핸들러와 동일)
     if (body.forceEnd && body.recordId) {
+      const endUpdate: Record<string, unknown> = {
+        is_in_progress: false,
+        end_time: getKoreanTime(),
+        usage_duration: body.usage_duration ?? null,
+        event_count: body.usage_duration ? Math.floor(body.usage_duration) : null,
+        trigger_type: 'end',
+        data_changed: true,
+        updated_at: getKoreanTime(),
+      };
+      if (body.room_number !== undefined) endUpdate.room_number = body.room_number;
+      if (body.start_time !== undefined) endUpdate.start_time = body.start_time;
+      if (body.is_designated !== undefined) endUpdate.is_designated = body.is_designated;
+
       const { error: endError } = await supabase
         .from('status_board')
-        .update({
-          is_in_progress: false,
-          end_time: getKoreanTime(),
-          usage_duration: body.usage_duration ?? null,
-          event_count: body.usage_duration ? Math.floor(body.usage_duration) : null,
-          trigger_type: 'end',
-          data_changed: true,
-          updated_at: getKoreanTime(),
-        })
+        .update(endUpdate)
         .eq('id', body.recordId);
 
       if (endError) {
-        return NextResponse.json({ error: '강제 종료 실패' }, { status: 500 });
+        return NextResponse.json({ error: '수정 실패' }, { status: 500 });
       }
-      return NextResponse.json({ message: '강제 종료 완료, 재발송 예정' });
+      return NextResponse.json({ message: '수정 완료, 재발송 예정' });
     }
 
     // recordId가 있으면 해당 레코드, 없으면 가장 최근 레코드
