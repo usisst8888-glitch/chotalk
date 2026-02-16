@@ -55,7 +55,6 @@ export async function processDesignatedSection(
 
   // 파싱
   const entries = parseDesignatedSection(message);
-  if (entries.length === 0) return result;
 
   console.log('ㅈ.ㅁ section found:', entries);
 
