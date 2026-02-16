@@ -32,7 +32,7 @@ export default function GuidePage() {
           </div>
           <div className="space-y-3 text-gray-300">
             <p>1. 대시보드에서 <span className="text-indigo-400 font-semibold">+ 추가</span> 버튼을 클릭합니다.</p>
-            <p>2. <span className="text-yellow-400">아가씨 닉네임</span>과 <span className="text-yellow-400">채팅방 이름</span>을 정확하게 입력합니다.</p>
+            <p>2. <span className="text-yellow-400">아가씨 닉네임</span>을 정확하게 입력합니다.</p>
             <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-xl p-4 mt-3">
               <p className="text-yellow-400 text-sm">
                 초이스톡 단톡방에 있는 정확한 아가씨 닉네임을 입력해주셔야 자동 발송이 가능합니다.
