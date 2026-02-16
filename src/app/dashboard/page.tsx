@@ -2407,7 +2407,7 @@ export default function DashboardPage() {
                       disabled={submitting}
                       className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
                     >
-                      {submitting ? '처리 중...' : '수정하기'}
+                      {submitting ? '처리 중...' : '수정 및 재발송'}
                     </button>
                   ) : (
                     <button
@@ -2415,7 +2415,7 @@ export default function DashboardPage() {
                       disabled={submitting}
                       className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
                     >
-                      {submitting ? '처리 중...' : '수정완료'}
+                      {submitting ? '처리 중...' : '수정 및 재발송'}
                     </button>
                   )}
                 </div>
