@@ -413,13 +413,16 @@ export function parseGirlSignals(
     result.isEnd = true;
     // 1차: 아가씨 구간(afterSection)에서 첫 번째 숫자 + ㄲ/끝 찾기
     // .*? (non-greedy)로 첫 번째 숫자를 우선 매칭
-    // 예: " 2 빈희 1.5ㄲ" → 2 (첫 번째 숫자), "유별1.5 ㄲ" → 1.5
-    let match = afterSection.match(/(\d+(?:\.\d+)?).*?(?:ㄲ|끝)/);
+    // 단, "3시", "3ㄱㅈ", "3ㅅㄱㅈ", "3기준", "3ㄷㅊ" 등 시간/기준 표현의 숫자는 제외
+    // 방법: 매칭 전에 비-이용시간 숫자 패턴을 제거 (pre-clean)
+    // 예: " 3시 ㄱㅈ 1.5 ㄲ" → " ㄱㅈ 1.5 ㄲ" → 1.5
+    const cleanedSection = afterSection.replace(/\d+(?:\.\d+)?(?=\s*(?:시|ㄱㅈ|ㅅㄱㅈ|ㅅㄱ|기준|ㄷㅊ))/g, '');
+    let match = cleanedSection.match(/(\d+(?:\.\d+)?).*?(?:ㄲ|끝)/);
     if (!match && !hasEndInSection && hasEndInMessage) {
       // 2차: "달래 1 인혜 3 주디 2 유별1.5 ㄲ" 같이 각 아가씨별 개별 숫자가 있을 때
-      // afterSection에서 시간 패턴(시) 아닌 숫자 추출
-      // 예: 달래 구간 " 1 " → 1, 인혜 구간 " 3 " → 3
-      match = afterSection.match(/(\d+(?:\.\d+)?)(?!\s*시)/);
+      // afterSection에서 시간/기준 패턴 아닌 숫자 추출
+      const cleanedForFallback = afterSection.replace(/\d+(?:\.\d+)?(?=\s*(?:시|ㄱㅈ|ㅅㄱㅈ|ㅅㄱ|기준|ㄷㅊ))/g, '');
+      match = cleanedForFallback.match(/(\d+(?:\.\d+)?)/);
     }
     if (!match) {
       // 3차: "인혜 주디 1.5ㄲ" 같이 여러 아가씨가 ㄲ/끝을 공유할 때
