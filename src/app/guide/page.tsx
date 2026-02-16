@@ -70,7 +70,7 @@ export default function GuidePage() {
             <p><span className="px-2 py-1 bg-gray-600 text-gray-300 rounded text-sm">복사</span> 버튼을 누르면 클립보드에 복사됩니다.</p>
             <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-4 mt-3">
               <p className="text-red-400 font-semibold text-sm mb-2">중요 포인트</p>
-              <p className="text-red-300 text-sm">아가씨 닉네임 입력 1회</p>
+              <p className="text-red-300 text-sm">봇을 초대후 아가씨 닉네임 입력 1회 꼭 해주셔야 합니다.</p>
             </div>
           </div>
         </section>
