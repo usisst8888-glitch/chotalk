@@ -5,9 +5,9 @@ import { signToken } from '@/lib/jwt';
 
 export async function POST(request: NextRequest) {
   try {
-    const { password, username } = await request.json();
+    const { password, username, phone } = await request.json();
 
-    if (!password || !username) {
+    if (!password || !username || !phone) {
       return NextResponse.json(
         { error: '모든 필드를 입력해주세요.' },
         { status: 400 }
@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
       .insert({
         password: hashedPassword,
         username,
+        phone,
       })
       .select('id, username')
       .single();

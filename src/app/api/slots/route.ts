@@ -116,9 +116,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 30일 후 만료 (한국 시간 기준)
+    // 14일(2주) 후 만료 (한국 시간 기준) - 무료 슬롯
     const expiresAt = getKoreanTimeDate();
-    expiresAt.setDate(expiresAt.getDate() + 30);
+    expiresAt.setDate(expiresAt.getDate() + 14);
 
     // 활성화된 카카오 초대 ID 목록 가져오기
     const { data: kakaoIds, error: kakaoIdError } = await supabase
