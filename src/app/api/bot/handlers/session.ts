@@ -84,8 +84,8 @@ export async function handleResume(
     };
   }
 
-  // 가장 최근 레코드가 'end'가 아니면 재진행 불가
-  if (recentRecord.trigger_type !== 'end' || recentRecord.is_in_progress) {
+  // 가장 최근 레코드가 종료/취소 상태가 아니면 재진행 불가
+  if ((recentRecord.trigger_type !== 'end' && recentRecord.trigger_type !== 'canceled') || recentRecord.is_in_progress) {
     console.log('handleResume - most recent record is not ended:', recentRecord.trigger_type, recentRecord.is_in_progress);
     return {
       type: 'resume_failed',
@@ -102,7 +102,7 @@ export async function handleResume(
       is_in_progress: true,
       end_time: null,
       usage_duration: null,
-      trigger_type: 'start',
+      trigger_type: 'hourly',
       source_log_id: logId || null,
       updated_at: getKoreanTime(),
       data_changed: true,  // ㅈㅈㅎ(재진행) 시 재발송 트리거
