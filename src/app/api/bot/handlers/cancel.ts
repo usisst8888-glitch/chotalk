@@ -13,12 +13,11 @@ export async function handleCancel(
 
   console.log('handleCancel called for:', slot.girl_name, 'roomNumber:', roomNumber);
 
-  // 진행 중인 레코드 찾기 (is_in_progress = true, created_at 기준)
+  // 가장 최근 레코드 찾기 (진행 중 또는 종료 상태 모두 취소 가능)
   const { data: recentRecord, error: findError } = await supabase
     .from('status_board')
-    .select('id, room_number')
+    .select('id, room_number, trigger_type')
     .eq('slot_id', slot.id)
-    .eq('is_in_progress', true)
     .order('created_at', { ascending: false })
     .limit(1)
     .single();
@@ -30,6 +29,17 @@ export async function handleCancel(
       slotId: slot.id,
       girlName: slot.girl_name,
       reason: '취소할 레코드 없음',
+    };
+  }
+
+  // 이미 취소된 레코드는 무시
+  if (recentRecord.trigger_type === 'canceled') {
+    console.log('handleCancel - already canceled:', recentRecord.id);
+    return {
+      type: 'ignored',
+      slotId: slot.id,
+      girlName: slot.girl_name,
+      reason: '이미 취소된 레코드',
     };
   }
 
