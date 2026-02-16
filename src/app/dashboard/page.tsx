@@ -38,12 +38,12 @@ export default function DashboardPage() {
   const [statusRecords, setStatusRecords] = useState<Array<{
     id: string; room_number: string; girl_name: string; start_time: string;
     usage_duration: number | null; is_designated: boolean; event_count: number | null;
-    trigger_type: string; is_in_progress: boolean; created_at: string;
+    trigger_type: string; is_in_progress: boolean; data_changed: boolean; created_at: string;
   }>>([]);
   const [selectedStatusRecord, setSelectedStatusRecord] = useState<{
     id: string; room_number: string; girl_name: string; start_time: string;
     usage_duration: number | null; is_designated: boolean; event_count: number | null;
-    trigger_type: string; is_in_progress: boolean; created_at: string;
+    trigger_type: string; is_in_progress: boolean; data_changed: boolean; created_at: string;
   } | null>(null);
   const [statusForm, setStatusForm] = useState({
     room_number: '', start_time: '', usage_duration: '',
@@ -482,6 +482,40 @@ export default function DashboardPage() {
       } else {
         const data = await res.json();
         alert(data.error || '재발송 처리에 실패했습니다.');
+      }
+    } catch {
+      alert('서버 오류가 발생했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleForceEnd = async () => {
+    if (!selectedSlot || !selectedStatusRecord) return;
+    if (!statusForm.usage_duration) {
+      alert('이용시간을 입력해주세요.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/status-board/${selectedSlot.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          forceEnd: true,
+          recordId: selectedStatusRecord.id,
+          usage_duration: parseFloat(statusForm.usage_duration),
+        }),
+      });
+      if (res.ok) {
+        setShowStatusModal(false);
+        setStatusRecords([]);
+        setSelectedStatusRecord(null);
+        setSelectedSlot(null);
+        alert('강제 종료 완료! 재발송 예정입니다.');
+      } else {
+        const data = await res.json();
+        alert(data.error || '강제 종료에 실패했습니다.');
       }
     } catch {
       alert('서버 오류가 발생했습니다.');
@@ -2330,10 +2364,10 @@ export default function DashboardPage() {
                   </button>
                   <button
                     onClick={handleBulkResend}
-                    disabled={submitting}
-                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
+                    disabled={submitting || statusRecords.some(r => r.data_changed)}
+                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 disabled:text-neutral-500 text-white font-semibold rounded-xl transition"
                   >
-                    {submitting ? '처리 중...' : '재발송'}
+                    {submitting ? '처리 중...' : statusRecords.some(r => r.data_changed) ? '발송 대기중' : '재발송'}
                   </button>
                 </div>
               </>
@@ -2375,19 +2409,19 @@ export default function DashboardPage() {
                     />
                   </div>
 
-                  {/* 이용시간: 종료 상태일 때만 표시 */}
-                  {!selectedStatusRecord.is_in_progress && (
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-400 mb-1">이용시간</label>
-                      <input
-                        type="text"
-                        value={statusForm.usage_duration}
-                        onChange={(e) => setStatusForm({ ...statusForm, usage_duration: e.target.value })}
-                        placeholder="1.5"
-                        className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-                      />
-                    </div>
-                  )}
+                  {/* 이용시간 */}
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-400 mb-1">
+                      이용시간{selectedStatusRecord.is_in_progress && ' (강제종료용)'}
+                    </label>
+                    <input
+                      type="text"
+                      value={statusForm.usage_duration}
+                      onChange={(e) => setStatusForm({ ...statusForm, usage_duration: e.target.value })}
+                      placeholder="1.5"
+                      className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                    />
+                  </div>
 
                   {/* 지명 */}
                   <div className="flex items-center gap-3">
@@ -2414,13 +2448,23 @@ export default function DashboardPage() {
                   >
                     목록으로
                   </button>
-                  <button
-                    onClick={handleStatusResend}
-                    disabled={submitting}
-                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
-                  >
-                    {submitting ? '처리 중...' : '수정완료'}
-                  </button>
+                  {selectedStatusRecord.is_in_progress ? (
+                    <button
+                      onClick={handleForceEnd}
+                      disabled={submitting}
+                      className="flex-1 py-3 bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
+                    >
+                      {submitting ? '처리 중...' : '강제종료'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleStatusResend}
+                      disabled={submitting}
+                      className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
+                    >
+                      {submitting ? '처리 중...' : '수정완료'}
+                    </button>
+                  )}
                 </div>
               </>
             )}

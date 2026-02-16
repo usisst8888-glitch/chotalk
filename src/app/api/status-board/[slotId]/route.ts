@@ -30,7 +30,7 @@ export async function GET(
 
     const { data, error } = await supabase
       .from('status_board')
-      .select('id, room_number, girl_name, start_time, end_time, usage_duration, is_designated, is_event, event_count, trigger_type, is_in_progress, created_at')
+      .select('id, room_number, girl_name, start_time, end_time, usage_duration, is_designated, is_event, event_count, trigger_type, is_in_progress, data_changed, created_at')
       .eq('slot_id', slotId)
       .order('created_at', { ascending: false });
 
@@ -84,6 +84,27 @@ export async function PATCH(
         return NextResponse.json({ error: '재발송 처리 실패' }, { status: 500 });
       }
       return NextResponse.json({ message: '전체 재발송 예정' });
+    }
+
+    // 강제 종료: 진행 중인 레코드를 종료 처리 (ㄲ 핸들러와 동일)
+    if (body.forceEnd && body.recordId) {
+      const { error: endError } = await supabase
+        .from('status_board')
+        .update({
+          is_in_progress: false,
+          end_time: getKoreanTime(),
+          usage_duration: body.usage_duration ?? null,
+          event_count: body.usage_duration ? Math.floor(body.usage_duration) : null,
+          trigger_type: 'end',
+          data_changed: true,
+          updated_at: getKoreanTime(),
+        })
+        .eq('id', body.recordId);
+
+      if (endError) {
+        return NextResponse.json({ error: '강제 종료 실패' }, { status: 500 });
+      }
+      return NextResponse.json({ message: '강제 종료 완료, 재발송 예정' });
     }
 
     // recordId가 있으면 해당 레코드, 없으면 가장 최근 레코드
