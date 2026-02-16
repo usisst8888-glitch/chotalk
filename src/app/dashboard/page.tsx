@@ -2364,10 +2364,10 @@ export default function DashboardPage() {
                   </button>
                   <button
                     onClick={handleBulkResend}
-                    disabled={submitting || statusRecords.some(r => r.data_changed)}
+                    disabled={submitting || statusRecords[0]?.data_changed}
                     className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 disabled:text-neutral-500 text-white font-semibold rounded-xl transition"
                   >
-                    {submitting ? '처리 중...' : statusRecords.some(r => r.data_changed) ? '발송 대기중' : '재발송'}
+                    {submitting ? '처리 중...' : statusRecords[0]?.data_changed ? '발송 대기중' : '재발송'}
                   </button>
                 </div>
               </>

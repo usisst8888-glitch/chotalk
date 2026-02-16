@@ -70,20 +70,32 @@ export async function PATCH(
     const body = await request.json();
     const supabase = getSupabase();
 
-    // 전체 재발송: 해당 슬롯의 모든 레코드 data_changed = true
+    // 재발송: 가장 최근 레코드만 data_changed = true
     if (body.bulkResend) {
+      const { data: latest, error: latestError } = await supabase
+        .from('status_board')
+        .select('id')
+        .eq('slot_id', slotId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (latestError || !latest) {
+        return NextResponse.json({ error: '레코드를 찾을 수 없습니다.' }, { status: 404 });
+      }
+
       const { error: bulkError } = await supabase
         .from('status_board')
         .update({
           data_changed: true,
           updated_at: getKoreanTime(),
         })
-        .eq('slot_id', slotId);
+        .eq('id', latest.id);
 
       if (bulkError) {
         return NextResponse.json({ error: '재발송 처리 실패' }, { status: 500 });
       }
-      return NextResponse.json({ message: '전체 재발송 예정' });
+      return NextResponse.json({ message: '재발송 예정' });
     }
 
     // 강제 종료: 진행 중인 레코드를 종료 처리 (ㄲ 핸들러와 동일)
