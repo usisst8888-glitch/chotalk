@@ -177,6 +177,7 @@ export async function updateStatusBoard(
       // 진행 중인 레코드가 있음
       if (!data.isInProgress) {
         // 종료 처리 (ㄲ) - usageDuration 유무와 관계없이 is_in_progress=false, trigger_type='end'
+        // data_changed: 숫자+ㄲ(이용시간 있음)일 때만 true, 단순 ㄲ은 false
         const { error: updateError } = await supabase
           .from('status_board')
           .update({
@@ -190,7 +191,7 @@ export async function updateStatusBoard(
             is_designated: data.isDesignated,
             is_event: data.isEvent,
             updated_at: getKoreanTime(),
-            data_changed: true,
+            data_changed: data.usageDuration !== null,
           })
           .eq('id', inProgressRecord.id);
 
@@ -222,6 +223,7 @@ export async function updateStatusBoard(
               event_count: data.eventCount,
               source_log_id: data.sourceLogId || null,
               updated_at: getKoreanTime(),
+              data_changed: true,
             })
             .eq('id', endedRecord.id);
 
