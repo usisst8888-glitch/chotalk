@@ -74,10 +74,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '유효하지 않은 토큰입니다.' }, { status: 401 });
     }
 
-    const { girlName, shopName, targetRoom } = await request.json();
+    const { girlName, shopName } = await request.json();
 
-    if (!girlName || !targetRoom) {
-      return NextResponse.json({ error: '모든 필드를 입력해주세요.' }, { status: 400 });
+    if (!girlName) {
+      return NextResponse.json({ error: '아가씨 닉네임을 입력해주세요.' }, { status: 400 });
     }
 
     const supabase = getSupabase();
@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
         user_id: payload.userId,
         girl_name: girlName,
         shop_name: shopName || null,
-        target_room: targetRoom,
+        target_room: girlName,
         kakao_id: availableKakaoId.kakao_id,
         expires_at: toKoreanTimeString(expiresAt),
       })

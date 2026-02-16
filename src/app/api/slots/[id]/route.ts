@@ -158,11 +158,13 @@ export async function PATCH(
     }
 
     // 일반 수정
-    const { girlName, shopName, targetRoom } = body;
+    const { girlName, shopName } = body;
     const updateData: Record<string, string | null> = {};
-    if (girlName) updateData.girl_name = girlName;
+    if (girlName) {
+      updateData.girl_name = girlName;
+      updateData.target_room = girlName; // target_room은 girl_name과 동일
+    }
     if (shopName !== undefined) updateData.shop_name = shopName || null;
-    if (targetRoom) updateData.target_room = targetRoom;
 
     let updateQ = supabase.from('slots').update(updateData).eq('id', id);
     if (!isAdmin) updateQ = updateQ.eq('user_id', payload.userId);

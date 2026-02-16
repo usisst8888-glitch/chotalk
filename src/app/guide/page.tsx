@@ -68,6 +68,10 @@ export default function GuidePage() {
           <div className="space-y-3 text-gray-300">
             <p>각 슬롯에 표시된 <span className="text-indigo-400 font-semibold">초대할 ID</span>를 복사하여 카카오톡 채팅방에 초대하세요.</p>
             <p><span className="px-2 py-1 bg-gray-600 text-gray-300 rounded text-sm">복사</span> 버튼을 누르면 클립보드에 복사됩니다.</p>
+            <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-4 mt-3">
+              <p className="text-red-400 font-semibold text-sm mb-2">중요 포인트</p>
+              <p className="text-red-300 text-sm">아가씨 닉네임 입력 1회</p>
+            </div>
           </div>
         </section>
 

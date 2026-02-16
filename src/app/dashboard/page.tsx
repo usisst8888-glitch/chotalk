@@ -416,7 +416,6 @@ export default function DashboardPage() {
         body: JSON.stringify({
           girlName: newSlot.girlName,
           shopName: shopNameValue || null,
-          targetRoom: newSlot.targetRoom,
         }),
       });
 
@@ -584,7 +583,6 @@ export default function DashboardPage() {
         body: JSON.stringify({
           girlName: editSlot.girlName,
           shopName: shopNameValue || null,
-          targetRoom: editSlot.targetRoom,
         }),
       });
 
@@ -656,8 +654,8 @@ export default function DashboardPage() {
   };
 
   const handleInlineAddSlot = async (index: number) => {
-    if (!inlineNewSlot.girlName || !inlineNewSlot.targetRoom) {
-      alert('아가씨 닉네임과 채팅방 이름을 모두 입력해주세요.');
+    if (!inlineNewSlot.girlName) {
+      alert('아가씨 닉네임을 입력해주세요.');
       return;
     }
 
@@ -670,7 +668,6 @@ export default function DashboardPage() {
         body: JSON.stringify({
           girlName: inlineNewSlot.girlName,
           shopName: shopNameValue || null,
-          targetRoom: inlineNewSlot.targetRoom,
         }),
       });
 
@@ -978,7 +975,9 @@ export default function DashboardPage() {
                   )}
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">아가씨 닉네임</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">가게명</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">채팅방</th>
+                  {user?.role === 'admin' && (
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">채팅방</th>
+                  )}
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">초대할 ID</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">만료일</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">관리</th>
@@ -1099,7 +1098,6 @@ export default function DashboardPage() {
                       </td>
                       <td className="px-4 py-3 text-center text-white font-medium">{slot.girl_name}</td>
                       <td className="px-4 py-3 text-center text-neutral-400">{slot.shop_name || '-'}</td>
-                      <td className="px-4 py-3 text-center text-neutral-500">{slot.target_room}</td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <span
@@ -1192,15 +1190,6 @@ export default function DashboardPage() {
                               className="w-full mt-1 px-2 py-1 bg-neutral-800 border border-neutral-700 rounded text-white text-sm focus:outline-none focus:border-indigo-500"
                             />
                           )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="text"
-                            value={inlineNewSlot.targetRoom}
-                            onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, targetRoom: e.target.value })}
-                            placeholder="채팅방 이름"
-                            className="w-full px-2 py-1 bg-neutral-800 border border-neutral-700 rounded text-white text-sm focus:outline-none focus:border-indigo-500"
-                          />
                         </td>
                         <td className="px-4 py-3 text-neutral-600 text-center">-</td>
                         <td className="px-4 py-3 text-neutral-600 text-center">-</td>
@@ -1405,10 +1394,6 @@ export default function DashboardPage() {
                       <span className="text-neutral-600 w-28 flex-shrink-0">가게명</span>
                       <span className="text-neutral-400">{slot.shop_name || '-'}</span>
                     </div>
-                    <div className="flex border-b border-neutral-800 pb-2">
-                      <span className="text-neutral-600 w-28 flex-shrink-0">채팅방</span>
-                      <span className="text-neutral-400">{slot.target_room}</span>
-                    </div>
                     <div className="flex border-b border-neutral-800 pb-2 items-center">
                       <span className="text-neutral-600 w-28 flex-shrink-0">초대할 ID</span>
                       <span
@@ -1466,7 +1451,7 @@ export default function DashboardPage() {
                   <div className="space-y-3">
                     <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-xl p-3">
                       <p className="text-yellow-400 text-xs">
-                        초톡,도촉 단톡방에 있는 정확한 이름과 채팅방 이름을 입력해주세요.
+                        초톡,도촉 단톡방에 있는 정확한 아가씨 닉네임을 입력해주세요.
                       </p>
                     </div>
                     <input
@@ -1500,13 +1485,6 @@ export default function DashboardPage() {
                         </>
                       )}
                     </div>
-                    <input
-                      type="text"
-                      value={inlineNewSlot.targetRoom}
-                      onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, targetRoom: e.target.value })}
-                      placeholder="채팅방 이름"
-                      className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
-                    />
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleInlineAddSlot(index)}
@@ -2051,7 +2029,7 @@ export default function DashboardPage() {
             <h3 className="text-xl font-bold text-white mb-4">인원 추가</h3>
             <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-xl p-4 mb-4">
               <p className="text-yellow-400 text-sm">
-                초톡,도촉 단톡방에 있는 정확한 이름과 채팅방 이름을 입력을 해주셔야 자동 발송이 가능합니다.
+                초톡,도촉 단톡방에 있는 정확한 아가씨 닉네임을 입력해주셔야 자동 발송이 가능합니다.
               </p>
             </div>
             <form onSubmit={handleAddSlot} className="space-y-4">
@@ -2062,10 +2040,7 @@ export default function DashboardPage() {
                 <input
                   type="text"
                   value={newSlot.girlName}
-                  onChange={(e) => {
-                    const name = e.target.value;
-                    setNewSlot({ ...newSlot, girlName: name, targetRoom: name ? `${name} 방` : '' });
-                  }}
+                  onChange={(e) => setNewSlot({ ...newSlot, girlName: e.target.value })}
                   required
                   className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
                   placeholder="이름 입력"
@@ -2097,19 +2072,6 @@ export default function DashboardPage() {
                   </>
                 )}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-400 mb-2">
-                  채팅방 이름 <span className="text-neutral-600 text-xs">(자동 생성)</span>
-                </label>
-                <input
-                  type="text"
-                  value={newSlot.targetRoom}
-                  onChange={(e) => setNewSlot({ ...newSlot, targetRoom: e.target.value })}
-                  required
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                  placeholder="아가씨 이름 입력 시 자동 생성"
-                />
-              </div>
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
@@ -2138,7 +2100,7 @@ export default function DashboardPage() {
             <h3 className="text-xl font-bold text-white mb-4">인원 수정</h3>
             <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-xl p-4 mb-4">
               <p className="text-yellow-400 text-sm">
-                초톡,도촉 단톡방에 있는 정확한 이름과 채팅방 이름을 입력을 해주셔야 자동 발송이 가능합니다.
+                초톡,도촉 단톡방에 있는 정확한 아가씨 닉네임을 입력해주셔야 자동 발송이 가능합니다.
               </p>
             </div>
             <form onSubmit={handleEditSlot} className="space-y-4">
@@ -2180,19 +2142,6 @@ export default function DashboardPage() {
                     />
                   </>
                 )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-400 mb-2">
-                  채팅방 이름
-                </label>
-                <input
-                  type="text"
-                  value={editSlot.targetRoom}
-                  onChange={(e) => setEditSlot({ ...editSlot, targetRoom: e.target.value })}
-                  required
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                  placeholder="채팅방 이름 입력"
-                />
               </div>
               <div className="flex gap-3 pt-2">
                 <button
