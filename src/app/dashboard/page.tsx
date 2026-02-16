@@ -35,11 +35,17 @@ export default function DashboardPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showExtendModal, setShowExtendModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
-  const [statusRecord, setStatusRecord] = useState<{
+  const [statusRecords, setStatusRecords] = useState<Array<{
     id: string; room_number: string; girl_name: string; start_time: string;
-    usage_duration: number | null; is_designated: boolean; event_count: number | null;
-    trigger_type: string; is_in_progress: boolean;
+    usage_duration: number | null; is_designated: boolean; is_event: boolean; event_count: number | null;
+    trigger_type: string; is_in_progress: boolean; created_at: string;
+  }>>([]);
+  const [selectedStatusRecord, setSelectedStatusRecord] = useState<{
+    id: string; room_number: string; girl_name: string; start_time: string;
+    usage_duration: number | null; is_designated: boolean; is_event: boolean; event_count: number | null;
+    trigger_type: string; is_in_progress: boolean; created_at: string;
   } | null>(null);
+  const [isEventEnabled, setIsEventEnabled] = useState(false);
   const [statusForm, setStatusForm] = useState({
     room_number: '', start_time: '', usage_duration: '',
     is_designated: false, event_count: '',
@@ -441,30 +447,58 @@ export default function DashboardPage() {
         return;
       }
       const data = await res.json();
-      setStatusRecord(data);
-      setStatusForm({
-        room_number: data.room_number || '',
-        start_time: data.start_time ? data.start_time.slice(11, 16) : '',
-        usage_duration: data.usage_duration !== null ? String(data.usage_duration) : '',
-        is_designated: data.is_designated || false,
-        event_count: data.event_count !== null ? String(data.event_count) : '',
-      });
+      setStatusRecords(data.records);
+      setIsEventEnabled(data.records.some((r: { is_event: boolean }) => r.is_event));
+      setSelectedStatusRecord(null);
       setShowStatusModal(true);
     } catch {
       alert('상황판 조회 중 오류가 발생했습니다.');
     }
   };
 
+  const selectStatusRecord = (record: typeof statusRecords[number]) => {
+    setSelectedStatusRecord(record);
+    setStatusForm({
+      room_number: record.room_number || '',
+      start_time: record.start_time ? record.start_time.slice(11, 16) : '',
+      usage_duration: record.usage_duration !== null ? String(record.usage_duration) : '',
+      is_designated: record.is_designated || false,
+      event_count: record.event_count !== null ? String(record.event_count) : '',
+    });
+  };
+
+  const handleToggleEvent = async () => {
+    if (!selectedSlot) return;
+    const newValue = !isEventEnabled;
+    try {
+      const res = await fetch(`/api/status-board/${selectedSlot.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_event: newValue, bulkEvent: true }),
+      });
+      if (res.ok) {
+        setIsEventEnabled(newValue);
+        setStatusRecords(prev => prev.map(r => ({ ...r, is_event: newValue })));
+      } else {
+        const data = await res.json();
+        alert(data.error || '이벤트 수정에 실패했습니다.');
+      }
+    } catch {
+      alert('서버 오류가 발생했습니다.');
+    }
+  };
+
   const handleStatusResend = async () => {
-    if (!selectedSlot || !statusRecord) return;
+    if (!selectedSlot || !selectedStatusRecord) return;
     setSubmitting(true);
     try {
       const res = await fetch(`/api/status-board/${selectedSlot.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          recordId: selectedStatusRecord.id,
           room_number: statusForm.room_number,
-          start_time: statusRecord.start_time ? statusRecord.start_time.slice(0, 11) + statusForm.start_time + ':00' : null,
+          start_time: selectedStatusRecord.start_time ? selectedStatusRecord.start_time.slice(0, 11) + statusForm.start_time + ':00' : null,
           usage_duration: statusForm.usage_duration ? parseFloat(statusForm.usage_duration) : null,
           is_designated: statusForm.is_designated,
           event_count: statusForm.event_count ? parseFloat(statusForm.event_count) : null,
@@ -472,7 +506,8 @@ export default function DashboardPage() {
       });
       if (res.ok) {
         setShowStatusModal(false);
-        setStatusRecord(null);
+        setStatusRecords([]);
+        setSelectedStatusRecord(null);
         setSelectedSlot(null);
         alert('수정 완료! 재발송 예정입니다.');
       } else {
@@ -2241,98 +2276,159 @@ export default function DashboardPage() {
       )}
 
       {/* 상황판 수정 모달 */}
-      {showStatusModal && statusRecord && (
+      {showStatusModal && statusRecords.length > 0 && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 w-full max-w-md mx-4">
-            <h3 className="text-xl font-bold text-white mb-4">상황판 수정</h3>
+          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 w-full max-w-md mx-4 max-h-[80vh] flex flex-col">
+            <h3 className="text-xl font-bold text-white mb-4">
+              {selectedStatusRecord ? '상황판 수정' : '상황판 기록'}
+            </h3>
 
-            {/* 현재 상태 정보 */}
-            <div className="bg-blue-900/30 border border-blue-500/30 rounded-xl p-4 mb-4">
-              <p className="text-blue-300 text-sm">
-                아가씨: <span className="text-white font-bold">{statusRecord.girl_name}</span>
-              </p>
-              <p className="text-blue-300 text-sm mt-1">
-                상태: <span className={`font-bold ${statusRecord.is_in_progress ? 'text-green-400' : 'text-red-400'}`}>
-                  {statusRecord.trigger_type === 'canceled' ? '취소' : statusRecord.is_in_progress ? '진행 중' : '종료'}
-                </span>
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              {/* 방번호 */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-400 mb-1">방번호</label>
-                <input
-                  type="text"
-                  value={statusForm.room_number}
-                  onChange={(e) => setStatusForm({ ...statusForm, room_number: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-                />
-              </div>
-
-              {/* 시작시간 */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-400 mb-1">시작시간 (HH:MM)</label>
-                <input
-                  type="text"
-                  value={statusForm.start_time}
-                  onChange={(e) => setStatusForm({ ...statusForm, start_time: e.target.value })}
-                  placeholder="16:03"
-                  className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-                />
-              </div>
-
-              {/* 이용시간: 종료 상태일 때만 표시 */}
-              {!statusRecord.is_in_progress && (
-                <div>
-                  <label className="block text-sm font-medium text-neutral-400 mb-1">이용시간</label>
-                  <input
-                    type="text"
-                    value={statusForm.usage_duration}
-                    onChange={(e) => setStatusForm({ ...statusForm, usage_duration: e.target.value })}
-                    placeholder="1.5"
-                    className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-                  />
+            {!selectedStatusRecord ? (
+              <>
+                {/* 이벤트 전체 적용 토글 */}
+                <div className="flex items-center justify-between bg-neutral-800 border border-neutral-700 rounded-xl p-3 mb-4">
+                  <span className="text-sm font-medium text-neutral-300">이벤트 적용</span>
+                  <button
+                    type="button"
+                    onClick={handleToggleEvent}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+                      isEventEnabled ? 'bg-indigo-600' : 'bg-neutral-600'
+                    }`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                      isEventEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
                 </div>
-              )}
 
-              {/* 지명 */}
-              <div className="flex items-center gap-3">
-                <label className="text-sm font-medium text-neutral-400">지명</label>
+                {/* 레코드 리스트 */}
+                <div className="flex-1 overflow-y-auto space-y-2 mb-4">
+                  {statusRecords.map((record) => (
+                    <button
+                      key={record.id}
+                      onClick={() => selectStatusRecord(record)}
+                      className="w-full text-left p-3 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-xl transition"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-white font-medium">{record.room_number || '-'}호</span>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                          record.trigger_type === 'canceled'
+                            ? 'bg-yellow-500/20 text-yellow-400'
+                            : record.is_in_progress
+                            ? 'bg-green-500/20 text-green-400'
+                            : 'bg-red-500/20 text-red-400'
+                        }`}>
+                          {record.trigger_type === 'canceled' ? '취소' : record.is_in_progress ? '진행 중' : '종료'}
+                        </span>
+                      </div>
+                      <div className="text-sm text-neutral-400 space-x-3">
+                        <span>시작: {record.start_time ? record.start_time.slice(11, 16) : '-'}</span>
+                        {record.usage_duration !== null && <span>이용: {record.usage_duration}시간</span>}
+                        {record.is_designated && <span className="text-indigo-400">지명</span>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* 닫기 버튼 */}
                 <button
-                  type="button"
-                  onClick={() => setStatusForm({ ...statusForm, is_designated: !statusForm.is_designated })}
-                  className={`px-4 py-1.5 text-sm rounded-lg font-medium transition ${
-                    statusForm.is_designated
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-neutral-700 text-neutral-400'
-                  }`}
+                  onClick={() => {
+                    setShowStatusModal(false);
+                    setStatusRecords([]);
+                    setSelectedSlot(null);
+                  }}
+                  className="w-full py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
                 >
-                  {statusForm.is_designated ? 'ON' : 'OFF'}
+                  닫기
                 </button>
-              </div>
-            </div>
+              </>
+            ) : (
+              <>
+                {/* 선택된 레코드 수정 폼 */}
+                <div className="bg-blue-900/30 border border-blue-500/30 rounded-xl p-4 mb-4">
+                  <p className="text-blue-300 text-sm">
+                    아가씨: <span className="text-white font-bold">{selectedStatusRecord.girl_name}</span>
+                  </p>
+                  <p className="text-blue-300 text-sm mt-1">
+                    상태: <span className={`font-bold ${selectedStatusRecord.is_in_progress ? 'text-green-400' : 'text-red-400'}`}>
+                      {selectedStatusRecord.trigger_type === 'canceled' ? '취소' : selectedStatusRecord.is_in_progress ? '진행 중' : '종료'}
+                    </span>
+                  </p>
+                </div>
 
-            {/* 버튼 */}
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => {
-                  setShowStatusModal(false);
-                  setStatusRecord(null);
-                  setSelectedSlot(null);
-                }}
-                className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleStatusResend}
-                disabled={submitting}
-                className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
-              >
-                {submitting ? '처리 중...' : '재발송'}
-              </button>
-            </div>
+                <div className="space-y-3 flex-1 overflow-y-auto">
+                  {/* 방번호 */}
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-400 mb-1">방번호</label>
+                    <input
+                      type="text"
+                      value={statusForm.room_number}
+                      onChange={(e) => setStatusForm({ ...statusForm, room_number: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                    />
+                  </div>
+
+                  {/* 시작시간 */}
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-400 mb-1">시작시간 (HH:MM)</label>
+                    <input
+                      type="text"
+                      value={statusForm.start_time}
+                      onChange={(e) => setStatusForm({ ...statusForm, start_time: e.target.value })}
+                      placeholder="16:03"
+                      className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                    />
+                  </div>
+
+                  {/* 이용시간: 종료 상태일 때만 표시 */}
+                  {!selectedStatusRecord.is_in_progress && (
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-400 mb-1">이용시간</label>
+                      <input
+                        type="text"
+                        value={statusForm.usage_duration}
+                        onChange={(e) => setStatusForm({ ...statusForm, usage_duration: e.target.value })}
+                        placeholder="1.5"
+                        className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                      />
+                    </div>
+                  )}
+
+                  {/* 지명 */}
+                  <div className="flex items-center gap-3">
+                    <label className="text-sm font-medium text-neutral-400">지명</label>
+                    <button
+                      type="button"
+                      onClick={() => setStatusForm({ ...statusForm, is_designated: !statusForm.is_designated })}
+                      className={`px-4 py-1.5 text-sm rounded-lg font-medium transition ${
+                        statusForm.is_designated
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-neutral-700 text-neutral-400'
+                      }`}
+                    >
+                      {statusForm.is_designated ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 버튼 */}
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => setSelectedStatusRecord(null)}
+                    className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
+                  >
+                    목록으로
+                  </button>
+                  <button
+                    onClick={handleStatusResend}
+                    disabled={submitting}
+                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
+                  >
+                    {submitting ? '처리 중...' : '재발송'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
