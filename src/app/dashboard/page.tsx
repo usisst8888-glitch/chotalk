@@ -61,7 +61,7 @@ export default function DashboardPage() {
   const [purchaseForm, setPurchaseForm] = useState({ depositorName: '', slotCount: 1 });
   const [purchaseSubmitting, setPurchaseSubmitting] = useState(false);
   const [extendForm, setExtendForm] = useState({ depositorName: '' });
-  const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'rooms'>('slots');
+  const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'purchases' | 'rooms'>('slots');
   // 관리자용 회원관리
   const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; role: string; slot_count: number; created_at: string }>>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -79,6 +79,9 @@ export default function DashboardPage() {
   // 관리자용 연장 요청 관리
   const [extensionRequests, setExtensionRequests] = useState<Array<{ id: string; username: string; depositor_name: string; slot_count: number; total_amount: number; created_at: string }>>([]);
   const [extensionsLoading, setExtensionsLoading] = useState(false);
+  // 관리자용 추가 구매 요청 관리
+  const [purchaseRequests, setPurchaseRequests] = useState<Array<{ id: string; username: string; depositor_name: string; slot_count: number; total_amount: number; created_at: string }>>([]);
+  const [purchasesLoading, setPurchasesLoading] = useState(false);
   // 관리자용 가게 관리 (이벤트 시간 + 주소)
   const [eventTimes, setEventTimes] = useState<Array<{ id: string; shop_name: string; start_time: string; end_time: string; is_active: boolean; address: string | null }>>([]);
   const [eventTimesLoading, setEventTimesLoading] = useState(false);
@@ -313,6 +316,43 @@ export default function DashboardPage() {
       if (res.ok) {
         alert('연장이 승인되었습니다.');
         fetchExtensionRequests();
+      } else {
+        const data = await res.json();
+        alert(data.error || '승인 실패');
+      }
+    } catch {
+      alert('승인 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 관리자용: 추가 구매 요청 목록 조회
+  const fetchPurchaseRequests = async () => {
+    setPurchasesLoading(true);
+    try {
+      const res = await fetch('/api/admin/slot-purchases');
+      if (res.ok) {
+        const data = await res.json();
+        setPurchaseRequests(data.requests || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch purchase requests:', error);
+    } finally {
+      setPurchasesLoading(false);
+    }
+  };
+
+  // 관리자용: 추가 구매 요청 승인
+  const handleApprovePurchase = async (requestId: string) => {
+    if (!confirm('이 구매 요청을 승인하시겠습니까?')) return;
+    try {
+      const res = await fetch('/api/admin/slot-purchases', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId }),
+      });
+      if (res.ok) {
+        alert('구매가 승인되었습니다. 슬롯이 추가되었습니다.');
+        fetchPurchaseRequests();
       } else {
         const data = await res.json();
         alert(data.error || '승인 실패');
@@ -868,6 +908,19 @@ export default function DashboardPage() {
                   }`}
                 >
                   연장 요청
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('purchases');
+                    fetchPurchaseRequests();
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    activeTab === 'purchases'
+                      ? 'bg-orange-600 text-white'
+                      : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
+                  }`}
+                >
+                  추가 구매
                 </button>
                 <button
                   onClick={() => {
@@ -1854,6 +1907,54 @@ export default function DashboardPage() {
                           <button
                             onClick={() => handleApproveExtension(req.id)}
                             className="px-4 py-1.5 bg-green-600 hover:bg-green-500 text-white text-sm font-medium rounded-lg transition"
+                          >
+                            승인
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 추가 구매 탭 (관리자 전용) */}
+        {activeTab === 'purchases' && user?.role === 'admin' && (
+          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
+            <h2 className="text-xl font-bold text-white mb-6">추가 구매 요청</h2>
+            {purchasesLoading ? (
+              <p className="text-neutral-500 text-center py-8">로딩 중...</p>
+            ) : purchaseRequests.length === 0 ? (
+              <p className="text-neutral-500 text-center py-8">대기 중인 구매 요청이 없습니다.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px]">
+                  <thead className="bg-neutral-800/50">
+                    <tr>
+                      <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">신청일</th>
+                      <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">회원명</th>
+                      <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">입금자명</th>
+                      <th className="w-[80px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">슬롯수</th>
+                      <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">금액</th>
+                      <th className="w-[80px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">승인</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-800">
+                    {purchaseRequests.map((req) => (
+                      <tr key={req.id} className="hover:bg-neutral-800/30">
+                        <td className="px-4 py-3 text-center text-neutral-400 text-sm">
+                          {new Date(req.created_at).toLocaleDateString('ko-KR')}
+                        </td>
+                        <td className="px-4 py-3 text-center text-white">{req.username}</td>
+                        <td className="px-4 py-3 text-center text-yellow-400 font-medium">{req.depositor_name}</td>
+                        <td className="px-4 py-3 text-center text-neutral-300">{req.slot_count}개</td>
+                        <td className="px-4 py-3 text-center text-neutral-300">{req.total_amount.toLocaleString()}원</td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => handleApprovePurchase(req.id)}
+                            className="px-4 py-1.5 bg-orange-600 hover:bg-orange-500 text-white text-sm font-medium rounded-lg transition"
                           >
                             승인
                           </button>
