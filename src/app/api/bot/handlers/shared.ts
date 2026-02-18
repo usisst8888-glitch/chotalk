@@ -176,6 +176,43 @@ export async function updateStatusBoard(
     if (inProgressRecord) {
       // 진행 중인 레코드가 있음
       if (!data.isInProgress) {
+        // 숫자+ㄲ인 경우: 같은 방에서 종료됐지만 usage_duration 없는 레코드가 있는지 먼저 확인
+        // (예: ㅅㅅ → ㄲ → ㅎㅅㄱㅈㅈㅎ → 4ㄲ 시나리오에서 4ㄲ은 이전 종료 레코드에 적용)
+        if (data.usageDuration !== null) {
+          const { data: endedWithoutDuration } = await supabase
+            .from('status_board')
+            .select('id')
+            .eq('slot_id', data.slotId)
+            .eq('room_number', data.roomNumber)
+            .eq('is_in_progress', false)
+            .eq('trigger_type', 'end')
+            .is('usage_duration', null)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (endedWithoutDuration) {
+            // 이전에 종료된 레코드에 usage_duration 적용 (진행 중인 레코드는 유지)
+            const { error: updateError } = await supabase
+              .from('status_board')
+              .update({
+                usage_duration: data.usageDuration,
+                event_count: data.eventCount,
+                source_log_id: data.sourceLogId || null,
+                updated_at: getKoreanTime(),
+                data_changed: true,
+              })
+              .eq('id', endedWithoutDuration.id);
+
+            if (updateError) {
+              console.error('종료된 세션 usage_duration 업데이트 오류:', updateError);
+            } else {
+              console.log('진행 중 레코드 유지, 이전 종료 레코드에 usage_duration 적용:', data.usageDuration);
+            }
+            return;
+          }
+        }
+
         // 종료 처리 (ㄲ) - usageDuration 유무와 관계없이 is_in_progress=false, trigger_type='end'
         // data_changed: 숫자+ㄲ(이용시간 있음)일 때만 true, 단순 ㄲ은 false
         const { error: updateError } = await supabase
