@@ -386,7 +386,9 @@ export function parseGirlSignals(
   }
 
   // ㅎㅅㄱㅈㅈㅎ/현시간재진행 (새 세션) 신호 확인 - 가장 긴 패턴
-  if (hasSignalWithAliases(afterSection, MESSAGE_SIGNALS.NEW_SESSION)) {
+  // 조합 패턴: (ㅎㅅㄱ|현시간) + 공백? + (ㅈㅈㅎ|재진행) → 모두 NEW_SESSION
+  if (hasSignalWithAliases(afterSection, MESSAGE_SIGNALS.NEW_SESSION) ||
+      /(ㅎㅅㄱ|현시간)\s*(ㅈㅈㅎ|재진행)/.test(afterSection)) {
     result.isNewSession = true;
     // 새 세션이면 다른 신호는 무시
     return result;

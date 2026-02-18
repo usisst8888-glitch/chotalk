@@ -89,7 +89,7 @@ export const MESSAGE_SIGNALS = {
     code: 'ㅎㅅㄱㅈㅈㅎ',
     type: 'new_session',
     description: '현시간재진행 (새 세션 시작)',
-    aliases: ['현시간재진행', 'ㅎㅅㄱ ㅈㅈㅎ'],  // 띄어쓰기 포함 변형
+    aliases: ['현시간재진행'],
   },
 
   // 지명 신호
