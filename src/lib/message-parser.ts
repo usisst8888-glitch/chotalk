@@ -379,7 +379,7 @@ export function parseGirlSignals(
   // 예: "한채2ㅇㅈ 달래 1ㄲ" → beforeSection에 ㅇㅈ이 포함되어 달래의 ㄲ이 차단되는 버그
 
   // ㄱㅌ (취소) 신호 확인 - 가장 먼저 체크 (세션 삭제)
-  if (hasSignal(afterSection, MESSAGE_SIGNALS.CANCEL.code)) {
+  if (hasSignalWithAliases(afterSection, MESSAGE_SIGNALS.CANCEL)) {
     result.isCancel = true;
     // 취소면 다른 신호는 무시
     return result;
