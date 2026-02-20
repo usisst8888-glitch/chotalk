@@ -187,3 +187,101 @@ export async function PATCH(
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
 }
+
+// 새 세션 추가 (수동 INSERT)
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ slotId: string }> }
+) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('token')?.value;
+    if (!token) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+
+    const payload = verifyToken(token);
+    if (!payload) return NextResponse.json({ error: '유효하지 않은 토큰입니다.' }, { status: 401 });
+
+    const { slotId } = await params;
+    const body = await request.json();
+    const supabase = getSupabase();
+
+    // 슬롯 정보 조회
+    const { data: slot, error: slotError } = await supabase
+      .from('slots')
+      .select('id, user_id, girl_name, shop_name, kakao_id, target_room')
+      .eq('id', slotId)
+      .single();
+
+    if (slotError || !slot) {
+      return NextResponse.json({ error: '슬롯을 찾을 수 없습니다.' }, { status: 404 });
+    }
+
+    const now = getKoreanTime();
+    const startTime = body.start_time || now;
+
+    const { error: insertError } = await supabase
+      .from('status_board')
+      .insert({
+        slot_id: slotId,
+        user_id: slot.user_id,
+        girl_name: slot.girl_name,
+        shop_name: slot.shop_name,
+        kakao_id: slot.kakao_id,
+        target_room: slot.target_room,
+        room_number: body.room_number || null,
+        is_in_progress: true,
+        start_time: startTime,
+        end_time: null,
+        usage_duration: null,
+        event_count: null,
+        trigger_type: 'start',
+        is_designated: body.is_designated || false,
+        data_changed: true,
+      });
+
+    if (insertError) {
+      return NextResponse.json({ error: '세션 추가 실패' }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: '세션이 추가되었습니다.' });
+  } catch {
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
+  }
+}
+
+// 특정 레코드 삭제
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ slotId: string }> }
+) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('token')?.value;
+    if (!token) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+
+    const payload = verifyToken(token);
+    if (!payload) return NextResponse.json({ error: '유효하지 않은 토큰입니다.' }, { status: 401 });
+
+    const { searchParams } = new URL(request.url);
+    const recordId = searchParams.get('recordId');
+
+    if (!recordId) {
+      return NextResponse.json({ error: 'recordId가 필요합니다.' }, { status: 400 });
+    }
+
+    const supabase = getSupabase();
+
+    const { error } = await supabase
+      .from('status_board')
+      .delete()
+      .eq('id', recordId);
+
+    if (error) {
+      return NextResponse.json({ error: '삭제 실패' }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: '삭제되었습니다.' });
+  } catch {
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
+  }
+}

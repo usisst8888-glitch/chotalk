@@ -95,6 +95,9 @@ export default function DashboardPage() {
   // 관리자용 인원 추가 모달
   const [showAdminAddModal, setShowAdminAddModal] = useState(false);
   const [adminNewSlot, setAdminNewSlot] = useState({ userId: '', girlName: '', shopName: '', customShopName: '' });
+  // 상황판 새 세션 추가 폼
+  const [showAddSessionForm, setShowAddSessionForm] = useState(false);
+  const [addSessionForm, setAddSessionForm] = useState({ room_number: '', start_time: '', is_designated: false });
 
   useEffect(() => {
     fetchUser();
@@ -507,6 +510,72 @@ export default function DashboardPage() {
       alert('인원 추가 중 오류가 발생했습니다.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // 상황판 새 세션 추가
+  const handleAddSession = async () => {
+    if (!selectedSlot || submitting) return;
+    setSubmitting(true);
+    try {
+      const now = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
+      const datePrefix = now.toISOString().slice(0, 11);
+      const startTime = addSessionForm.start_time
+        ? datePrefix + addSessionForm.start_time + ':00'
+        : undefined;
+      const res = await fetch(`/api/status-board/${selectedSlot.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          room_number: addSessionForm.room_number || null,
+          start_time: startTime,
+          is_designated: addSessionForm.is_designated,
+        }),
+      });
+      if (res.ok) {
+        setShowAddSessionForm(false);
+        setAddSessionForm({ room_number: '', start_time: '', is_designated: false });
+        // 목록 새로고침
+        const updated = await fetch(`/api/status-board/${selectedSlot.id}`);
+        if (updated.ok) {
+          const data = await updated.json();
+          setStatusRecords(data.records);
+        }
+        alert('세션이 추가되었습니다.');
+      } else {
+        const data = await res.json();
+        alert(data.error || '추가에 실패했습니다.');
+      }
+    } catch {
+      alert('서버 오류가 발생했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // 상황판 레코드 삭제
+  const handleDeleteSession = async (recordId: string) => {
+    if (!selectedSlot) return;
+    if (!confirm('이 레코드를 삭제하시겠습니까?')) return;
+    try {
+      const res = await fetch(`/api/status-board/${selectedSlot.id}?recordId=${recordId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        const remaining = statusRecords.filter(r => r.id !== recordId);
+        setStatusRecords(remaining);
+        setSelectedStatusRecord(null);
+        if (remaining.length === 0) {
+          setShowStatusModal(false);
+          setSelectedSlot(null);
+        }
+        alert('삭제되었습니다.');
+      } else {
+        const data = await res.json();
+        alert(data.error || '삭제에 실패했습니다.');
+      }
+    } catch {
+      alert('서버 오류가 발생했습니다.');
     }
   };
 
@@ -2468,6 +2537,67 @@ export default function DashboardPage() {
                   ))}
                 </div>
 
+                {/* 새 세션 추가 폼 */}
+                {showAddSessionForm ? (
+                  <div className="border border-green-500/30 bg-green-900/20 rounded-xl p-4 mb-3 space-y-3">
+                    <p className="text-green-400 text-sm font-medium">새 세션 추가</p>
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="block text-xs text-neutral-400 mb-1">방번호</label>
+                        <input
+                          type="text"
+                          value={addSessionForm.room_number}
+                          onChange={(e) => setAddSessionForm({ ...addSessionForm, room_number: e.target.value })}
+                          placeholder="예: 204"
+                          className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-xs text-neutral-400 mb-1">시작시간 (HH:MM)</label>
+                        <input
+                          type="text"
+                          value={addSessionForm.start_time}
+                          onChange={(e) => setAddSessionForm({ ...addSessionForm, start_time: e.target.value })}
+                          placeholder="16:30"
+                          className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-neutral-400">지명</label>
+                      <button
+                        type="button"
+                        onClick={() => setAddSessionForm({ ...addSessionForm, is_designated: !addSessionForm.is_designated })}
+                        className={`px-3 py-1 text-xs rounded-lg font-medium transition ${addSessionForm.is_designated ? 'bg-indigo-600 text-white' : 'bg-neutral-700 text-neutral-400'}`}
+                      >
+                        {addSessionForm.is_designated ? 'ON' : 'OFF'}
+                      </button>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { setShowAddSessionForm(false); setAddSessionForm({ room_number: '', start_time: '', is_designated: false }); }}
+                        className="flex-1 py-2 bg-neutral-700 hover:bg-neutral-600 text-neutral-400 text-sm font-medium rounded-lg transition"
+                      >
+                        취소
+                      </button>
+                      <button
+                        onClick={handleAddSession}
+                        disabled={submitting}
+                        className="flex-1 py-2 bg-green-600 hover:bg-green-500 disabled:bg-neutral-700 text-white text-sm font-medium rounded-lg transition"
+                      >
+                        {submitting ? '추가 중...' : '추가'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowAddSessionForm(true)}
+                    className="w-full py-2 mb-3 border border-dashed border-neutral-600 hover:border-green-500 text-neutral-500 hover:text-green-400 text-sm rounded-xl transition"
+                  >
+                    + 새 세션 추가
+                  </button>
+                )}
+
                 {/* 버튼 */}
                 <div className="flex gap-3">
                   <button
@@ -2475,6 +2605,7 @@ export default function DashboardPage() {
                       setShowStatusModal(false);
                       setStatusRecords([]);
                       setSelectedSlot(null);
+                      setShowAddSessionForm(false);
                     }}
                     className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
                   >
@@ -2585,6 +2716,13 @@ export default function DashboardPage() {
                     className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
                   >
                     목록으로
+                  </button>
+                  <button
+                    onClick={() => handleDeleteSession(selectedStatusRecord.id)}
+                    disabled={submitting}
+                    className="px-4 py-3 bg-red-900/50 hover:bg-red-800 disabled:bg-neutral-700 text-red-400 font-semibold rounded-xl transition"
+                  >
+                    삭제
                   </button>
                   {selectedStatusRecord.is_in_progress ? (
                     <button
