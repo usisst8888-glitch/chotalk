@@ -262,14 +262,29 @@ export async function DELETE(
     const payload = verifyToken(token);
     if (!payload) return NextResponse.json({ error: '유효하지 않은 토큰입니다.' }, { status: 401 });
 
+    const { slotId } = await params;
     const { searchParams } = new URL(request.url);
     const recordId = searchParams.get('recordId');
+    const deleteAll = searchParams.get('deleteAll');
+
+    const supabase = getSupabase();
+
+    // 전체 삭제 (초기화)
+    if (deleteAll === 'true') {
+      const { error } = await supabase
+        .from('status_board')
+        .delete()
+        .eq('slot_id', slotId);
+
+      if (error) {
+        return NextResponse.json({ error: '초기화 실패' }, { status: 500 });
+      }
+      return NextResponse.json({ message: '초기화되었습니다.' });
+    }
 
     if (!recordId) {
       return NextResponse.json({ error: 'recordId가 필요합니다.' }, { status: 400 });
     }
-
-    const supabase = getSupabase();
 
     const { error } = await supabase
       .from('status_board')

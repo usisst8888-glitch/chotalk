@@ -98,6 +98,8 @@ export default function DashboardPage() {
   // 상황판 새 세션 추가 폼
   const [showAddSessionForm, setShowAddSessionForm] = useState(false);
   const [addSessionForm, setAddSessionForm] = useState({ room_number: '', start_time: '', is_designated: false });
+  // 상황판 초기화 확인 팝업
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   useEffect(() => {
     fetchUser();
@@ -573,6 +575,30 @@ export default function DashboardPage() {
       } else {
         const data = await res.json();
         alert(data.error || '삭제에 실패했습니다.');
+      }
+    } catch {
+      alert('서버 오류가 발생했습니다.');
+    }
+  };
+
+  // 상황판 전체 초기화
+  const handleResetAllSessions = async () => {
+    if (!selectedSlot) return;
+    try {
+      const res = await fetch(`/api/status-board/${selectedSlot.id}?deleteAll=true`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setShowResetConfirm(false);
+        setShowStatusModal(false);
+        setStatusRecords([]);
+        setSelectedStatusRecord(null);
+        setSelectedSlot(null);
+        setShowAddSessionForm(false);
+        alert('초기화되었습니다.');
+      } else {
+        const data = await res.json();
+        alert(data.error || '초기화에 실패했습니다.');
       }
     } catch {
       alert('서버 오류가 발생했습니다.');
@@ -2601,6 +2627,12 @@ export default function DashboardPage() {
                 {/* 버튼 */}
                 <div className="flex gap-3">
                   <button
+                    onClick={() => setShowResetConfirm(true)}
+                    className="px-4 py-3 bg-red-900/50 hover:bg-red-800 text-red-400 font-semibold rounded-xl transition"
+                  >
+                    초기화
+                  </button>
+                  <button
                     onClick={() => {
                       setShowStatusModal(false);
                       setStatusRecords([]);
@@ -2744,6 +2776,33 @@ export default function DashboardPage() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 상황판 초기화 확인 팝업 */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
+          <div className="bg-neutral-900 rounded-2xl border border-red-500/40 p-6 w-full max-w-sm">
+            <h3 className="text-lg font-bold text-white mb-2">⚠️ 상황판 초기화</h3>
+            <p className="text-neutral-400 text-sm mb-1">
+              <span className="text-white font-semibold">{selectedSlot?.girl_name}</span>의 모든 상황판 기록이 삭제됩니다.
+            </p>
+            <p className="text-red-400 text-sm font-medium mb-6">이 작업은 되돌릴 수 없습니다!</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleResetAllSessions}
+                className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl transition"
+              >
+                초기화
+              </button>
+            </div>
           </div>
         </div>
       )}
