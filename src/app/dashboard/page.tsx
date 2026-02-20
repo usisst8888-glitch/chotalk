@@ -2712,17 +2712,17 @@ export default function DashboardPage() {
                 {/* 버튼 */}
                 <div className="flex gap-3 mt-6">
                   <button
-                    onClick={() => setSelectedStatusRecord(null)}
-                    className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
-                  >
-                    목록으로
-                  </button>
-                  <button
                     onClick={() => handleDeleteSession(selectedStatusRecord.id)}
                     disabled={submitting}
                     className="px-4 py-3 bg-red-900/50 hover:bg-red-800 disabled:bg-neutral-700 text-red-400 font-semibold rounded-xl transition"
                   >
                     삭제
+                  </button>
+                  <button
+                    onClick={() => setSelectedStatusRecord(null)}
+                    className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
+                  >
+                    목록으로
                   </button>
                   {selectedStatusRecord.is_in_progress ? (
                     <button
