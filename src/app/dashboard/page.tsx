@@ -2814,7 +2814,7 @@ export default function DashboardPage() {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
           <div className="bg-neutral-900 rounded-2xl border border-red-500/40 p-6 w-full max-w-sm">
             <h3 className="text-lg font-bold text-white mb-2">방 삭제</h3>
-            <p className="text-neutral-400 text-sm mb-1">이 방을 삭제하시겠습니까?</p>
+            <p className="text-neutral-400 text-sm mb-1">이 방 기록을 삭제하시겠습니까?</p>
             <p className="text-red-400 text-sm font-medium mb-6">이 작업은 되돌릴 수 없습니다!</p>
             <div className="flex gap-3">
               <button
