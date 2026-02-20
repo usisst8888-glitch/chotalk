@@ -281,7 +281,7 @@ export async function POST(request: NextRequest) {
           const result = await handleCorrectionCatchAll(ctx, lineMsg, lineParsed, lineSignals);
           results.push({ ...result, logId });
 
-        } else if (lineParsed.roomNumber && !lineSignals.isEnd && !lineSignals.isExtension && !lineSignals.isDesignatedFee && !lineSignals.isDesignatedHalfFee && !lineSignals.isCorrection) {
+        } else if (lineParsed.roomNumber && !lineSignals.isEnd && !lineSignals.isExtension && !lineSignals.isDesignatedFee && !lineSignals.isDesignatedHalfFee && !lineSignals.isCorrection && !lineSignals.hasNoSignal) {
           const result = await handleSessionStart(ctx, lineParsed, lineSignals);
           results.push({ ...result, logId });
 
