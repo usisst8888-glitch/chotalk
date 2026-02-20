@@ -100,6 +100,9 @@ export default function DashboardPage() {
   const [addSessionForm, setAddSessionForm] = useState({ room_number: '', start_time: '', is_designated: false });
   // 상황판 초기화 확인 팝업
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  // 상황판 개별 삭제 확인 팝업
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUser();
@@ -556,22 +559,22 @@ export default function DashboardPage() {
   };
 
   // 상황판 레코드 삭제
-  const handleDeleteSession = async (recordId: string) => {
-    if (!selectedSlot) return;
-    if (!confirm('이 레코드를 삭제하시겠습니까?')) return;
+  const handleDeleteSession = async () => {
+    if (!selectedSlot || !deleteTargetId) return;
     try {
-      const res = await fetch(`/api/status-board/${selectedSlot.id}?recordId=${recordId}`, {
+      const res = await fetch(`/api/status-board/${selectedSlot.id}?recordId=${deleteTargetId}`, {
         method: 'DELETE',
       });
       if (res.ok) {
-        const remaining = statusRecords.filter(r => r.id !== recordId);
+        setShowDeleteConfirm(false);
+        setDeleteTargetId(null);
+        const remaining = statusRecords.filter(r => r.id !== deleteTargetId);
         setStatusRecords(remaining);
         setSelectedStatusRecord(null);
         if (remaining.length === 0) {
           setShowStatusModal(false);
           setSelectedSlot(null);
         }
-        alert('삭제되었습니다.');
       } else {
         const data = await res.json();
         alert(data.error || '삭제에 실패했습니다.');
@@ -2744,7 +2747,7 @@ export default function DashboardPage() {
                 {/* 버튼 */}
                 <div className="flex gap-3 mt-6">
                   <button
-                    onClick={() => handleDeleteSession(selectedStatusRecord.id)}
+                    onClick={() => { setDeleteTargetId(selectedStatusRecord.id); setShowDeleteConfirm(true); }}
                     disabled={submitting}
                     className="px-4 py-3 bg-red-900/50 hover:bg-red-800 disabled:bg-neutral-700 text-red-400 font-semibold rounded-xl transition"
                   >
@@ -2801,6 +2804,30 @@ export default function DashboardPage() {
                 className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl transition"
               >
                 초기화
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
+          <div className="bg-neutral-900 rounded-2xl border border-red-500/40 p-6 w-full max-w-sm">
+            <h3 className="text-lg font-bold text-white mb-2">방 삭제</h3>
+            <p className="text-neutral-400 text-sm mb-1">이 방 기록을 삭제하시겠습니까?</p>
+            <p className="text-red-400 text-sm font-medium mb-6">이 작업은 되돌릴 수 없습니다!</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }}
+                className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDeleteSession}
+                className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl transition"
+              >
+                삭제
               </button>
             </div>
           </div>
