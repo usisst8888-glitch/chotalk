@@ -2530,7 +2530,7 @@ export default function DashboardPage() {
       {/* 상황판 수정 모달 */}
       {showStatusModal && statusRecords.length > 0 && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 w-full max-w-md mx-4 max-h-[80vh] flex flex-col">
+          <div className="relative bg-neutral-900 rounded-2xl border border-neutral-800 p-6 w-full max-w-md mx-4 max-h-[80vh] flex flex-col">
             <h3 className="text-xl font-bold text-white mb-4">
               {selectedStatusRecord ? '상황판 수정' : '상황판 기록'}
             </h3>
@@ -2780,6 +2780,31 @@ export default function DashboardPage() {
               </>
             )}
           </div>
+
+          {/* 개별 방 삭제 확인 팝업 */}
+          {showDeleteConfirm && (
+            <div className="absolute inset-0 bg-black/80 flex items-center justify-center rounded-2xl p-6">
+              <div className="bg-neutral-900 rounded-2xl border border-red-500/40 p-6 w-full max-w-sm">
+                <h3 className="text-lg font-bold text-white mb-2">방 삭제</h3>
+                <p className="text-neutral-400 text-sm mb-1">이 방 기록을 삭제하시겠습니까?</p>
+                <p className="text-red-400 text-sm font-medium mb-6">이 작업은 되돌릴 수 없습니다!</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }}
+                    className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleDeleteSession}
+                    className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl transition"
+                  >
+                    삭제
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -2804,30 +2829,6 @@ export default function DashboardPage() {
                 className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl transition"
               >
                 초기화
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
-          <div className="bg-neutral-900 rounded-2xl border border-red-500/40 p-6 w-full max-w-sm">
-            <h3 className="text-lg font-bold text-white mb-2">방 삭제</h3>
-            <p className="text-neutral-400 text-sm mb-1">이 방 기록을 삭제하시겠습니까?</p>
-            <p className="text-red-400 text-sm font-medium mb-6">이 작업은 되돌릴 수 없습니다!</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }}
-                className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleDeleteSession}
-                className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl transition"
-              >
-                삭제
               </button>
             </div>
           </div>
