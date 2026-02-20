@@ -92,6 +92,9 @@ export default function DashboardPage() {
   const [roomShopFilter, setRoomShopFilter] = useState<string>('all');
   const [roomStatusFilter, setRoomStatusFilter] = useState<'all' | 'active' | 'ended'>('all');
   const [roomSort, setRoomSort] = useState<'start_desc' | 'start_asc' | 'end_desc' | 'end_asc'>('start_desc');
+  // 관리자용 인원 추가 모달
+  const [showAdminAddModal, setShowAdminAddModal] = useState(false);
+  const [adminNewSlot, setAdminNewSlot] = useState({ userId: '', girlName: '', shopName: '', customShopName: '' });
 
   useEffect(() => {
     fetchUser();
@@ -475,6 +478,37 @@ export default function DashboardPage() {
     }
   };
 
+
+  // 관리자용 인원 추가
+  const handleAdminAddSlot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const shopNameValue = adminNewSlot.shopName === '기타' ? adminNewSlot.customShopName : adminNewSlot.shopName;
+      const res = await fetch('/api/admin/slots', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: adminNewSlot.userId,
+          girlName: adminNewSlot.girlName,
+          shopName: shopNameValue || null,
+        }),
+      });
+      if (res.ok) {
+        setShowAdminAddModal(false);
+        setAdminNewSlot({ userId: '', girlName: '', shopName: '', customShopName: '' });
+        fetchAllSlots();
+      } else {
+        const data = await res.json();
+        alert(data.error || '추가에 실패했습니다.');
+      }
+    } catch {
+      alert('인원 추가 중 오류가 발생했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const openStatusModal = async (slot: Slot) => {
     setSelectedSlot(slot);
@@ -982,9 +1016,17 @@ export default function DashboardPage() {
             // 관리자: 전체 인원 표시
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-white">전체 인원 관리</h2>
-              <span className="text-neutral-500">
-                총 <span className="text-orange-400 font-medium">{allSlots.length}명</span> 등록됨
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-neutral-500">
+                  총 <span className="text-orange-400 font-medium">{allSlots.length}명</span> 등록됨
+                </span>
+                <button
+                  onClick={() => { if (allUsers.length === 0) fetchAllUsers(); setShowAdminAddModal(true); }}
+                  className="px-3 py-1 text-xs bg-green-600 hover:bg-green-500 text-white rounded transition"
+                >
+                  + 인원 추가
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -2564,6 +2606,82 @@ export default function DashboardPage() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 관리자 인원 추가 모달 */}
+      {showAdminAddModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold text-white mb-4">인원 추가 (관리자)</h3>
+            <form onSubmit={handleAdminAddSlot} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-400 mb-1">회원 선택</label>
+                <select
+                  value={adminNewSlot.userId}
+                  onChange={(e) => setAdminNewSlot({ ...adminNewSlot, userId: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  required
+                >
+                  <option value="">회원을 선택하세요</option>
+                  {allUsers.map((u) => (
+                    <option key={u.id} value={u.id}>{u.username}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-400 mb-1">아가씨 닉네임</label>
+                <input
+                  type="text"
+                  value={adminNewSlot.girlName}
+                  onChange={(e) => setAdminNewSlot({ ...adminNewSlot, girlName: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-400 mb-1">가게명</label>
+                <select
+                  value={adminNewSlot.shopName}
+                  onChange={(e) => setAdminNewSlot({ ...adminNewSlot, shopName: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                >
+                  <option value="">선택 안함</option>
+                  {shops.map((s) => (
+                    <option key={s.id} value={s.shop_name}>{s.shop_name}</option>
+                  ))}
+                  <option value="기타">기타 (직접 입력)</option>
+                </select>
+              </div>
+              {adminNewSlot.shopName === '기타' && (
+                <div>
+                  <label className="block text-sm font-medium text-neutral-400 mb-1">가게명 직접 입력</label>
+                  <input
+                    type="text"
+                    value={adminNewSlot.customShopName}
+                    onChange={(e) => setAdminNewSlot({ ...adminNewSlot, customShopName: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  />
+                </div>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowAdminAddModal(false); setAdminNewSlot({ userId: '', girlName: '', shopName: '', customShopName: '' }); }}
+                  className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 py-3 bg-green-600 hover:bg-green-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
+                >
+                  {submitting ? '추가 중...' : '추가'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
