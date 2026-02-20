@@ -47,7 +47,7 @@ export default function DashboardPage() {
   } | null>(null);
   const [statusForm, setStatusForm] = useState({
     room_number: '', start_time: '', usage_duration: '',
-    is_designated: false, event_count: '',
+    is_designated: false, event_count: '', is_cancel: false,
   });
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
   const [newSlot, setNewSlot] = useState({ girlName: '', shopName: '', customShopName: '', customClosingTime: '', targetRoom: '' });
@@ -501,6 +501,7 @@ export default function DashboardPage() {
       usage_duration: record.usage_duration !== null ? String(record.usage_duration) : '',
       is_designated: record.is_designated || false,
       event_count: record.event_count !== null ? String(record.event_count) : '',
+      is_cancel: false,
     });
   };
 
@@ -533,6 +534,27 @@ export default function DashboardPage() {
     if (!selectedSlot || !selectedStatusRecord) return;
     setSubmitting(true);
     try {
+      // 취소 처리
+      if (statusForm.is_cancel) {
+        const res = await fetch(`/api/status-board/${selectedSlot.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recordId: selectedStatusRecord.id, cancel: true }),
+        });
+        if (res.ok) {
+          setShowStatusModal(false);
+          setStatusRecords([]);
+          setSelectedStatusRecord(null);
+          setSelectedSlot(null);
+          alert('취소 처리 완료!');
+        } else {
+          const data = await res.json();
+          alert(data.error || '취소 처리에 실패했습니다.');
+        }
+        setSubmitting(false);
+        return;
+      }
+
       const hasUsageDuration = !!statusForm.usage_duration;
       const payload: Record<string, unknown> = {
         recordId: selectedStatusRecord.id,
@@ -2463,19 +2485,39 @@ export default function DashboardPage() {
                     />
                   </div>
 
-                  {/* 이용시간 */}
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-400 mb-1">
-                      이용시간{selectedStatusRecord.is_in_progress && ' (입력 시 종료 처리)'}
-                    </label>
-                    <input
-                      type="text"
-                      value={statusForm.usage_duration}
-                      onChange={(e) => setStatusForm({ ...statusForm, usage_duration: e.target.value })}
-                      placeholder="1.5"
-                      className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-                    />
-                  </div>
+                  {/* 취소 (진행 중일 때만) */}
+                  {selectedStatusRecord.is_in_progress && (
+                    <div className="flex items-center gap-3">
+                      <label className="text-sm font-medium text-neutral-400">취소 (ㄱㅌ)</label>
+                      <button
+                        type="button"
+                        onClick={() => setStatusForm({ ...statusForm, is_cancel: !statusForm.is_cancel, usage_duration: '' })}
+                        className={`px-4 py-1.5 text-sm rounded-lg font-medium transition ${
+                          statusForm.is_cancel
+                            ? 'bg-red-600 text-white'
+                            : 'bg-neutral-700 text-neutral-400'
+                        }`}
+                      >
+                        {statusForm.is_cancel ? 'ON' : 'OFF'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 이용시간 (취소가 아닐 때만) */}
+                  {!statusForm.is_cancel && (
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-400 mb-1">
+                        이용시간{selectedStatusRecord.is_in_progress && ' (입력 시 종료 처리)'}
+                      </label>
+                      <input
+                        type="text"
+                        value={statusForm.usage_duration}
+                        onChange={(e) => setStatusForm({ ...statusForm, usage_duration: e.target.value })}
+                        placeholder="1.5"
+                        className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                      />
+                    </div>
+                  )}
 
                   {/* 지명 */}
                   <div className="flex items-center gap-3">

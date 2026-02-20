@@ -98,6 +98,24 @@ export async function PATCH(
       return NextResponse.json({ message: '재발송 예정' });
     }
 
+    // 취소 처리: trigger_type을 'canceled'로 변경
+    if (body.cancel && body.recordId) {
+      const { error: cancelError } = await supabase
+        .from('status_board')
+        .update({
+          trigger_type: 'canceled',
+          is_in_progress: false,
+          updated_at: getKoreanTime(),
+          data_changed: true,
+        })
+        .eq('id', body.recordId);
+
+      if (cancelError) {
+        return NextResponse.json({ error: '취소 처리 실패' }, { status: 500 });
+      }
+      return NextResponse.json({ message: '취소 처리 완료' });
+    }
+
     // 강제 종료: 진행 중인 레코드를 종료 처리 (ㄲ 핸들러와 동일)
     if (body.forceEnd && body.recordId) {
       const endUpdate: Record<string, unknown> = {
