@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/jwt';
 import { cookies } from 'next/headers';
+import { checkIsEvent } from '@/app/api/bot/handlers/event';
 
 function getKoreanTime(): string {
   return new Date(new Date().getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, -1);
@@ -219,6 +220,9 @@ export async function POST(
     const now = getKoreanTime();
     const startTime = body.start_time || now;
 
+    // 이벤트 여부 자동 체크 (봇과 동일 로직)
+    const isEvent = await checkIsEvent(supabase, slotId, slot.shop_name, startTime);
+
     const { error: insertError } = await supabase
       .from('status_board')
       .insert({
@@ -236,6 +240,8 @@ export async function POST(
         event_count: null,
         trigger_type: 'start',
         is_designated: body.is_designated || false,
+        is_event: isEvent,
+        source_log_id: null,
         data_changed: true,
       });
 
