@@ -463,13 +463,13 @@ export function parseGirlSignals(
     result.isExtension = true;
   }
 
-  // 해당 아가씨 구간에 아무 신호도 없는지 판단
-  // afterSection이 비어있고(다음 아가씨까지 공백뿐), 메시지 전체에 비시작 신호(ㅇㅈ/ㅈㅁㅅㅅ/ㅈㅁㅂㅅㅅ)가 있으면
-  // 이 아가씨는 시작이 아니라 해당 비시작 신호의 대상 (예: "910 반스 미쯔 보리 여리 2ㅇㅈ" → 미쯔는 연장 대상이지 시작이 아님)
-  if (!result.isEnd && !result.isCancel && !result.isNewSession && !result.isResume &&
-      !result.isExtension && !result.isDesignatedFee && !result.isDesignatedHalfFee &&
-      !result.isDesignated && !result.isCorrection && afterSection.trim() === '') {
-    // 메시지 전체에 비시작 신호가 있는지 확인
+  // 해당 아가씨 구간에 인식된 신호가 하나도 없고, 메시지 전체에 비시작 신호(ㅇㅈ/ㅈㅁㅅㅅ/ㅈㅁㅂㅅㅅ)가 있으면
+  // 이 아가씨는 시작이 아니라 해당 비시작 신호의 대상
+  // (예: "910 반스 문주 보리 여리 2ㅇㅈ" → 문주 구간에 신호 없음 + 전체에 ㅇㅈ → 시작 아님)
+  const afterHasAnySignal = result.isEnd || result.isCancel || result.isNewSession || result.isResume ||
+      result.isExtension || result.isDesignatedFee || result.isDesignatedHalfFee ||
+      result.isDesignated || result.isCorrection;
+  if (!afterHasAnySignal) {
     const hasNonStartSignal = hasSignal(message, MESSAGE_SIGNALS.EXTENSION.code) ||
       hasSignal(message, MESSAGE_SIGNALS.DESIGNATED_FEE.code) ||
       hasSignal(message, MESSAGE_SIGNALS.DESIGNATED_HALF_FEE.code);
