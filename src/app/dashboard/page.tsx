@@ -541,7 +541,7 @@ export default function DashboardPage() {
           const data = await updated.json();
           setStatusRecords(data.records);
         }
-        alert('세션이 추가되었습니다.');
+        alert('방이 추가되었습니다.');
       } else {
         const data = await res.json();
         alert(data.error || '추가에 실패했습니다.');
@@ -2540,7 +2540,7 @@ export default function DashboardPage() {
                 {/* 새 세션 추가 폼 */}
                 {showAddSessionForm ? (
                   <div className="border border-green-500/30 bg-green-900/20 rounded-xl p-4 mb-3 space-y-3">
-                    <p className="text-green-400 text-sm font-medium">새 세션 추가</p>
+                    <p className="text-green-400 text-sm font-medium">새 방 추가</p>
                     <div className="flex gap-2">
                       <div className="flex-1">
                         <label className="block text-xs text-neutral-400 mb-1">방번호</label>
@@ -2594,7 +2594,7 @@ export default function DashboardPage() {
                     onClick={() => setShowAddSessionForm(true)}
                     className="w-full py-2 mb-3 border border-dashed border-neutral-600 hover:border-green-500 text-neutral-500 hover:text-green-400 text-sm rounded-xl transition"
                   >
-                    + 새 세션 추가
+                    + 새 방 추가
                   </button>
                 )}
 
