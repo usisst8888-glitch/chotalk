@@ -5,7 +5,7 @@ import { signToken } from '@/lib/jwt';
 
 export async function POST(request: NextRequest) {
   try {
-    const { password, username, phone } = await request.json();
+    const { password, username, phone, nickname } = await request.json();
 
     if (!password || !username || !phone) {
       return NextResponse.json(
@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         username,
         phone,
+        nickname: nickname || null,
       })
       .select('id, username')
       .single();

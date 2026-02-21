@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 export default function SignupForm() {
   const router = useRouter();
   const [username, setUsername] = useState('');
+  const [nickname, setNickname] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -32,7 +33,7 @@ export default function SignupForm() {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, username, phone }),
+        body: JSON.stringify({ password, username, phone, nickname }),
       });
 
       const data = await res.json();
@@ -65,6 +66,20 @@ export default function SignupForm() {
           required
           className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
           placeholder="사용할 아이디"
+        />
+      </div>
+
+      <div>
+        <label htmlFor="nickname" className="block text-sm font-medium text-gray-300 mb-2">
+          담당자 닉네임
+        </label>
+        <input
+          id="nickname"
+          type="text"
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+          placeholder="담당자 닉네임 (선택)"
         />
       </div>
 
