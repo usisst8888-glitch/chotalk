@@ -15,23 +15,27 @@ export async function handleSessionStart(
 ): Promise<HandlerResult> {
   const { supabase, slot, receivedAt, logId } = ctx;
 
-  // 이미 진행 중인 세션이 있는지 확인 (다른 방에서 진행 중이면 무시)
+  // 같은 방번호에서 이미 진행 중인 세션이 있는지 확인
   // 단, ㅈㅈ(수정) 신호일 때는 무시하지 않고 수정 처리
-  const { data: existingSession } = await supabase
-    .from('status_board')
-    .select('id, room_number')
-    .eq('slot_id', slot.id)
-    .eq('is_in_progress', true)
-    .single();
+  // 방번호가 다르면 새 방 시작 허용
+  if (parsed.roomNumber && !girlSignals.isCorrection) {
+    const { data: existingSession } = await supabase
+      .from('status_board')
+      .select('id, room_number')
+      .eq('slot_id', slot.id)
+      .eq('room_number', parsed.roomNumber)
+      .eq('is_in_progress', true)
+      .single();
 
-  if (existingSession && !girlSignals.isCorrection) {
-    console.log('handleSessionStart - 이미 진행 중인 세션 있음:', slot.girl_name, '현재 방:', existingSession.room_number, '→ 무시');
-    return {
-      type: 'ignored',
-      slotId: slot.id,
-      girlName: slot.girl_name,
-      reason: `이미 ${existingSession.room_number}번 방에서 진행 중`,
-    };
+    if (existingSession) {
+      console.log('handleSessionStart - 같은 방에서 이미 진행 중:', slot.girl_name, '방:', parsed.roomNumber, '→ 무시');
+      return {
+        type: 'ignored',
+        slotId: slot.id,
+        girlName: slot.girl_name,
+        reason: `${parsed.roomNumber}번 방에서 이미 진행 중`,
+      };
+    }
   }
 
   // 메시지에 수동 지정 시간이 있으면 사용, 없으면 receivedAt 사용
