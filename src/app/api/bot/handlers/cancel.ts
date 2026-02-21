@@ -16,7 +16,7 @@ export async function handleCancel(
   // 가장 최근 레코드 찾기 (진행 중 또는 종료 상태 모두 취소 가능)
   const { data: recentRecord, error: findError } = await supabase
     .from('status_board')
-    .select('id, room_number, trigger_type')
+    .select('id, room_number, trigger_type, data_changed')
     .eq('slot_id', slot.id)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -54,6 +54,11 @@ export async function handleCancel(
     };
   }
 
+  // data_changed가 아직 true면 → 시작 메시지가 발송 전 취소 → 아무것도 안 보냄
+  // data_changed가 false면 → 시작 메시지가 이미 발송됨 → 취소 메시지 발송
+  const startAlreadySent = !recentRecord.data_changed;
+  console.log('handleCancel - startAlreadySent:', startAlreadySent, 'data_changed:', recentRecord.data_changed);
+
   // trigger_type을 'canceled'로 변경하고 is_in_progress를 false로 설정
   const { error: updateError } = await supabase
     .from('status_board')
@@ -61,7 +66,7 @@ export async function handleCancel(
       trigger_type: 'canceled',
       is_in_progress: false,
       updated_at: getKoreanTime(),
-      data_changed: true,
+      data_changed: startAlreadySent, // 시작 발송 후 취소면 true(취소 발송), 발송 전 취소면 false(아무것도 안 보냄)
     })
     .eq('id', recentRecord.id);
 
