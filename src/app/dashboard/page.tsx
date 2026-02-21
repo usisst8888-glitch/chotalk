@@ -612,8 +612,15 @@ export default function DashboardPage() {
     setSelectedSlot(slot);
     try {
       const res = await fetch(`/api/status-board/${slot.id}`);
+      if (res.status === 404) {
+        // 방이 없어도 모달 열기 (새 방 추가 가능하도록)
+        setStatusRecords([]);
+        setSelectedStatusRecord(null);
+        setShowStatusModal(true);
+        return;
+      }
       if (!res.ok) {
-        alert('현재 진행중인 방이 없습니다.');
+        alert('상황판 조회 중 오류가 발생했습니다.');
         return;
       }
       const data = await res.json();
@@ -2528,7 +2535,7 @@ export default function DashboardPage() {
       )}
 
       {/* 상황판 수정 모달 */}
-      {showStatusModal && statusRecords.length > 0 && (
+      {showStatusModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
           <div className="relative bg-neutral-900 rounded-2xl border border-neutral-800 p-6 w-full max-w-md mx-4 max-h-[80vh] flex flex-col">
             <h3 className="text-xl font-bold text-white mb-4">
@@ -2539,6 +2546,11 @@ export default function DashboardPage() {
               <>
                 {/* 레코드 리스트 */}
                 <div className="flex-1 overflow-y-auto space-y-2 mb-4">
+                  {statusRecords.length === 0 && (
+                    <div className="text-center py-8 text-neutral-500 text-sm">
+                      진행 중인 방이 없습니다.<br/>아래에서 새 방을 추가하세요.
+                    </div>
+                  )}
                   {statusRecords.map((record) => (
                     <button
                       key={record.id}
@@ -2629,12 +2641,14 @@ export default function DashboardPage() {
 
                 {/* 버튼 */}
                 <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowResetConfirm(true)}
-                    className="px-4 py-3 bg-red-900/50 hover:bg-red-800 text-red-400 font-semibold rounded-xl transition"
-                  >
-                    초기화
-                  </button>
+                  {statusRecords.length > 0 && (
+                    <button
+                      onClick={() => setShowResetConfirm(true)}
+                      className="px-4 py-3 bg-red-900/50 hover:bg-red-800 text-red-400 font-semibold rounded-xl transition"
+                    >
+                      초기화
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       setShowStatusModal(false);
@@ -2646,13 +2660,15 @@ export default function DashboardPage() {
                   >
                     닫기
                   </button>
-                  <button
-                    onClick={handleBulkResend}
-                    disabled={submitting || statusRecords[0]?.data_changed}
-                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 disabled:text-neutral-500 text-white font-semibold rounded-xl transition"
-                  >
-                    {submitting ? '처리 중...' : statusRecords[0]?.data_changed ? '발송 대기중' : '재발송'}
-                  </button>
+                  {statusRecords.length > 0 && (
+                    <button
+                      onClick={handleBulkResend}
+                      disabled={submitting || statusRecords[0]?.data_changed}
+                      className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 disabled:text-neutral-500 text-white font-semibold rounded-xl transition"
+                    >
+                      {submitting ? '처리 중...' : statusRecords[0]?.data_changed ? '발송 대기중' : '재발송'}
+                    </button>
+                  )}
                 </div>
               </>
             ) : (
