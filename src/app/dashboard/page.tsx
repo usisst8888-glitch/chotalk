@@ -63,7 +63,7 @@ export default function DashboardPage() {
   const [extendForm, setExtendForm] = useState({ depositorName: '' });
   const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'purchases' | 'rooms'>('slots');
   // 관리자용 회원관리
-  const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; role: string; slot_count: number; created_at: string }>>([]);
+  const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; nickname: string | null; role: string; slot_count: number; created_at: string }>>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   // 관리자용 전체 인원관리
   const [allSlots, setAllSlots] = useState<Array<Slot & { username: string }>>([]);
@@ -1695,7 +1695,7 @@ export default function DashboardPage() {
                         className="w-full px-3 py-2 pr-10 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500 appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%239ca3af%22%20d%3D%22M2%204l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.75rem_center]"
                       >
                         {shops.map((shop) => (
-                          <option key={shop.id} value={shop.shop_name}>{shop.shop_name} ({shop.start_time.slice(0, 5)}~{shop.end_time.slice(0, 5)})</option>
+                          <option key={shop.id} value={shop.shop_name}>{shop.shop_name}</option>
                         ))}
                         <option value="기타">기타 (직접입력)</option>
                       </select>
@@ -1766,6 +1766,7 @@ export default function DashboardPage() {
                   <thead>
                     <tr className="border-b border-neutral-800">
                       <th className="text-left px-4 py-3 text-neutral-500 font-medium">아이디</th>
+                      <th className="text-left px-4 py-3 text-neutral-500 font-medium">담당자 닉네임</th>
                       <th className="text-center px-4 py-3 text-neutral-500 font-medium">등급</th>
                       <th className="text-center px-4 py-3 text-neutral-500 font-medium">등록 가능 인원</th>
                       <th className="text-center px-4 py-3 text-neutral-500 font-medium">가입일</th>
@@ -1776,6 +1777,7 @@ export default function DashboardPage() {
                     {allUsers.map((u) => (
                       <tr key={u.id} className="border-b border-neutral-800 hover:bg-neutral-800/50">
                         <td className="px-4 py-3 text-white">{u.username}</td>
+                        <td className="px-4 py-3 text-neutral-400">{u.nickname || '-'}</td>
                         <td className="px-4 py-3 text-center">
                           <span className={`px-2 py-1 text-xs rounded-full ${
                             u.role === 'admin'
@@ -2330,7 +2332,7 @@ export default function DashboardPage() {
                   className="w-full px-4 py-3 pr-10 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%239ca3af%22%20d%3D%22M2%204l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.75rem_center]"
                 >
                   {shops.map((shop) => (
-                    <option key={shop.id} value={shop.shop_name}>{shop.shop_name} ({shop.start_time.slice(0, 5)}~{shop.end_time.slice(0, 5)})</option>
+                    <option key={shop.id} value={shop.shop_name}>{shop.shop_name}</option>
                   ))}
                   <option value="기타">기타 (직접입력)</option>
                 </select>
@@ -2401,7 +2403,7 @@ export default function DashboardPage() {
                   className="w-full px-4 py-3 pr-10 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%239ca3af%22%20d%3D%22M2%204l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.75rem_center]"
                 >
                   {shops.map((shop) => (
-                    <option key={shop.id} value={shop.shop_name}>{shop.shop_name} ({shop.start_time.slice(0, 5)}~{shop.end_time.slice(0, 5)})</option>
+                    <option key={shop.id} value={shop.shop_name}>{shop.shop_name}</option>
                   ))}
                   <option value="기타">기타 (직접입력)</option>
                 </select>

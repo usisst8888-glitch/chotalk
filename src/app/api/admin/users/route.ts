@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabase();
     const { data: users, error } = await supabase
       .from('users')
-      .select('id, username, role, slot_count, created_at')
+      .select('id, username, nickname, role, slot_count, created_at')
       .order('created_at', { ascending: false });
 
     if (error) {
