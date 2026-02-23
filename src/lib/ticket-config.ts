@@ -104,7 +104,7 @@ export const MESSAGE_SIGNALS = {
     code: 'ㄱㅌ',
     type: 'cancel',
     description: '취소 (해당 세션을 status_board에서 삭제)',
-    aliases: ['ㅋㅌ'],
+    aliases: ['ㅋㅌ', 'ㄱㅋ', '걍팅', '팅'],
   },
 
   // 연장 신호 (시작으로 잡으면 안 됨)
