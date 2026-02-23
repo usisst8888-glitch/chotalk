@@ -1677,7 +1677,7 @@ export default function DashboardPage() {
                   <div className="space-y-3">
                     <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-xl p-3">
                       <p className="text-yellow-400 text-xs">
-                        초톡,도촉 단톡방에 있는 정확한 아가씨 닉네임을 입력해주세요.
+                        초톡 단톡방에 있는 정확한 아가씨 닉네임을 입력해주세요.
                       </p>
                     </div>
                     <input
@@ -2303,7 +2303,7 @@ export default function DashboardPage() {
             <h3 className="text-xl font-bold text-white mb-4">인원 추가</h3>
             <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-xl p-4 mb-4">
               <p className="text-yellow-400 text-sm">
-                초톡,도촉 단톡방에 있는 정확한 아가씨 닉네임을 입력해주셔야 자동 발송이 가능합니다.
+                초톡 단톡방에 있는 정확한 아가씨 닉네임을 입력해주셔야 자동 발송이 가능합니다.
               </p>
             </div>
             <form onSubmit={handleAddSlot} className="space-y-4">
@@ -2374,7 +2374,7 @@ export default function DashboardPage() {
             <h3 className="text-xl font-bold text-white mb-4">인원 수정</h3>
             <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-xl p-4 mb-4">
               <p className="text-yellow-400 text-sm">
-                초톡,도촉 단톡방에 있는 정확한 아가씨 닉네임을 입력해주셔야 자동 발송이 가능합니다.
+                초톡 단톡방에 있는 정확한 아가씨 닉네임을 입력해주셔야 자동 발송이 가능합니다.
               </p>
             </div>
             <form onSubmit={handleEditSlot} className="space-y-4">
