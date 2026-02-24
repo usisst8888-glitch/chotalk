@@ -359,7 +359,7 @@ export function parseGirlSignals(
   }
 
   // 해당 아가씨에게 해당하는 부분만 추출 (이름 뒤)
-  const afterSection = afterGirl.substring(0, nextGirlIndex);
+  let afterSection = afterGirl.substring(0, nextGirlIndex);
 
   // 아가씨 이름 앞의 텍스트도 확인 (이름에 직접 붙은 신호 감지)
   // 이전 아가씨 이름이 끝나는 위치부터 현재 아가씨 이름 시작까지
@@ -435,6 +435,21 @@ export function parseGirlSignals(
     }
     if (match) {
       result.usageDuration = parseFloat(match[1]);
+    }
+  }
+
+  // ㄲ이 afterSection에 있고 종료로 판정됐으면, 첫 번째 ㄲ 이후는
+  // 미등록 아가씨 영역일 수 있으므로 후속 신호 체크 범위를 첫 번째 ㄲ까지로 제한
+  // 예: "연시3.5ㄲ 헤롱3ㅈㅁㄴㄱㄲ" → afterSection을 "3.5ㄲ"로 축소하여 헤롱의 ㅈㅁ 오염 방지
+  if (result.isEnd && hasEndInSection) {
+    const endSignalIdx = afterSection.indexOf('ㄲ');
+    if (endSignalIdx === -1) {
+      const endAltIdx = afterSection.indexOf('끝');
+      if (endAltIdx !== -1) {
+        afterSection = afterSection.substring(0, endAltIdx + 1);
+      }
+    } else {
+      afterSection = afterSection.substring(0, endSignalIdx + 1);
     }
   }
 
