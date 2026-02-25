@@ -405,13 +405,26 @@ export function parseGirlSignals(
 
   // ㄲ (종료) 신호 확인
   // - 아가씨 구간 또는 메시지 전체에 ㄲ이 있으면 종료 후보
-  // - 단, ㅇㅈ(연장)/ㅈㅁㅅㅅ(지명순번삭제) 신호가 구간에 있으면 종료가 아님
+  // - 단, ㅇㅈ(연장)/ㅈㅁㅅㅅ(지명순번삭제) 신호가 ㄲ 이전에 있으면 종료가 아님
+  // - ㄲ 이후에 나오는 ㅇㅈ 등은 미등록 아가씨의 신호일 수 있으므로 무시
   // - 이용시간은 항상 아가씨 이름 바로 뒤 첫 번째 숫자
   const hasEndInSection = hasSignalWithAliases(afterSection, MESSAGE_SIGNALS.END);
   const hasEndInMessage = hasSignalWithAliases(message, MESSAGE_SIGNALS.END);
-  const hasExtension = hasSignal(afterSection, MESSAGE_SIGNALS.EXTENSION.code);
-  const hasDesignatedFee = hasSignal(afterSection, MESSAGE_SIGNALS.DESIGNATED_FEE.code);
-  const hasDesignatedHalfFee = hasSignal(afterSection, MESSAGE_SIGNALS.DESIGNATED_HALF_FEE.code);
+
+  // ㄲ이 afterSection에 있으면, ㄲ 이전 부분에서만 차단 신호 체크
+  // 예: "2ㄲ 서우 3ㅇㅈ" → ㄲ 이전 "2"에서만 ㅇㅈ 확인 → 없으므로 종료 정상 처리
+  let signalCheckSection = afterSection;
+  if (hasEndInSection) {
+    const endIdx = afterSection.indexOf('ㄲ');
+    const endAltIdx = afterSection.indexOf('끝');
+    const firstEnd = endIdx !== -1 ? (endAltIdx !== -1 ? Math.min(endIdx, endAltIdx) : endIdx) : endAltIdx;
+    if (firstEnd !== -1) {
+      signalCheckSection = afterSection.substring(0, firstEnd);
+    }
+  }
+  const hasExtension = hasSignal(signalCheckSection, MESSAGE_SIGNALS.EXTENSION.code);
+  const hasDesignatedFee = hasSignal(signalCheckSection, MESSAGE_SIGNALS.DESIGNATED_FEE.code);
+  const hasDesignatedHalfFee = hasSignal(signalCheckSection, MESSAGE_SIGNALS.DESIGNATED_HALF_FEE.code);
 
   if ((hasEndInSection || hasEndInMessage) && !hasExtension && !hasDesignatedFee && !hasDesignatedHalfFee) {
     result.isEnd = true;

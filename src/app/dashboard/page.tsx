@@ -6,8 +6,23 @@ import { useRouter } from 'next/navigation';
 interface User {
   id: string;
   username: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'superadmin';
   created_at: string;
+  parent_id?: string | null;
+  bank_account?: string | null;
+}
+
+interface Distributor {
+  id: string;
+  user_id: string;
+  domain: string;
+  site_name: string;
+  logo_url: string | null;
+  primary_color: string;
+  secondary_color: string;
+  is_active: boolean;
+  created_at: string;
+  username?: string;
 }
 
 interface Slot {
@@ -61,9 +76,9 @@ export default function DashboardPage() {
   const [purchaseForm, setPurchaseForm] = useState({ depositorName: '', slotCount: 1 });
   const [purchaseSubmitting, setPurchaseSubmitting] = useState(false);
   const [extendForm, setExtendForm] = useState({ depositorName: '' });
-  const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'purchases' | 'rooms'>('slots');
+  const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'purchases' | 'rooms' | 'distributors' | 'bankAccount'>('slots');
   // 관리자용 회원관리
-  const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; nickname: string | null; phone: string; role: string; slot_count: number; created_at: string }>>([]);
+  const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; nickname: string | null; phone: string; role: string; slot_count: number; parent_id: string | null; created_at: string }>>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   // 관리자용 전체 인원관리
   const [allSlots, setAllSlots] = useState<Array<Slot & { username: string }>>([]);
@@ -103,6 +118,22 @@ export default function DashboardPage() {
   // 상황판 개별 삭제 확인 팝업
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  // 총판 관리 (superadmin)
+  const [distributors, setDistributors] = useState<Distributor[]>([]);
+  const [distributorsLoading, setDistributorsLoading] = useState(false);
+  const [showAddDistributorModal, setShowAddDistributorModal] = useState(false);
+  const [newDistributor, setNewDistributor] = useState({ userId: '', domain: '', siteName: '', primaryColor: '#4f46e5', secondaryColor: '#7c3aed' });
+  const [newDistributorLogo, setNewDistributorLogo] = useState<File | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [editingDistributor, setEditingDistributor] = useState<string | null>(null);
+  // 계좌 설정 (admin/총판)
+  const [bankAccount, setBankAccount] = useState('');
+  const [bankAccountSaving, setBankAccountSaving] = useState(false);
+
+  // 역할 헬퍼
+  const isSuperAdmin = user?.role === 'superadmin';
+  const isAdmin = user?.role === 'admin';
+  const isAnyAdmin = isSuperAdmin || isAdmin;
 
   useEffect(() => {
     fetchUser();
@@ -112,9 +143,14 @@ export default function DashboardPage() {
 
   // 관리자용: 전체 슬롯 로드 + 카카오 아이디 목록 로드
   useEffect(() => {
-    if (user?.role === 'admin') {
+    if (isAnyAdmin) {
       fetchAllSlots();
+    }
+    if (isSuperAdmin) {
       fetchKakaoInviteIds();
+    }
+    if (isAdmin && user?.bank_account) {
+      setBankAccount(user.bank_account);
     }
   }, [user]);
 
@@ -423,6 +459,126 @@ export default function DashboardPage() {
         setEditingSlotKakaoId(null);
         fetchAllSlots();
         fetchKakaoInviteIds(); // 등록 수 업데이트
+      } else {
+        alert('수정에 실패했습니다.');
+      }
+    } catch {
+      alert('서버 오류가 발생했습니다.');
+    }
+  };
+
+  // 총판 목록 조회 (superadmin)
+  const fetchDistributors = async () => {
+    setDistributorsLoading(true);
+    try {
+      const res = await fetch('/api/admin/distributor');
+      if (res.ok) {
+        const data = await res.json();
+        setDistributors(data.distributors);
+      }
+    } catch (error) {
+      console.error('Failed to fetch distributors:', error);
+    } finally {
+      setDistributorsLoading(false);
+    }
+  };
+
+  // 계좌 저장 (admin/총판)
+  const handleSaveBankAccount = async () => {
+    setBankAccountSaving(true);
+    try {
+      const res = await fetch('/api/admin/bank-account', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bankAccount }),
+      });
+      if (res.ok) {
+        alert('계좌번호가 저장되었습니다.');
+      } else {
+        const data = await res.json();
+        alert(data.error || '저장에 실패했습니다.');
+      }
+    } catch {
+      alert('서버 오류가 발생했습니다.');
+    } finally {
+      setBankAccountSaving(false);
+    }
+  };
+
+  // 총판 추가 (superadmin)
+  const handleAddDistributor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLogoUploading(true);
+    try {
+      // 로고 파일이 있으면 먼저 업로드
+      let logoUrl: string | undefined;
+      if (newDistributorLogo) {
+        const formData = new FormData();
+        formData.append('file', newDistributorLogo);
+        const uploadRes = await fetch('/api/admin/distributor/logo', {
+          method: 'POST',
+          body: formData,
+        });
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          logoUrl = uploadData.url;
+        } else {
+          const uploadData = await uploadRes.json();
+          alert(uploadData.error || '로고 업로드에 실패했습니다.');
+          setLogoUploading(false);
+          return;
+        }
+      }
+
+      const res = await fetch('/api/admin/distributor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newDistributor, logoUrl }),
+      });
+      if (res.ok) {
+        setShowAddDistributorModal(false);
+        setNewDistributor({ userId: '', domain: '', siteName: '', primaryColor: '#4f46e5', secondaryColor: '#7c3aed' });
+        setNewDistributorLogo(null);
+        fetchDistributors();
+      } else {
+        const data = await res.json();
+        alert(data.error || '추가에 실패했습니다.');
+      }
+    } catch {
+      alert('서버 오류가 발생했습니다.');
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
+  // 총판 삭제 (superadmin)
+  const handleDeleteDistributor = async (id: string) => {
+    if (!confirm('정말 이 총판을 삭제하시겠습니까?')) return;
+    try {
+      const res = await fetch(`/api/admin/distributor?id=${id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        fetchDistributors();
+      } else {
+        alert('삭제에 실패했습니다.');
+      }
+    } catch {
+      alert('서버 오류가 발생했습니다.');
+    }
+  };
+
+  // 총판 수정 (superadmin)
+  const handleUpdateDistributor = async (id: string, data: Record<string, string | boolean>) => {
+    try {
+      const res = await fetch('/api/admin/distributor', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...data }),
+      });
+      if (res.ok) {
+        setEditingDistributor(null);
+        fetchDistributors();
       } else {
         alert('수정에 실패했습니다.');
       }
@@ -1016,7 +1172,8 @@ export default function DashboardPage() {
             >
               인원 관리
             </button>
-            {user?.role === 'admin' && (
+            {/* superadmin 전용 탭들 */}
+            {isSuperAdmin && (
               <>
                 <button
                   onClick={() => {
@@ -1097,7 +1254,34 @@ export default function DashboardPage() {
                 >
                   방상태
                 </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('distributors');
+                    fetchDistributors();
+                    if (allUsers.length === 0) fetchAllUsers();
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    activeTab === 'distributors'
+                      ? 'bg-pink-600 text-white'
+                      : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
+                  }`}
+                >
+                  총판 관리
+                </button>
               </>
+            )}
+            {/* admin(총판) 전용 탭 */}
+            {isAdmin && (
+              <button
+                onClick={() => setActiveTab('bankAccount')}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  activeTab === 'bankAccount'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
+                }`}
+              >
+                계좌 설정
+              </button>
             )}
           </div>
           <a
@@ -1117,7 +1301,7 @@ export default function DashboardPage() {
         <>
         {/* 슬롯 현황 */}
         <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 mb-6">
-          {user?.role === 'admin' ? (
+          {isAnyAdmin ? (
             // 관리자: 전체 인원 표시
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-white">전체 인원 관리</h2>
@@ -1196,12 +1380,12 @@ export default function DashboardPage() {
               <thead className="bg-neutral-800/50">
                 <tr>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">활성화</th>
-                  {user?.role === 'admin' && (
+                  {isAnyAdmin && (
                     <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">회원</th>
                   )}
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">아가씨 닉네임</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">가게명</th>
-                  {user?.role === 'admin' && (
+                  {isAnyAdmin && (
                     <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">채팅방</th>
                   )}
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">초대할 ID</th>
@@ -1211,7 +1395,7 @@ export default function DashboardPage() {
               </thead>
               <tbody className="divide-y divide-neutral-800">
                 {/* 관리자: 전체 슬롯 표시 */}
-                {user?.role === 'admin' && allSlots.map((slot) => {
+                {isAnyAdmin && allSlots.map((slot) => {
                   const daysRemaining = getDaysRemaining(slot.expires_at);
                   const isExpiringSoon = daysRemaining <= 7;
                   const isExpired = daysRemaining <= 0;
@@ -1234,29 +1418,35 @@ export default function DashboardPage() {
                       <td className="px-4 py-3 text-center text-neutral-400">{slot.shop_name || '-'}</td>
                       <td className="px-4 py-3 text-center text-neutral-500">{slot.target_room}</td>
                       <td className="px-4 py-3 text-center">
-                        {editingSlotKakaoId === slot.id ? (
-                          <select
-                            defaultValue={slot.kakao_id}
-                            onChange={(e) => handleChangeSlotKakaoId(slot.id, e.target.value)}
-                            onBlur={() => setEditingSlotKakaoId(null)}
-                            autoFocus
-                            className="px-2 py-1 bg-neutral-800 border border-yellow-500 rounded text-white text-sm focus:outline-none"
-                          >
-                            <option value={slot.kakao_id}>{slot.kakao_id}</option>
-                            {kakaoInviteIds
-                              .filter((k) => k.is_active && k.kakao_id !== slot.kakao_id)
-                              .map((k) => (
-                                <option key={k.id} value={k.kakao_id}>
-                                  {k.kakao_id} {k.description ? `(${k.description})` : ''}
-                                </option>
-                              ))}
-                          </select>
+                        {isSuperAdmin ? (
+                          editingSlotKakaoId === slot.id ? (
+                            <select
+                              defaultValue={slot.kakao_id}
+                              onChange={(e) => handleChangeSlotKakaoId(slot.id, e.target.value)}
+                              onBlur={() => setEditingSlotKakaoId(null)}
+                              autoFocus
+                              className="px-2 py-1 bg-neutral-800 border border-yellow-500 rounded text-white text-sm focus:outline-none"
+                            >
+                              <option value={slot.kakao_id}>{slot.kakao_id}</option>
+                              {kakaoInviteIds
+                                .filter((k) => k.is_active && k.kakao_id !== slot.kakao_id)
+                                .map((k) => (
+                                  <option key={k.id} value={k.kakao_id}>
+                                    {k.kakao_id} {k.description ? `(${k.description})` : ''}
+                                  </option>
+                                ))}
+                            </select>
+                          ) : (
+                            <span
+                              onClick={() => setEditingSlotKakaoId(slot.id)}
+                              className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
+                              title="클릭하여 수정"
+                            >
+                              {slot.kakao_id}
+                            </span>
+                          )
                         ) : (
-                          <span
-                            onClick={() => setEditingSlotKakaoId(slot.id)}
-                            className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
-                            title="클릭하여 수정"
-                          >
+                          <span className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium">
                             {slot.kakao_id}
                           </span>
                         )}
@@ -1301,7 +1491,7 @@ export default function DashboardPage() {
                   );
                 })}
                 {/* 일반 유저: 자신의 슬롯만 표시 */}
-                {user?.role !== 'admin' && slots.map((slot) => {
+                {!isAnyAdmin && slots.map((slot) => {
                   const daysRemaining = getDaysRemaining(slot.expires_at);
                   const isExpiringSoon = daysRemaining <= 7;
                   const isExpired = daysRemaining <= 0;
@@ -1378,7 +1568,7 @@ export default function DashboardPage() {
                   );
                 })}
                 {/* 빈 슬롯 행들 (일반 유저만) */}
-                {user?.role !== 'admin' && emptySlots.map((index) => (
+                {!isAnyAdmin && emptySlots.map((index) => (
                   <tr key={`empty-${index}`} className="hover:bg-neutral-800/30 transition bg-neutral-900/50">
                     <td className="px-4 py-3 text-center">
                       <div className="flex justify-center">
@@ -1454,12 +1644,12 @@ export default function DashboardPage() {
                 ))}
               </tbody>
             </table>
-            {user?.role === 'admin' && allSlots.length === 0 && (
+            {isAnyAdmin && allSlots.length === 0 && (
               <div className="text-center py-12 text-neutral-600">
                 등록된 인원이 없습니다.
               </div>
             )}
-            {user?.role !== 'admin' && slots.length === 0 && emptySlots.length === 0 && (
+            {!isAnyAdmin && slots.length === 0 && emptySlots.length === 0 && (
               <div className="text-center py-12 text-neutral-600">
                 등록 가능한 인원이 없습니다. 인원을 추가 구매해주세요.
               </div>
@@ -1470,7 +1660,7 @@ export default function DashboardPage() {
         {/* 모바일 리스트 */}
         <div className="block md:hidden space-y-4">
             {/* 관리자: 전체 슬롯 */}
-            {user?.role === 'admin' && allSlots.map((slot) => {
+            {isAnyAdmin && allSlots.map((slot) => {
               const daysRemaining = getDaysRemaining(slot.expires_at);
               const isExpiringSoon = daysRemaining <= 7;
               const isExpired = daysRemaining <= 0;
@@ -1509,29 +1699,35 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex border-b border-neutral-800 pb-2 items-center">
                       <span className="text-neutral-600 w-28 flex-shrink-0">초대할 ID</span>
-                      {editingSlotKakaoId === slot.id ? (
-                        <select
-                          defaultValue={slot.kakao_id}
-                          onChange={(e) => handleChangeSlotKakaoId(slot.id, e.target.value)}
-                          onBlur={() => setEditingSlotKakaoId(null)}
-                          autoFocus
-                          className="px-2 py-1 bg-neutral-800 border border-yellow-500 rounded text-white text-sm focus:outline-none"
-                        >
-                          <option value={slot.kakao_id}>{slot.kakao_id}</option>
-                          {kakaoInviteIds
-                            .filter((k) => k.is_active && k.kakao_id !== slot.kakao_id)
-                            .map((k) => (
-                              <option key={k.id} value={k.kakao_id}>
-                                {k.kakao_id} {k.description ? `(${k.description})` : ''}
-                              </option>
-                            ))}
-                        </select>
+                      {isSuperAdmin ? (
+                        editingSlotKakaoId === slot.id ? (
+                          <select
+                            defaultValue={slot.kakao_id}
+                            onChange={(e) => handleChangeSlotKakaoId(slot.id, e.target.value)}
+                            onBlur={() => setEditingSlotKakaoId(null)}
+                            autoFocus
+                            className="px-2 py-1 bg-neutral-800 border border-yellow-500 rounded text-white text-sm focus:outline-none"
+                          >
+                            <option value={slot.kakao_id}>{slot.kakao_id}</option>
+                            {kakaoInviteIds
+                              .filter((k) => k.is_active && k.kakao_id !== slot.kakao_id)
+                              .map((k) => (
+                                <option key={k.id} value={k.kakao_id}>
+                                  {k.kakao_id} {k.description ? `(${k.description})` : ''}
+                                </option>
+                              ))}
+                          </select>
+                        ) : (
+                          <span
+                            onClick={() => setEditingSlotKakaoId(slot.id)}
+                            className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
+                            title="클릭하여 수정"
+                          >
+                            {slot.kakao_id}
+                          </span>
+                        )
                       ) : (
-                        <span
-                          onClick={() => setEditingSlotKakaoId(slot.id)}
-                          className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
-                          title="클릭하여 수정"
-                        >
+                        <span className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium">
                           {slot.kakao_id}
                         </span>
                       )}
@@ -1577,7 +1773,7 @@ export default function DashboardPage() {
               );
             })}
             {/* 일반 유저: 자신의 슬롯만 */}
-            {user?.role !== 'admin' && slots.map((slot) => {
+            {!isAnyAdmin && slots.map((slot) => {
               const daysRemaining = getDaysRemaining(slot.expires_at);
               const isExpiringSoon = daysRemaining <= 7;
               const isExpired = daysRemaining <= 0;
@@ -1671,7 +1867,7 @@ export default function DashboardPage() {
               );
             })}
             {/* 모바일 빈 슬롯 (일반 유저만) */}
-            {user?.role !== 'admin' && emptySlots.map((index) => (
+            {!isAnyAdmin && emptySlots.map((index) => (
               <div key={`empty-mobile-${index}`} className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-4">
                 {editingSlotIndex === index ? (
                   <div className="space-y-3">
@@ -1740,12 +1936,12 @@ export default function DashboardPage() {
                 )}
               </div>
             ))}
-            {user?.role === 'admin' && allSlots.length === 0 && (
+            {isAnyAdmin && allSlots.length === 0 && (
               <div className="text-center py-12 text-neutral-600 bg-neutral-900 border border-neutral-800 rounded-2xl">
                 등록된 인원이 없습니다.
               </div>
             )}
-            {user?.role !== 'admin' && slots.length === 0 && emptySlots.length === 0 && (
+            {!isAnyAdmin && slots.length === 0 && emptySlots.length === 0 && (
               <div className="text-center py-12 text-neutral-600 bg-neutral-900 border border-neutral-800 rounded-2xl">
                 등록 가능한 인원이 없습니다. 인원을 추가 구매해주세요.
               </div>
@@ -1755,7 +1951,7 @@ export default function DashboardPage() {
         )}
 
         {/* 회원관리 탭 (관리자 전용) */}
-        {activeTab === 'users' && user?.role === 'admin' && (
+        {activeTab === 'users' && isSuperAdmin && (
           <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
             <h2 className="text-xl font-bold text-white mb-6">회원 관리</h2>
             {usersLoading ? (
@@ -1769,6 +1965,7 @@ export default function DashboardPage() {
                       <th className="text-left px-4 py-3 text-neutral-500 font-medium">담당자 닉네임</th>
                       <th className="text-left px-4 py-3 text-neutral-500 font-medium">전화번호</th>
                       <th className="text-center px-4 py-3 text-neutral-500 font-medium">등급</th>
+                      <th className="text-center px-4 py-3 text-neutral-500 font-medium">소속 총판</th>
                       <th className="text-center px-4 py-3 text-neutral-500 font-medium">등록 가능 인원</th>
                       <th className="text-center px-4 py-3 text-neutral-500 font-medium">가입일</th>
                       <th className="text-center px-4 py-3 text-neutral-500 font-medium">관리</th>
@@ -1781,13 +1978,57 @@ export default function DashboardPage() {
                         <td className="px-4 py-3 text-neutral-400">{u.nickname || '-'}</td>
                         <td className="px-4 py-3 text-neutral-400">{u.phone || '-'}</td>
                         <td className="px-4 py-3 text-center">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            u.role === 'admin'
-                              ? 'bg-red-600/20 text-red-400'
-                              : 'bg-neutral-700 text-neutral-400'
-                          }`}>
-                            {u.role === 'admin' ? '관리자' : '일반회원'}
-                          </span>
+                          <select
+                            value={u.role}
+                            onChange={async (e) => {
+                              const newRole = e.target.value;
+                              const res = await fetch('/api/admin/users', {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ userId: u.id, role: newRole }),
+                              });
+                              if (res.ok) {
+                                fetchAllUsers();
+                              } else {
+                                alert('역할 변경에 실패했습니다.');
+                              }
+                            }}
+                            className={`px-2 py-1 text-xs rounded-full border-0 cursor-pointer focus:outline-none ${
+                              u.role === 'superadmin'
+                                ? 'bg-purple-600/20 text-purple-400'
+                                : u.role === 'admin'
+                                ? 'bg-red-600/20 text-red-400'
+                                : 'bg-neutral-700 text-neutral-400'
+                            }`}
+                          >
+                            <option value="user">일반회원</option>
+                            <option value="admin">총판</option>
+                            <option value="superadmin">슈퍼관리자</option>
+                          </select>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <select
+                            value={u.parent_id || ''}
+                            onChange={async (e) => {
+                              const parentId = e.target.value || null;
+                              const res = await fetch('/api/admin/users', {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ userId: u.id, parentId }),
+                              });
+                              if (res.ok) {
+                                fetchAllUsers();
+                              } else {
+                                alert('총판 배정에 실패했습니다.');
+                              }
+                            }}
+                            className="px-2 py-1 text-xs bg-neutral-800 text-neutral-400 rounded border border-neutral-700 cursor-pointer focus:outline-none focus:border-indigo-500"
+                          >
+                            <option value="">없음</option>
+                            {allUsers.filter(au => au.role === 'admin').map(admin => (
+                              <option key={admin.id} value={admin.id}>{admin.username}</option>
+                            ))}
+                          </select>
                         </td>
                         <td className="px-4 py-3 text-center text-neutral-400">{u.slot_count}명</td>
                         <td className="px-4 py-3 text-center text-neutral-500 text-sm">
@@ -1830,7 +2071,7 @@ export default function DashboardPage() {
         )}
 
         {/* 카카오 초대 아이디 관리 탭 (관리자 전용) */}
-        {activeTab === 'kakaoIds' && user?.role === 'admin' && (
+        {activeTab === 'kakaoIds' && isSuperAdmin && (
           <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">초대 카카오 아이디 관리</h2>
@@ -1940,7 +2181,7 @@ export default function DashboardPage() {
         )}
 
         {/* 가게 관리 탭 (관리자 전용) */}
-        {activeTab === 'eventTimes' && user?.role === 'admin' && (
+        {activeTab === 'eventTimes' && isSuperAdmin && (
           <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
             <h2 className="text-xl font-bold text-white mb-6">가게 관리</h2>
             {eventTimesLoading ? (
@@ -2046,7 +2287,7 @@ export default function DashboardPage() {
         )}
 
         {/* 연장 요청 탭 (관리자 전용) */}
-        {activeTab === 'extensions' && user?.role === 'admin' && (
+        {activeTab === 'extensions' && isSuperAdmin && (
           <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
             <h2 className="text-xl font-bold text-white mb-6">연장 요청</h2>
             {extensionsLoading ? (
@@ -2094,7 +2335,7 @@ export default function DashboardPage() {
         )}
 
         {/* 추가 구매 탭 (관리자 전용) */}
-        {activeTab === 'purchases' && user?.role === 'admin' && (
+        {activeTab === 'purchases' && isSuperAdmin && (
           <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
             <h2 className="text-xl font-bold text-white mb-6">추가 구매 요청</h2>
             {purchasesLoading ? (
@@ -2141,7 +2382,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {activeTab === 'rooms' && user?.role === 'admin' && (
+        {activeTab === 'rooms' && isSuperAdmin && (
           <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
             <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
               <h2 className="text-xl font-bold text-white">방상태</h2>
@@ -2244,7 +2485,250 @@ export default function DashboardPage() {
             })()}
           </div>
         )}
+
+        {/* 총판 관리 탭 (superadmin 전용) */}
+        {activeTab === 'distributors' && isSuperAdmin && (
+          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">총판 관리</h2>
+              <button
+                onClick={() => setShowAddDistributorModal(true)}
+                className="px-4 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-lg font-medium transition"
+              >
+                + 총판 추가
+              </button>
+            </div>
+            {distributorsLoading ? (
+              <div className="text-center py-12 text-neutral-400">로딩 중...</div>
+            ) : distributors.length === 0 ? (
+              <div className="text-center py-12 text-neutral-600">등록된 총판이 없습니다.</div>
+            ) : (
+              <div className="space-y-4">
+                {distributors.map((d) => (
+                  <div key={d.id} className="p-4 bg-neutral-800 rounded-xl">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-white font-medium text-lg">{d.site_name}</span>
+                        <span className={`text-xs px-2 py-1 rounded-full ${d.is_active ? 'bg-green-600/20 text-green-400' : 'bg-neutral-700 text-neutral-400'}`}>
+                          {d.is_active ? '활성' : '비활성'}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleUpdateDistributor(d.id, { isActive: !d.is_active })}
+                          className={`px-3 py-1 text-xs rounded transition ${d.is_active ? 'bg-neutral-600 hover:bg-neutral-500 text-white' : 'bg-green-600 hover:bg-green-500 text-white'}`}
+                        >
+                          {d.is_active ? '비활성화' : '활성화'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDistributor(d.id)}
+                          className="px-3 py-1 text-xs bg-red-600 hover:bg-red-500 text-white rounded transition"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                      <div className="flex gap-2">
+                        <span className="text-neutral-500 w-20">도메인</span>
+                        <span className="text-indigo-400">{d.domain}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <span className="text-neutral-500 w-20">담당자</span>
+                        <span className="text-orange-400">{d.username || '-'}</span>
+                      </div>
+                      <div className="flex gap-2 items-center">
+                        <span className="text-neutral-500 w-20">메인 색상</span>
+                        <div className="w-5 h-5 rounded" style={{ backgroundColor: d.primary_color }} />
+                        <span className="text-neutral-400">{d.primary_color}</span>
+                      </div>
+                      <div className="flex gap-2 items-center">
+                        <span className="text-neutral-500 w-20">보조 색상</span>
+                        <div className="w-5 h-5 rounded" style={{ backgroundColor: d.secondary_color }} />
+                        <span className="text-neutral-400">{d.secondary_color}</span>
+                      </div>
+                      {d.logo_url && (
+                        <div className="flex gap-2 items-center col-span-2">
+                          <span className="text-neutral-500 w-20">로고</span>
+                          <img src={d.logo_url} alt="logo" className="w-8 h-8 rounded" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 계좌 설정 탭 (admin/총판 전용) */}
+        {activeTab === 'bankAccount' && isAdmin && (
+          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
+            <h2 className="text-xl font-bold text-white mb-6">계좌 설정</h2>
+            <p className="text-neutral-400 text-sm mb-4">
+              유저들의 연장/구매 입금 시 안내될 계좌 정보를 설정합니다.
+            </p>
+            <div className="space-y-4 max-w-md">
+              <div>
+                <label className="block text-sm font-medium text-neutral-400 mb-2">
+                  계좌번호 (은행명 포함)
+                </label>
+                <input
+                  type="text"
+                  value={bankAccount}
+                  onChange={(e) => setBankAccount(e.target.value)}
+                  placeholder="예: 카카오뱅크 3333-12-3456789 홍길동"
+                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+                />
+              </div>
+              <button
+                onClick={handleSaveBankAccount}
+                disabled={bankAccountSaving}
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
+              >
+                {bankAccountSaving ? '저장 중...' : '저장'}
+              </button>
+            </div>
+          </div>
+        )}
       </main>
+
+      {/* 총판 추가 모달 */}
+      {showAddDistributorModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 w-full max-w-md mx-4">
+            <h3 className="text-xl font-bold text-white mb-4">총판 추가</h3>
+            <form onSubmit={handleAddDistributor} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-400 mb-2">담당자</label>
+                <select
+                  value={newDistributor.userId}
+                  onChange={(e) => setNewDistributor({ ...newDistributor, userId: e.target.value })}
+                  required
+                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"
+                >
+                  <option value="">선택하세요</option>
+                  {allUsers.filter(u => u.role !== 'superadmin').map(u => (
+                    <option key={u.id} value={u.id}>{u.username} ({u.role === 'admin' ? '총판' : '일반회원'})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-400 mb-2">도메인</label>
+                <input
+                  type="text"
+                  value={newDistributor.domain}
+                  onChange={(e) => setNewDistributor({ ...newDistributor, domain: e.target.value })}
+                  required
+                  placeholder="example.com"
+                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-400 mb-2">사이트명</label>
+                <input
+                  type="text"
+                  value={newDistributor.siteName}
+                  onChange={(e) => setNewDistributor({ ...newDistributor, siteName: e.target.value })}
+                  required
+                  placeholder="사이트 이름"
+                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-400 mb-2">로고 이미지</label>
+                <div className="flex items-center gap-3">
+                  {newDistributorLogo ? (
+                    <img
+                      src={URL.createObjectURL(newDistributorLogo)}
+                      alt="미리보기"
+                      className="w-12 h-12 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-lg bg-neutral-800 border border-neutral-700 flex items-center justify-center text-neutral-500 text-xs">
+                      없음
+                    </div>
+                  )}
+                  <label className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-300 rounded-lg text-sm cursor-pointer transition">
+                    파일 선택
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setNewDistributorLogo(e.target.files?.[0] || null)}
+                      className="hidden"
+                    />
+                  </label>
+                  {newDistributorLogo && (
+                    <button
+                      type="button"
+                      onClick={() => setNewDistributorLogo(null)}
+                      className="text-xs text-red-400 hover:text-red-300"
+                    >
+                      제거
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-400 mb-2">메인 색상</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={newDistributor.primaryColor}
+                      onChange={(e) => setNewDistributor({ ...newDistributor, primaryColor: e.target.value })}
+                      className="w-10 h-10 rounded cursor-pointer bg-transparent border-0"
+                    />
+                    <input
+                      type="text"
+                      value={newDistributor.primaryColor}
+                      onChange={(e) => setNewDistributor({ ...newDistributor, primaryColor: e.target.value })}
+                      className="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-400 mb-2">보조 색상</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={newDistributor.secondaryColor}
+                      onChange={(e) => setNewDistributor({ ...newDistributor, secondaryColor: e.target.value })}
+                      className="w-10 h-10 rounded cursor-pointer bg-transparent border-0"
+                    />
+                    <input
+                      type="text"
+                      value={newDistributor.secondaryColor}
+                      onChange={(e) => setNewDistributor({ ...newDistributor, secondaryColor: e.target.value })}
+                      className="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddDistributorModal(false);
+                    setNewDistributor({ userId: '', domain: '', siteName: '', primaryColor: '#4f46e5', secondaryColor: '#7c3aed' });
+                    setNewDistributorLogo(null);
+                  }}
+                  className="flex-1 px-4 py-3 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl transition"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  disabled={logoUploading}
+                  className="flex-1 px-4 py-3 bg-pink-600 hover:bg-pink-500 disabled:bg-neutral-700 text-white rounded-xl transition"
+                >
+                  {logoUploading ? '업로드 중...' : '추가'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* 카카오 아이디 추가 모달 */}
       {showAddKakaoIdModal && (

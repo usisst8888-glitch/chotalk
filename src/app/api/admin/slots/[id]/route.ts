@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
-import { verifyToken } from '@/lib/jwt';
+import { checkAdminOrSuperAdmin } from '@/lib/auth';
 
 function getKoreanTime(): string {
   const now = new Date();
@@ -8,23 +8,26 @@ function getKoreanTime(): string {
   return koreaTime.toISOString().slice(0, -1);
 }
 
-// 관리자 권한 확인 헬퍼
-async function checkAdmin(request: NextRequest) {
-  const token = request.cookies.get('token')?.value;
-  if (!token) return null;
-
-  const payload = verifyToken(token);
-  if (!payload) return null;
+// admin(총판)이 해당 슬롯에 대한 권한이 있는지 확인
+async function checkSlotAccess(authUser: { id: string; role: string }, slotId: string): Promise<boolean> {
+  if (authUser.role === 'superadmin') return true;
 
   const supabase = getSupabase();
-  const { data: user } = await supabase
-    .from('users')
-    .select('id, role')
-    .eq('id', payload.userId)
+  const { data: slot } = await supabase
+    .from('slots')
+    .select('user_id')
+    .eq('id', slotId)
     .single();
 
-  if (!user || user.role !== 'admin') return null;
-  return user;
+  if (!slot) return false;
+
+  const { data: slotUser } = await supabase
+    .from('users')
+    .select('parent_id')
+    .eq('id', slot.user_id)
+    .single();
+
+  return slotUser?.parent_id === authUser.id;
 }
 
 // 관리자용 슬롯 삭제 (연관 데이터 전부 삭제)
@@ -33,12 +36,17 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const admin = await checkAdmin(request);
-    if (!admin) {
+    const authUser = await checkAdminOrSuperAdmin(request);
+    if (!authUser) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
     const { id } = await params;
+
+    if (!(await checkSlotAccess(authUser, id))) {
+      return NextResponse.json({ error: '해당 슬롯에 대한 권한이 없습니다.' }, { status: 403 });
+    }
+
     const supabase = getSupabase();
 
     // CASCADE 안 되는 테이블 수동 삭제
@@ -64,12 +72,17 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const admin = await checkAdmin(request);
-    if (!admin) {
+    const authUser = await checkAdminOrSuperAdmin(request);
+    if (!authUser) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
     const { id } = await params;
+
+    if (!(await checkSlotAccess(authUser, id))) {
+      return NextResponse.json({ error: '해당 슬롯에 대한 권한이 없습니다.' }, { status: 403 });
+    }
+
     const body = await request.json();
     const supabase = getSupabase();
 

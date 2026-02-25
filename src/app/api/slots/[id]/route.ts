@@ -73,7 +73,7 @@ export async function PATCH(
       .select('role')
       .eq('id', payload.userId)
       .single();
-    const isAdmin = currentUser?.role === 'admin';
+    const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
 
     // 연장 요청인 경우
     if (body.extend) {

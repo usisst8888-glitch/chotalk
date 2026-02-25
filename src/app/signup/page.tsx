@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { SignupForm } from '@/components/auth';
+import BrandedLogo from '@/components/BrandedLogo';
 
 export default function SignupPage() {
   return (
@@ -9,13 +9,7 @@ export default function SignupPage() {
         <div className="bg-neutral-900 rounded-2xl shadow-2xl p-8 border border-neutral-800">
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
-              <Image
-                src="/logo.png"
-                alt="Chotalk"
-                width={120}
-                height={120}
-                className="rounded-xl"
-              />
+              <BrandedLogo />
             </div>
             <p className="text-neutral-400">새 계정을 만들어보세요</p>
           </div>

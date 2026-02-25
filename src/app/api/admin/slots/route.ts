@@ -1,25 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
-import { verifyToken } from '@/lib/jwt';
-
-// 관리자 권한 확인 헬퍼
-async function checkAdmin(request: NextRequest) {
-  const token = request.cookies.get('token')?.value;
-  if (!token) return null;
-
-  const payload = verifyToken(token);
-  if (!payload) return null;
-
-  const supabase = getSupabase();
-  const { data: user } = await supabase
-    .from('users')
-    .select('id, role')
-    .eq('id', payload.userId)
-    .single();
-
-  if (!user || user.role !== 'admin') return null;
-  return user;
-}
+import { checkAdminOrSuperAdmin } from '@/lib/auth';
 
 function getKoreanTimeDate(): Date {
   const now = new Date();
@@ -33,15 +14,14 @@ function toKoreanTimeString(date: Date): string {
 // 전체 슬롯 조회 (만료일 오름차순)
 export async function GET(request: NextRequest) {
   try {
-    const admin = await checkAdmin(request);
-    if (!admin) {
+    const authUser = await checkAdminOrSuperAdmin(request);
+    if (!authUser) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
     const supabase = getSupabase();
 
-    // 슬롯과 함께 유저 정보도 가져옴
-    const { data: slots, error } = await supabase
+    let query = supabase
       .from('slots')
       .select(`
         id,
@@ -58,6 +38,22 @@ export async function GET(request: NextRequest) {
         )
       `)
       .order('expires_at', { ascending: true });
+
+    // admin(총판): 자기 유저 슬롯만 필터
+    if (authUser.role === 'admin') {
+      const { data: assignedUsers } = await supabase
+        .from('users')
+        .select('id')
+        .eq('parent_id', authUser.id);
+
+      const assignedUserIds = (assignedUsers || []).map(u => u.id);
+      if (assignedUserIds.length === 0) {
+        return NextResponse.json({ slots: [] });
+      }
+      query = query.in('user_id', assignedUserIds);
+    }
+
+    const { data: slots, error } = await query;
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -82,8 +78,8 @@ export async function GET(request: NextRequest) {
 // 관리자용 슬롯 추가 (유저 선택 가능)
 export async function POST(request: NextRequest) {
   try {
-    const admin = await checkAdmin(request);
-    if (!admin) {
+    const authUser = await checkAdminOrSuperAdmin(request);
+    if (!authUser) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
@@ -94,6 +90,19 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = getSupabase();
+
+    // admin(총판): 자기 유저에게만 추가 가능
+    if (authUser.role === 'admin') {
+      const { data: targetUser } = await supabase
+        .from('users')
+        .select('parent_id')
+        .eq('id', userId)
+        .single();
+
+      if (!targetUser || targetUser.parent_id !== authUser.id) {
+        return NextResponse.json({ error: '해당 회원에 대한 권한이 없습니다.' }, { status: 403 });
+      }
+    }
 
     // 새 가게인 경우 이벤트 시간 테이블에 추가
     if (shopName) {

@@ -1,31 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
-import { verifyToken } from '@/lib/jwt';
 import { getKoreanTime } from '@/app/api/bot/handlers/shared';
-
-// 관리자 권한 확인 헬퍼
-async function checkAdmin(request: NextRequest) {
-  const token = request.cookies.get('token')?.value;
-  if (!token) return null;
-
-  const payload = verifyToken(token);
-  if (!payload) return null;
-
-  const supabase = getSupabase();
-  const { data: user } = await supabase
-    .from('users')
-    .select('id, role')
-    .eq('id', payload.userId)
-    .single();
-
-  if (!user || user.role !== 'admin') return null;
-  return user;
-}
+import { checkSuperAdmin } from '@/lib/auth';
 
 // pending 구매 요청 목록 조회
 export async function GET(request: NextRequest) {
   try {
-    const admin = await checkAdmin(request);
+    const admin = await checkSuperAdmin(request);
     if (!admin) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
@@ -65,7 +46,7 @@ export async function GET(request: NextRequest) {
 // 구매 요청 승인 → users.slot_count 증가
 export async function PATCH(request: NextRequest) {
   try {
-    const admin = await checkAdmin(request);
+    const admin = await checkSuperAdmin(request);
     if (!admin) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }

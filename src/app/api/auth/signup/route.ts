@@ -33,6 +33,9 @@ export async function POST(request: NextRequest) {
     // 비밀번호 해싱
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // 총판 도메인이면 parent_id 자동 배정
+    const distributorUserId = request.headers.get('x-distributor-user-id');
+
     // 사용자 생성
     const { data: newUser, error } = await supabase
       .from('users')
@@ -41,6 +44,7 @@ export async function POST(request: NextRequest) {
         username,
         phone,
         nickname: nickname || null,
+        parent_id: distributorUserId || null,
       })
       .select('id, username')
       .single();
