@@ -404,12 +404,14 @@ export function parseGirlSignals(
   }
 
   // ㄲ (종료) 신호 확인
-  // - 아가씨 구간 또는 메시지 전체에 ㄲ이 있으면 종료 후보
+  // - 아가씨 구간 또는 아가씨 이름 뒤 전체에 ㄲ이 있으면 종료 후보
   // - 단, ㅇㅈ(연장)/ㅈㅁㅅㅅ(지명순번삭제) 신호가 ㄲ 이전에 있으면 종료가 아님
   // - ㄲ 이후에 나오는 ㅇㅈ 등은 미등록 아가씨의 신호일 수 있으므로 무시
   // - 이용시간은 항상 아가씨 이름 바로 뒤 첫 번째 숫자
+  // - 아가씨 이름 앞에 있는 ㄲ은 해당 아가씨에 적용하지 않음
+  //   예: "은교 2ㄲ 혜교 ㅈㅁㅅㅌㅌ" → 혜교의 afterGirl에 ㄲ 없음 → 종료 아님
   const hasEndInSection = hasSignalWithAliases(afterSection, MESSAGE_SIGNALS.END);
-  const hasEndInMessage = hasSignalWithAliases(message, MESSAGE_SIGNALS.END);
+  const hasEndAfterGirl = hasSignalWithAliases(afterGirl, MESSAGE_SIGNALS.END);
 
   // ㄲ이 afterSection에 있으면, ㄲ 이전 부분에서만 차단 신호 체크
   // 예: "2ㄲ 서우 3ㅇㅈ" → ㄲ 이전 "2"에서만 ㅇㅈ 확인 → 없으므로 종료 정상 처리
@@ -426,7 +428,7 @@ export function parseGirlSignals(
   const hasDesignatedFee = hasSignal(signalCheckSection, MESSAGE_SIGNALS.DESIGNATED_FEE.code);
   const hasDesignatedHalfFee = hasSignal(signalCheckSection, MESSAGE_SIGNALS.DESIGNATED_HALF_FEE.code);
 
-  if ((hasEndInSection || hasEndInMessage) && !hasExtension && !hasDesignatedFee && !hasDesignatedHalfFee) {
+  if ((hasEndInSection || hasEndAfterGirl) && !hasExtension && !hasDesignatedFee && !hasDesignatedHalfFee) {
     result.isEnd = true;
     // 1차: 아가씨 구간(afterSection)에서 첫 번째 숫자 + ㄲ/끝 찾기
     // .*? (non-greedy)로 첫 번째 숫자를 우선 매칭
@@ -435,7 +437,7 @@ export function parseGirlSignals(
     // 예: " 3시 ㄱㅈ 1.5 ㄲ" → " ㄱㅈ 1.5 ㄲ" → 1.5
     const cleanedSection = afterSection.replace(/\d+(?:\.\d+)?(?=\s*(?:시|ㄱㅈ|ㅅㄱㅈ|ㅅㄱ|기준|ㄷㅊ))/g, '');
     let match = cleanedSection.match(/(\d+(?:\.\d+)?).*?(?:ㄲ|끝)/);
-    if (!match && !hasEndInSection && hasEndInMessage) {
+    if (!match && !hasEndInSection && hasEndAfterGirl) {
       // 2차: "달래 1 인혜 3 주디 2 유별1.5 ㄲ" 같이 각 아가씨별 개별 숫자가 있을 때
       // afterSection에서 시간/기준 패턴 아닌 숫자 추출
       const cleanedForFallback = afterSection.replace(/\d+(?:\.\d+)?(?=\s*(?:시|ㄱㅈ|ㅅㄱㅈ|ㅅㄱ|기준|ㄷㅊ))/g, '');
