@@ -490,15 +490,11 @@ export function parseGirlSignals(
     result.isDesignated = true;
   }
 
-  // ㅈㅁ방/지명방/순수ㅈㅁ 감지 - 시작 차단
-  // ㅈㅁㅅㅌㅌ(지명순번시작), ㅈㅁㄴㄱ(지명날개)이 있으면 시작 신호이므로 제외
+  // ㅈㅁ방/지명방/순수ㅈㅁ - 정확히 이 3가지 패턴일 때만 시작 차단
+  // ㅈㅁ 뒤에 자음(ㄱ-ㅎ)이 오는 경우(ㅈㅁㅅㅌㅌ, ㅈㅁㄴㄱ, ㅈㅁㅅㅅ 등)는 해당 없음
   // 예: "혜교 ㅈㅁ방" → 차단, "혜교 지명방" → 차단, "혜교 ㅈㅁ" → 차단
-  // 예: "혜교 ㅈㅁㅅㅌㅌ" → 허용, "혜교 ㅈㅁㄴㄱㅅㅌㅌ" → 허용
-  if (!result.isDesignatedFee && !result.isDesignatedHalfFee) {
-    const hasDesignatedStart = afterSection.includes('ㅈㅁㅅㅌㅌ') || afterSection.includes('ㅈㅁㄴㄱ');
-    if (afterSection.includes('지명방') || (result.isDesignated && !hasDesignatedStart)) {
-      result.isDesignatedRoom = true;
-    }
+  if (/ㅈㅁ(?![ㄱ-ㅎ])/.test(afterSection) || afterSection.includes('지명방')) {
+    result.isDesignatedRoom = true;
   }
 
   // ㅇㅈ (연장) 신호 확인 - 시작으로 잡으면 안 됨
