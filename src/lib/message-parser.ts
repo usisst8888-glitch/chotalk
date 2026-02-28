@@ -302,6 +302,7 @@ export interface GirlSignalResult {
   isExtension: boolean;            // 해당 아가씨 뒤에 ㅇㅈ(연장)이 있는지
   isDesignatedFee: boolean;        // 해당 아가씨 뒤에 ㅈㅁㅅㅅ(지명순번삭제)이 있는지
   isDesignatedHalfFee: boolean;    // 해당 아가씨 뒤에 ㅈㅁㅂㅅㅅ(지명반순번삭제)이 있는지
+  isDesignatedRoom: boolean;       // 해당 아가씨 뒤에 ㅈㅁ방/지명방/순수ㅈㅁ이 있는지 (시작 차단)
   hasNoSignal: boolean;            // 해당 아가씨 구간에 아무 신호도 없는지
   usageDuration: number | null;    // 해당 아가씨의 이용시간 (ㄲ 앞 숫자)
 }
@@ -329,6 +330,7 @@ export function parseGirlSignals(
     isExtension: false,
     isDesignatedFee: false,
     isDesignatedHalfFee: false,
+    isDesignatedRoom: false,
     hasNoSignal: false,
     usageDuration: null,
   };
@@ -488,6 +490,17 @@ export function parseGirlSignals(
     result.isDesignated = true;
   }
 
+  // ㅈㅁ방/지명방/순수ㅈㅁ 감지 - 시작 차단
+  // ㅈㅁㅅㅌㅌ(지명순번시작), ㅈㅁㄴㄱ(지명날개)이 있으면 시작 신호이므로 제외
+  // 예: "혜교 ㅈㅁ방" → 차단, "혜교 지명방" → 차단, "혜교 ㅈㅁ" → 차단
+  // 예: "혜교 ㅈㅁㅅㅌㅌ" → 허용, "혜교 ㅈㅁㄴㄱㅅㅌㅌ" → 허용
+  if (!result.isDesignatedFee && !result.isDesignatedHalfFee) {
+    const hasDesignatedStart = afterSection.includes('ㅈㅁㅅㅌㅌ') || afterSection.includes('ㅈㅁㄴㄱ');
+    if (afterSection.includes('지명방') || (result.isDesignated && !hasDesignatedStart)) {
+      result.isDesignatedRoom = true;
+    }
+  }
+
   // ㅇㅈ (연장) 신호 확인 - 시작으로 잡으면 안 됨
   if (hasSignal(afterSection, MESSAGE_SIGNALS.EXTENSION.code)) {
     result.isExtension = true;
@@ -499,7 +512,7 @@ export function parseGirlSignals(
   // (예: "910 반스 문주 ㄴㄱㅅㅌㅌ 보리 여리 2ㅇㅈ" → 문주 구간에 자음 있음 → 시작 OK)
   const afterHasAnySignal = result.isEnd || result.isCancel || result.isNewSession || result.isResume ||
       result.isExtension || result.isDesignatedFee || result.isDesignatedHalfFee ||
-      result.isDesignated || result.isCorrection;
+      result.isDesignated || result.isDesignatedRoom || result.isCorrection;
   const afterHasJamo = /[ㄱ-ㅎ]/.test(afterSection);
   if (!afterHasAnySignal && !afterHasJamo) {
     const hasNonStartSignal = hasSignal(message, MESSAGE_SIGNALS.EXTENSION.code) ||
