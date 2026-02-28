@@ -92,7 +92,8 @@ export function extractUsageDuration(message: string): number | null {
 /**
  * 메시지에서 수동 지정 시간 추출 및 가장 가까운 시간대 반환
  * 지원 포맷: 3시34분, 03시34분, 15시34분, 15:34, 03:34, 3:34,
- *           03시, 15시, 3시, 15.34, 03.34, 3.34
+ *           03시, 15시, 3시, 15.34, 03.34, 3.34,
+ *           3ㅅㄱㅈ, 3시기준, 3시ㄱㅈ (시기준 표기 → 해당 시각으로 시작시간 설정)
  *
  * @param message 메시지 내용
  * @param receivedAt 알림 받은 시간 (ISO string 또는 "YYYY-MM-DD HH:mm:ss" 형식)
@@ -111,6 +112,8 @@ export function extractManualTime(message: string, receivedAt: string, options?:
     /(?<!\d)(\d{2})(\d{2})(?!\d)/,
     // 15시, 3시, 03시 (분 없음 → 00분)
     /(\d{1,2})시(?!\s*\d)/,
+    // 3ㅅㄱㅈ (시기준을 자음으로 표기, 예: 3ㅅㄱㅈ → 3시 기준)
+    /(\d{1,2})\s*ㅅㄱㅈ/,
     // 300, 951 (3자리 HMM: 1자리 시 + 2자리 분)
     /(?<!\d)(\d)(\d{2})(?!\d)/,
   ];
