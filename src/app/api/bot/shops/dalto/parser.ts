@@ -13,7 +13,7 @@ import {
   PARSING_PATTERNS,
   hasSignal,
   hasSignalWithAliases,
-} from './ticket-config';
+} from './config';
 
 // ============================================================
 // 파싱 결과 타입

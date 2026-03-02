@@ -1,6 +1,6 @@
-import { ParsedMessage, GirlSignalResult, extractManualTime } from '@/lib/message-parser';
-import { HandlerContext, HandlerResult } from './types';
-import { getKoreanTime } from './shared';
+import { ParsedMessage, GirlSignalResult, extractManualTime } from '../parser';
+import { HandlerContext, HandlerResult } from '../../../_core/types';
+import { getKoreanTime } from '../../../_core/shared';
 import { handleSessionStart } from './start';
 
 // ============================================================

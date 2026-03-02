@@ -1,0 +1,622 @@
+// 메시지 파싱 유틸리티
+// 설정은 ticket-config.ts에서 관리합니다.
+//
+// 메시지 형식 예시: "703 이승기 도아 1.5ㄲ"
+// - 703 = 방 번호
+// - 이승기 = 담당자 이름
+// - 도아 = 아가씨 이름 (트리거)
+// - 1.5ㄲ = 종료 신호 + 이용시간
+// - ㅈㅈ = 수정 신호
+
+import {
+  MESSAGE_SIGNALS,
+  PARSING_PATTERNS,
+  hasSignal,
+  hasSignalWithAliases,
+} from './config';
+
+// ============================================================
+// 파싱 결과 타입
+// ============================================================
+
+export interface ParsedMessage {
+  roomNumber: string | null;       // 방 번호
+  managerName: string | null;      // 담당자 이름
+  girlName: string | null;         // 아가씨 이름 (매칭된)
+  isEnd: boolean;                  // ㄲ이 포함되어 있으면 종료
+  isCorrection: boolean;           // ㅈㅈ이 포함되어 있으면 수정
+  usageDuration: number | null;    // 이용시간 (ㄲ 앞의 숫자, 분 단위)
+  rawMessage: string;              // 원본 메시지
+  // 확장용 필드 (새로운 신호 추가시)
+  signals: {
+    [key: string]: boolean;
+  };
+}
+
+// ============================================================
+// 방 번호 추출
+// ============================================================
+
+/**
+ * 메시지에서 방 번호 추출
+ * 숫자로 시작하는 패턴 (예: 703, 1205, 302호)
+ */
+export function extractRoomNumber(message: string): string | null {
+  // 메시지 시작 부분에서 찾기
+  const startMatch = message.match(PARSING_PATTERNS.ROOM_NUMBER.start);
+  if (startMatch) {
+    return startMatch[1];
+  }
+
+  // 메시지 중간에서 찾기
+  const midMatch = message.match(PARSING_PATTERNS.ROOM_NUMBER.middle);
+  if (midMatch) {
+    return midMatch[1];
+  }
+
+  return null;
+}
+
+// ============================================================
+// 신호 확인
+// ============================================================
+
+/**
+ * 종료 신호(ㄲ) 확인
+ */
+export function isEndSignal(message: string): boolean {
+  return hasSignalWithAliases(message, MESSAGE_SIGNALS.END);
+}
+
+/**
+ * 수정 신호(ㅈㅈ) 확인
+ */
+export function isCorrectionSignal(message: string): boolean {
+  return hasSignalWithAliases(message, MESSAGE_SIGNALS.CORRECTION);
+}
+
+/**
+ * 이용시간 추출 (ㄲ 앞의 숫자)
+ * 예: "1ㄲ" → 1, "1.5ㄲ" → 1.5, "2.5 ㄲ" → 2.5, "1ㄴㄱㄲ" → 1
+ * 숫자와 ㄲ 사이에 다른 문자(날개 등)가 있어도 추출
+ */
+export function extractUsageDuration(message: string): number | null {
+  // 패턴: 숫자(소수점 포함) + 임의의 문자(숫자 제외) + ㄲ 또는 끝
+  const match = message.match(/(\d+(?:\.\d+)?)[^\d]*(?:ㄲ|끝)/);
+  if (match) {
+    return parseFloat(match[1]);
+  }
+  return null;
+}
+
+/**
+ * 메시지에서 수동 지정 시간 추출 및 가장 가까운 시간대 반환
+ * 지원 포맷: 3시34분, 03시34분, 15시34분, 15:34, 03:34, 3:34,
+ *           03시, 15시, 3시, 15.34, 03.34, 3.34,
+ *           3ㅅㄱㅈ, 3시기준, 3시ㄱㅈ (시기준 표기 → 해당 시각으로 시작시간 설정)
+ *
+ * @param message 메시지 내용
+ * @param receivedAt 알림 받은 시간 (ISO string 또는 "YYYY-MM-DD HH:mm:ss" 형식)
+ * @returns 가장 가까운 시간 (YYYY-MM-DD HH:mm:ss 형식) 또는 null
+ */
+export function extractManualTime(message: string, receivedAt: string, options?: { allowTwoDigit?: boolean }): string | null {
+  // 시간 패턴들 (우선순위 순)
+  const patterns: RegExp[] = [
+    // 15시34분, 3시34분, 03시34분
+    /(\d{1,2})시\s*(\d{1,2})분/,
+    // 15:34, 3:34, 03:34
+    /(\d{1,2}):(\d{2})/,
+    // 15.34, 3.34, 03.34 (소수점 뒤 2자리만)
+    /(\d{1,2})\.(\d{2})(?!\d)/,
+    // 1603, 0935 (4자리 연속 HHMM, 방번호 3자리와 구분)
+    /(?<!\d)(\d{2})(\d{2})(?!\d)/,
+    // 15시, 3시, 03시 (분 없음 → 00분)
+    /(\d{1,2})시(?!\s*\d)/,
+    // 3ㅅㄱㅈ (시기준을 자음으로 표기, 예: 3ㅅㄱㅈ → 3시 기준)
+    /(\d{1,2})\s*ㅅㄱㅈ/,
+    // 300, 951 (3자리 HMM: 1자리 시 + 2자리 분)
+    /(?<!\d)(\d)(\d{2})(?!\d)/,
+  ];
+
+  // 1~2자리 시간 패턴 - ㅈㅈ 시작시간 수정에서만 사용
+  // (ㄲ이 없는 컨텍스트에서만 안전, usageDuration 혼동 방지)
+  // 03 → 03:00, 3 → 3:00 (또는 15:00)
+  if (options?.allowTwoDigit) {
+    patterns.push(/(?<!\d)(\d{2})(?!\d)/);  // 03 → 03:00
+    patterns.push(/(?<!\d)(\d)(?!\d)/);     // 3 → 3:00
+  }
+
+  let hour: number | null = null;
+  let minute: number = 0;
+
+  for (const pattern of patterns) {
+    const match = message.match(pattern);
+    if (match) {
+      hour = parseInt(match[1], 10);
+      minute = match[2] ? parseInt(match[2], 10) : 0;
+      break;
+    }
+  }
+
+  if (hour === null || hour > 23 || minute > 59) {
+    return null;
+  }
+
+  // receivedAt 파싱
+  const receivedDate = new Date(receivedAt.replace(' ', 'T'));
+  if (isNaN(receivedDate.getTime())) {
+    return null;
+  }
+
+  // 24시간제인 경우 (hour >= 13) 그대로 사용
+  if (hour >= 13) {
+    const result = new Date(receivedDate);
+    result.setHours(hour, minute, 0, 0);
+    return formatTimeString(result);
+  }
+
+  // 12시간제 애매함 처리: hour vs hour+12 중 가까운 것 선택
+  const receivedHour = receivedDate.getHours();
+  const receivedMinute = receivedDate.getMinutes();
+  const receivedTotalMinutes = receivedHour * 60 + receivedMinute;
+
+  const option1Minutes = hour * 60 + minute;           // AM (예: 03:34)
+  const option2Minutes = (hour + 12) * 60 + minute;    // PM (예: 15:34)
+
+  // 각 옵션과 receivedAt의 차이 계산 (하루 경계 고려)
+  const diff1 = Math.min(
+    Math.abs(option1Minutes - receivedTotalMinutes),
+    1440 - Math.abs(option1Minutes - receivedTotalMinutes)
+  );
+  const diff2 = Math.min(
+    Math.abs(option2Minutes - receivedTotalMinutes),
+    1440 - Math.abs(option2Minutes - receivedTotalMinutes)
+  );
+
+  const selectedHour = diff1 <= diff2 ? hour : hour + 12;
+
+  const result = new Date(receivedDate);
+  result.setHours(selectedHour, minute, 0, 0);
+  return formatTimeString(result);
+}
+
+/**
+ * Date를 시간 문자열로 변환 (YYYY-MM-DD HH:mm:ss)
+ */
+function formatTimeString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+/**
+ * 모든 신호 확인 (확장용)
+ */
+export function checkAllSignals(message: string): { [key: string]: boolean } {
+  const signals: { [key: string]: boolean } = {};
+
+  for (const [key, signal] of Object.entries(MESSAGE_SIGNALS)) {
+    if ('code' in signal) {
+      signals[key.toLowerCase()] = hasSignal(message, signal.code);
+    }
+  }
+
+  return signals;
+}
+
+// ============================================================
+// 이름 추출
+// ============================================================
+
+/**
+ * 메시지에서 아가씨 이름 찾기 (슬롯 목록과 매칭)
+ */
+export function findGirlName(message: string, girlNames: string[]): string | null {
+  for (const name of girlNames) {
+    if (message.includes(name)) {
+      return name;
+    }
+  }
+  return null;
+}
+
+/**
+ * 담당자 이름 추출 (방번호와 아가씨 이름 사이)
+ *
+ * 메시지 구조: "703 이승기 도아 ㅃ2"
+ *              ^^^방번호  ^^^^담당자 ^^아가씨
+ */
+export function extractManagerName(
+  message: string,
+  roomNumber: string | null,
+  girlName: string | null
+): string | null {
+  if (!roomNumber || !girlName) return null;
+
+  // 방 번호 다음, 아가씨 이름 전까지의 텍스트
+  const roomPattern = new RegExp(`${roomNumber}\\s*호?\\s*`);
+  const afterRoom = message.replace(roomPattern, '');
+
+  const girlIndex = afterRoom.indexOf(girlName);
+  if (girlIndex > 0) {
+    const managerPart = afterRoom.substring(0, girlIndex).trim();
+    // 공백으로 구분된 첫 번째 단어가 담당자 이름
+    const words = managerPart.split(/\s+/);
+    if (words.length > 0 && words[0]) {
+      return words[0];
+    }
+  }
+
+  return null;
+}
+
+// ============================================================
+// 전체 메시지 파싱
+// ============================================================
+
+/**
+ * 전체 메시지 파싱
+ *
+ * @param message 원본 메시지
+ * @param girlNames 활성화된 아가씨 이름 목록
+ * @returns 파싱된 메시지 정보
+ *
+ * @example
+ * parseMessage("703 이승기 도아 ㅃ2", ["도아", "미나"])
+ * // → { roomNumber: "703", managerName: "이승기", girlName: "도아", fareAmount: 2, ... }
+ */
+export function parseMessage(message: string, girlNames: string[]): ParsedMessage {
+  const roomNumber = extractRoomNumber(message);
+  const girlName = findGirlName(message, girlNames);
+  const managerName = extractManagerName(message, roomNumber, girlName);
+  const isEnd = isEndSignal(message);
+  const isCorrection = isCorrectionSignal(message);
+  const usageDuration = isEnd ? extractUsageDuration(message) : null;
+  const signals = checkAllSignals(message);
+
+  return {
+    roomNumber,
+    managerName,
+    girlName,
+    isEnd,
+    isCorrection,
+    usageDuration,
+    rawMessage: message,
+    signals,
+  };
+}
+
+// ============================================================
+// 아가씨별 신호 파싱
+// ============================================================
+
+export interface GirlSignalResult {
+  girlName: string;
+  isEnd: boolean;                  // 해당 아가씨 뒤에 ㄲ이 있는지
+  isCorrection: boolean;           // 해당 아가씨 뒤에 ㅈㅈ이 있는지
+  isResume: boolean;               // 해당 아가씨 뒤에 ㅈㅈㅎ/재진행이 있는지
+  isNewSession: boolean;           // 해당 아가씨 뒤에 ㅎㅅㄱㅈㅈㅎ/현시간재진행이 있는지
+  isDesignated: boolean;           // 해당 아가씨 뒤에 ㅈㅁ(지명)이 있는지
+  isCancel: boolean;               // 해당 아가씨 뒤에 ㄱㅌ(취소)이 있는지
+  isExtension: boolean;            // 해당 아가씨 뒤에 ㅇㅈ(연장)이 있는지
+  isDesignatedFee: boolean;        // 해당 아가씨 뒤에 ㅈㅁㅅㅅ(지명순번삭제)이 있는지
+  isDesignatedHalfFee: boolean;    // 해당 아가씨 뒤에 ㅈㅁㅂㅅㅅ(지명반순번삭제)이 있는지
+  isDesignatedRoom: boolean;       // 해당 아가씨 뒤에 ㅈㅁ방/지명방/순수ㅈㅁ이 있는지 (시작 차단)
+  hasNoSignal: boolean;            // 해당 아가씨 구간에 아무 신호도 없는지
+  usageDuration: number | null;    // 해당 아가씨의 이용시간 (ㄲ 앞 숫자)
+}
+
+/**
+ * 특정 아가씨 이름 뒤에 오는 신호 파싱
+ *
+ * @example
+ * parseGirlSignals("103 이승기 채빈 영미 2ㅇㅈ 라율 1ㄲ", "라율", ["채빈", "영미", "라율"])
+ * // → { girlName: "라율", isEnd: true, isCorrection: false, usageDuration: 1 }
+ */
+export function parseGirlSignals(
+  message: string,
+  targetGirlName: string,
+  allGirlNames: string[]
+): GirlSignalResult {
+  const result: GirlSignalResult = {
+    girlName: targetGirlName,
+    isEnd: false,
+    isCorrection: false,
+    isResume: false,
+    isNewSession: false,
+    isDesignated: false,
+    isCancel: false,
+    isExtension: false,
+    isDesignatedFee: false,
+    isDesignatedHalfFee: false,
+    isDesignatedRoom: false,
+    hasNoSignal: false,
+    usageDuration: null,
+  };
+
+  // ㅈㅈ/정정(수정)는 메시지 맨 앞에 prefix로 올 수 있음
+  if (message.startsWith(MESSAGE_SIGNALS.CORRECTION.code) ||
+      (MESSAGE_SIGNALS.CORRECTION.aliases && MESSAGE_SIGNALS.CORRECTION.aliases.some(a => message.startsWith(a)))) {
+    result.isCorrection = true;
+  }
+
+  // 해당 아가씨 이름의 위치 찾기
+  const girlIndex = message.indexOf(targetGirlName);
+  if (girlIndex === -1) {
+    return result;
+  }
+
+  // 아가씨 이름 뒤의 텍스트 추출
+  const afterGirl = message.substring(girlIndex + targetGirlName.length);
+
+  // 다음 아가씨 이름이 나오는 위치 찾기 (해당 아가씨의 신호 범위 결정)
+  let nextGirlIndex = afterGirl.length;
+  for (const otherGirl of allGirlNames) {
+    if (otherGirl === targetGirlName) continue;
+    const idx = afterGirl.indexOf(otherGirl);
+    if (idx !== -1 && idx < nextGirlIndex) {
+      nextGirlIndex = idx;
+    }
+  }
+
+  // 해당 아가씨에게 해당하는 부분만 추출 (이름 뒤)
+  let afterSection = afterGirl.substring(0, nextGirlIndex);
+
+  // 아가씨 이름 앞의 텍스트도 확인 (이름에 직접 붙은 신호 감지)
+  // 이전 아가씨 이름이 끝나는 위치부터 현재 아가씨 이름 시작까지
+  let prevGirlEndIndex = 0;
+  for (const otherGirl of allGirlNames) {
+    if (otherGirl === targetGirlName) continue;
+    const idx = message.indexOf(otherGirl);
+    if (idx !== -1 && idx < girlIndex) {
+      const endIdx = idx + otherGirl.length;
+      if (endIdx > prevGirlEndIndex) {
+        prevGirlEndIndex = endIdx;
+      }
+    }
+  }
+  const beforeSection = message.substring(prevGirlEndIndex, girlIndex);
+
+  // 신호 감지는 afterSection(아가씨 이름 뒤~다음 아가씨 이름 전)만 사용
+  // beforeSection을 포함하면 앞 아가씨의 신호가 현재 아가씨에게 오염됨
+  // 예: "한채2ㅇㅈ 달래 1ㄲ" → beforeSection에 ㅇㅈ이 포함되어 달래의 ㄲ이 차단되는 버그
+
+  // ㄱㅌ (취소) 신호 확인 - 가장 먼저 체크 (세션 삭제)
+  if (hasSignalWithAliases(afterSection, MESSAGE_SIGNALS.CANCEL)) {
+    result.isCancel = true;
+    // 취소면 다른 신호는 무시
+    return result;
+  }
+
+  // ㅎㅅㄱㅈㅈㅎ/현시간재진행 (새 세션) 신호 확인 - 가장 긴 패턴
+  // 조합 패턴: (ㅎㅅㄱ|현시간) + 공백? + (ㅈㅈㅎ|재진행) → 모두 NEW_SESSION
+  if (hasSignalWithAliases(afterSection, MESSAGE_SIGNALS.NEW_SESSION) ||
+      /(ㅎㅅㄱ|현시간)\s*(ㅈㅈㅎ|재진행)/.test(afterSection)) {
+    result.isNewSession = true;
+    // 새 세션이면 다른 신호는 무시
+    return result;
+  }
+
+  // ㅈㅈㅎ/재진행 (재개) 신호 확인 - ㅈㅈ보다 먼저 체크 (더 긴 패턴)
+  if (hasSignalWithAliases(afterSection, MESSAGE_SIGNALS.RESUME)) {
+    result.isResume = true;
+    // 재진행이면 ㅈㅈ은 무시
+    return result;
+  }
+
+  // ㄲ (종료) 신호 확인
+  // - 아가씨 구간 또는 아가씨 이름 뒤 전체에 ㄲ이 있으면 종료 후보
+  // - 단, ㅇㅈ(연장)/ㅈㅁㅅㅅ(지명순번삭제) 신호가 ㄲ 이전에 있으면 종료가 아님
+  // - ㄲ 이후에 나오는 ㅇㅈ 등은 미등록 아가씨의 신호일 수 있으므로 무시
+  // - 이용시간은 항상 아가씨 이름 바로 뒤 첫 번째 숫자
+  // - 아가씨 이름 앞에 있는 ㄲ은 해당 아가씨에 적용하지 않음
+  //   예: "은교 2ㄲ 혜교 ㅈㅁㅅㅌㅌ" → 혜교의 afterGirl에 ㄲ 없음 → 종료 아님
+  const hasEndInSection = hasSignalWithAliases(afterSection, MESSAGE_SIGNALS.END);
+  const hasEndAfterGirl = hasSignalWithAliases(afterGirl, MESSAGE_SIGNALS.END);
+
+  // ㄲ이 afterSection에 있으면, ㄲ 이전 부분에서만 차단 신호 체크
+  // 예: "2ㄲ 서우 3ㅇㅈ" → ㄲ 이전 "2"에서만 ㅇㅈ 확인 → 없으므로 종료 정상 처리
+  let signalCheckSection = afterSection;
+  if (hasEndInSection) {
+    const endIdx = afterSection.indexOf('ㄲ');
+    const endAltIdx = afterSection.indexOf('끝');
+    const firstEnd = endIdx !== -1 ? (endAltIdx !== -1 ? Math.min(endIdx, endAltIdx) : endIdx) : endAltIdx;
+    if (firstEnd !== -1) {
+      signalCheckSection = afterSection.substring(0, firstEnd);
+    }
+  }
+  const hasExtension = hasSignal(signalCheckSection, MESSAGE_SIGNALS.EXTENSION.code);
+  const hasDesignatedFee = hasSignal(signalCheckSection, MESSAGE_SIGNALS.DESIGNATED_FEE.code);
+  const hasDesignatedHalfFee = hasSignal(signalCheckSection, MESSAGE_SIGNALS.DESIGNATED_HALF_FEE.code);
+
+  if ((hasEndInSection || hasEndAfterGirl) && !hasExtension && !hasDesignatedFee && !hasDesignatedHalfFee) {
+    result.isEnd = true;
+    // 1차: 아가씨 구간(afterSection)에서 첫 번째 숫자 + ㄲ/끝 찾기
+    // .*? (non-greedy)로 첫 번째 숫자를 우선 매칭
+    // 단, "3시", "3ㄱㅈ", "3ㅅㄱㅈ", "3기준", "3ㄷㅊ" 등 시간/기준 표현의 숫자는 제외
+    // 방법: 매칭 전에 비-이용시간 숫자 패턴을 제거 (pre-clean)
+    // 예: " 3시 ㄱㅈ 1.5 ㄲ" → " ㄱㅈ 1.5 ㄲ" → 1.5
+    const cleanedSection = afterSection.replace(/\d+(?:\.\d+)?(?=\s*(?:시|ㄱㅈ|ㅅㄱㅈ|ㅅㄱ|기준|ㄷㅊ))/g, '');
+    let match = cleanedSection.match(/(\d+(?:\.\d+)?).*?(?:ㄲ|끝)/);
+    if (!match && !hasEndInSection && hasEndAfterGirl) {
+      // 2차: "달래 1 인혜 3 주디 2 유별1.5 ㄲ" 같이 각 아가씨별 개별 숫자가 있을 때
+      // afterSection에서 시간/기준 패턴 아닌 숫자 추출
+      const cleanedForFallback = afterSection.replace(/\d+(?:\.\d+)?(?=\s*(?:시|ㄱㅈ|ㅅㄱㅈ|ㅅㄱ|기준|ㄷㅊ))/g, '');
+      match = cleanedForFallback.match(/(\d+(?:\.\d+)?)/);
+    }
+    if (!match) {
+      // 3차: "인혜 주디 1.5ㄲ" 같이 여러 아가씨가 ㄲ/끝을 공유할 때
+      // 이름 뒤 전체(afterGirl)에서 가장 가까운 숫자+ㄲ/끝 찾기
+      match = afterGirl.match(/(\d+(?:\.\d+)?)[^\d]*(?:ㄲ|끝)/);
+    }
+    if (match) {
+      result.usageDuration = parseFloat(match[1]);
+    }
+  }
+
+  // ㄲ이 afterSection에 있고 종료로 판정됐으면, 첫 번째 ㄲ 이후는
+  // 미등록 아가씨 영역일 수 있으므로 후속 신호 체크 범위를 첫 번째 ㄲ까지로 제한
+  // 예: "연시3.5ㄲ 헤롱3ㅈㅁㄴㄱㄲ" → afterSection을 "3.5ㄲ"로 축소하여 헤롱의 ㅈㅁ 오염 방지
+  if (result.isEnd && hasEndInSection) {
+    const endSignalIdx = afterSection.indexOf('ㄲ');
+    if (endSignalIdx === -1) {
+      const endAltIdx = afterSection.indexOf('끝');
+      if (endAltIdx !== -1) {
+        afterSection = afterSection.substring(0, endAltIdx + 1);
+      }
+    } else {
+      afterSection = afterSection.substring(0, endSignalIdx + 1);
+    }
+  }
+
+  // ㅈㅈ/정정 (수정) 신호 확인
+  if (hasSignalWithAliases(afterSection, MESSAGE_SIGNALS.CORRECTION)) {
+    result.isCorrection = true;
+  }
+
+  // ㅈㅁㅂㅅㅅ (지명반순번삭제) 신호 확인 - ㅈㅁㅅㅅ/ㅈㅁ보다 먼저 체크! (가장 긴 패턴)
+  if (hasSignal(afterSection, MESSAGE_SIGNALS.DESIGNATED_HALF_FEE.code)) {
+    result.isDesignatedHalfFee = true;
+  }
+
+  // ㅈㅁㅅㅅ (지명순번삭제) 신호 확인 - ㅈㅁ보다 먼저 체크! (시작으로 잡으면 안 됨)
+  if (!result.isDesignatedHalfFee && hasSignal(afterSection, MESSAGE_SIGNALS.DESIGNATED_FEE.code)) {
+    result.isDesignatedFee = true;
+  }
+
+  // ㅈㅁ (지명) 신호 확인 - ㅈㅁㅅㅅ(순번삭제)/ㅈㅁㅂㅅㅅ(반순번삭제)가 아닐 때만
+  if (!result.isDesignatedFee && !result.isDesignatedHalfFee && hasSignal(afterSection, MESSAGE_SIGNALS.DESIGNATED.code)) {
+    result.isDesignated = true;
+  }
+
+  // ㅈㅁ방/지명방/순수ㅈㅁ - 정확히 이 3가지 패턴일 때만 시작 차단
+  // ㅈㅁ 뒤에 자음(ㄱ-ㅎ)이 오는 경우(ㅈㅁㅅㅌㅌ, ㅈㅁㄴㄱ, ㅈㅁㅅㅅ 등)는 해당 없음
+  // 예: "혜교 ㅈㅁ방" → 차단, "혜교 지명방" → 차단, "혜교 ㅈㅁ" → 차단
+  if (/ㅈㅁ(?![ㄱ-ㅎ])/.test(afterSection) || afterSection.includes('지명방')) {
+    result.isDesignatedRoom = true;
+  }
+
+  // ㅇㅈ (연장) 신호 확인 - 시작으로 잡으면 안 됨
+  if (hasSignal(afterSection, MESSAGE_SIGNALS.EXTENSION.code)) {
+    result.isExtension = true;
+  }
+
+  // 해당 아가씨 구간에 인식된 신호도 없고, 자음 명령어(ㅅㅅ, ㄴㄱㅅㅌㅌ 등)도 없고,
+  // 메시지 전체에 비시작 신호(ㅇㅈ/ㅈㅁㅅㅅ/ㅈㅁㅂㅅㅅ)가 있으면 시작 차단
+  // (예: "910 반스 문주 보리 여리 2ㅇㅈ" → 문주 구간에 자음 없음 + 전체에 ㅇㅈ → 시작 아님)
+  // (예: "910 반스 문주 ㄴㄱㅅㅌㅌ 보리 여리 2ㅇㅈ" → 문주 구간에 자음 있음 → 시작 OK)
+  const afterHasAnySignal = result.isEnd || result.isCancel || result.isNewSession || result.isResume ||
+      result.isExtension || result.isDesignatedFee || result.isDesignatedHalfFee ||
+      result.isDesignated || result.isDesignatedRoom || result.isCorrection;
+  const afterHasJamo = /[ㄱ-ㅎ]/.test(afterSection);
+  if (!afterHasAnySignal && !afterHasJamo) {
+    const hasNonStartSignal = hasSignal(message, MESSAGE_SIGNALS.EXTENSION.code) ||
+      hasSignal(message, MESSAGE_SIGNALS.DESIGNATED_FEE.code) ||
+      hasSignal(message, MESSAGE_SIGNALS.DESIGNATED_HALF_FEE.code);
+    if (hasNonStartSignal) {
+      result.hasNoSignal = true;
+    }
+  }
+
+  return result;
+}
+
+// ============================================================
+// 디버깅용 헬퍼
+// ============================================================
+
+/**
+ * 파싱 결과를 읽기 쉬운 문자열로 변환
+ */
+export function formatParsedMessage(parsed: ParsedMessage): string {
+  const parts = [];
+
+  if (parsed.roomNumber) parts.push(`방: ${parsed.roomNumber}`);
+  if (parsed.managerName) parts.push(`담당자: ${parsed.managerName}`);
+  if (parsed.girlName) parts.push(`아가씨: ${parsed.girlName}`);
+  if (parsed.isEnd) parts.push('종료');
+  if (parsed.isCorrection) parts.push('수정');
+  if (parsed.usageDuration) parts.push(`이용시간: ${parsed.usageDuration}`);
+
+  return parts.join(' | ');
+}
+
+// ============================================================
+// ㅌㄹㅅ(방이동) 파싱
+// ============================================================
+
+export interface TransferResult {
+  fromRoom: string;
+  toRoom: string;
+}
+
+/**
+ * 메시지에서 방이동(ㅌㄹㅅ/ㅁㅌㄹㅅ) 패턴 추출
+ * ㅁㅌㄹㅅ는 ㅌㄹㅅ 오타로 동일하게 처리
+ * 첫 번째 3자리 = from, 두 번째 3자리 = to
+ */
+export function parseTransfer(message: string): TransferResult | null {
+  if (!/ㅁ?ㅌㄹㅅ/.test(message)) return null;
+  const rooms = message.match(/\d{3}/g);
+  if (!rooms || rooms.length < 2) return null;
+  return { fromRoom: rooms[0], toRoom: rooms[1] };
+}
+
+// ============================================================
+// ㅈㅁ(지명) 섹션 파싱
+// ============================================================
+
+export interface DesignatedNoticeEntry {
+  girlName: string;         // 점 제거된 아가씨 이름 (유라)
+}
+
+/**
+ * 게시판 메시지에서 ㅈ.ㅁ 섹션을 파싱하여 지명된 아가씨 목록 반환
+ *
+ * 메시지 예시:
+ * ➖➖➖➖ㅈ.ㅁ➖➖➖➖
+ * 동.생 ㅡ 유.라
+ * 하.유호 ㅡ 주.은 4.03
+ *
+ * → [{ girlName: "유라" }, { girlName: "주은" }]
+ */
+export function parseDesignatedSection(message: string): DesignatedNoticeEntry[] {
+  const lines = message.split('\n');
+
+  // ➖ 와 ㅈ.ㅁ 를 포함하는 구분선 찾기
+  const dividerPattern = /➖+\s*ㅈ\.?ㅁ\s*➖+/;
+  const dividerIndex = lines.findIndex(line => dividerPattern.test(line));
+
+  if (dividerIndex === -1) {
+    return [];
+  }
+
+  const results: DesignatedNoticeEntry[] = [];
+
+  // 구분선 이후 줄들을 순회
+  for (let i = dividerIndex + 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    // ㅡ (U+3161) 또는 - (하이픈) 로 분리
+    const parts = line.split(/[ㅡ\-]/);
+    if (parts.length < 2) continue;
+
+    // 오른쪽: 점 제거 후 공백으로 분리 → 각각이 아가씨 이름 (숫자는 룸번호이므로 제외)
+    const rightRaw = parts.slice(1).join('').replace(/\./g, '').trim();
+    if (!rightRaw) continue;
+
+    // 공백으로 분리하여 각 토큰 처리 (예: "검지 예서 403" → ["검지", "예서"])
+    // 같은 이름이 여러 줄에 나오면 각각 별도 세션
+    const tokens = rightRaw.split(/\s+/).filter(t => t && !/^\d+$/.test(t));
+    for (const girlName of tokens) {
+      results.push({ girlName });
+    }
+  }
+
+  return results;
+}

@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
-import { parseMessage, parseGirlSignals, extractRoomNumber } from '@/lib/message-parser';
-import { processDesignatedSection } from '@/app/api/bot/designated/route';
-import { getKoreanTime } from '@/app/api/bot/handlers/shared';
-import { handleCancel } from '@/app/api/bot/handlers/cancel';
-import { handleNewSession, handleResume } from '@/app/api/bot/handlers/session';
-import { handleSessionStart } from '@/app/api/bot/handlers/start';
-import { handleSessionEnd } from '@/app/api/bot/handlers/end';
-import { handleCorrectionWithTime, handleCorrectionCatchAll } from '@/app/api/bot/handlers/correction';
-import { ensureRoomsExist, buildKeepAliveRooms, processTransfers } from '@/app/api/bot/handlers/room';
-import { HandlerContext } from '@/app/api/bot/handlers/types';
+import { getShop } from '../shops';
+import { getKoreanTime } from '../_core/shared';
+import { HandlerContext } from '../_core/types';
 
 // ============================================================
 // 메신저봇R에서 메시지 수신
@@ -31,6 +24,9 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabase();
     const messageReceivedAt = receivedAt || getKoreanTime();
 
+    // 가게 모듈 로드 (room = 카카오톡 방 이름 = shop_name)
+    const shop = getShop(room);
+
     // 활성화된 슬롯 가져오기
     const { data: slots, error: slotsError } = await supabase
       .from('slots')
@@ -50,15 +46,15 @@ export async function POST(request: NextRequest) {
 
     // ㅈ.ㅁ(지명) 섹션 감지 → message_logs 무조건 저장 + designated_notices 업데이트
     if (message.includes('ㅈ.ㅁ')) {
-      await processDesignatedSection(room, sender, message, messageReceivedAt);
+      await shop.processDesignatedSection(room, sender, message, messageReceivedAt);
     }
 
     // 메시지 파싱
     const girlNames = slots.map(slot => slot.girl_name);
-    const parsed = parseMessage(message, girlNames);
+    const parsed = shop.parseMessage(message, girlNames);
 
     const allLines = message.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0);
-    const hasRoomNumber = allLines.some((line: string) => extractRoomNumber(line));
+    const hasRoomNumber = allLines.some((line: string) => shop.extractRoomNumber(line));
 
     // ============================================================
     // 1. message_logs 저장 (방번호가 있으면 저장, 아가씨 매칭과 무관)
@@ -89,11 +85,11 @@ export async function POST(request: NextRequest) {
     // 2. rooms 사전생성 (message_logs 저장 후, ➖➖➖➖ 현황판 제외)
     // ============================================================
     if (hasRoomNumber && !message.includes('➖➖➖➖')) {
-      await ensureRoomsExist(supabase, allLines, room, messageReceivedAt);
+      await shop.ensureRoomsExist(supabase, allLines, room, messageReceivedAt);
     }
 
     // 3. 미등록 아가씨의 ㅇㅈ/ㅈㅈㅎ 감지 → 해당 방은 닫지 않음
-    const keepAliveRooms = buildKeepAliveRooms(allLines, girlNames);
+    const keepAliveRooms = shop.buildKeepAliveRooms(allLines, girlNames);
 
     // 4. ㅌㄹㅅ 취소 감지 (ㅌㄹㅅ ㅊㅅ, ㅌㄹㅅ 취소, ㅈㅈ ㅌㄹㅅ 취소)
     const isTransferCancel = /ㅁ?ㅌㄹㅅ\s*(ㅊㅅ|취소)/.test(message);
@@ -144,7 +140,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. ㅌㄹㅅ(방이동) 감지 → rooms 테이블 처리
-    const transferResults = await processTransfers(supabase, allLines, room);
+    const transferResults = await shop.processTransfers(supabase, allLines, room);
 
     // 5-1. ㅌㄹㅅ 발생 시 status_board 방번호 변경 + transfer_logs 기록
     for (const tr of transferResults) {
@@ -207,7 +203,7 @@ export async function POST(request: NextRequest) {
       let lastSeenRoom: string | null = null;
       const lineEffectiveRooms: (string | null)[] = [];
       for (const line of lines) {
-        const roomNum = extractRoomNumber(line);
+        const roomNum = shop.extractRoomNumber(line);
         if (roomNum) lastSeenRoom = roomNum;
         lineEffectiveRooms.push(lastSeenRoom);
       }
@@ -234,18 +230,15 @@ export async function POST(request: NextRequest) {
         // ㅌㄹㅅ 라인은 step 5에서 이미 처리됨 → 세션 처리 skip
         if (/ㅁ?ㅌㄹㅅ/.test(lineMsg) && !/ㅁ?ㅌㄹㅅ\s*(ㅊㅅ|취소)/.test(lineMsg)) continue;
 
-        const lineParsed = parseMessage(lineMsg, girlNames);
-        const lineSignals = parseGirlSignals(lineMsg, slot.girl_name, girlNames);
+        const lineParsed = shop.parseMessage(lineMsg, girlNames);
+        const lineSignals = shop.parseGirlSignals(lineMsg, slot.girl_name, girlNames);
 
         // 줄에 방번호가 없으면 가장 가까운 이전 줄의 방번호를 상속
-        // 예: "603 태산\n연시 미쭈 1.5ㄲ" → 미쭈 줄에 방번호 없음 → 603 상속
-        // 예: "603 태산\n905 이승기\n파이 ㄴㄱ" → 파이 줄에 방번호 없음 → 905 상속
         if (!lineParsed.roomNumber && effectiveRoom) {
           lineParsed.roomNumber = effectiveRoom;
         }
 
         // 원본 메시지 첫 줄이 ㅈㅈ로 시작했으면, ㄲ이 있는 아가씨에게만 정정 적용
-        // ㄲ이 없는 아가씨는 새 시작일 수 있으므로 정정을 적용하지 않음
         if (messageStartsWithCorrection && lineSignals.isEnd) {
           lineSignals.isCorrection = true;
         }
@@ -258,31 +251,31 @@ export async function POST(request: NextRequest) {
         // 4. 방번호만 → 세션 시작 처리
 
         if (lineSignals.isCancel) {
-          const result = await handleCancel(ctx, lineParsed.roomNumber);
+          const result = await shop.handleCancel(ctx, lineParsed.roomNumber);
           results.push({ ...result, logId });
 
         } else if (lineSignals.isNewSession && lineParsed.roomNumber) {
-          const result = await handleNewSession(ctx, lineParsed, lineSignals);
+          const result = await shop.handleNewSession(ctx, lineParsed, lineSignals);
           results.push({ ...result, logId });
 
         } else if (lineSignals.isResume) {
-          const result = await handleResume(ctx);
+          const result = await shop.handleResume(ctx);
           results.push({ ...result, logId });
 
         } else if (lineSignals.isEnd && lineParsed.roomNumber) {
-          const result = await handleSessionEnd(ctx, lineParsed, lineSignals);
+          const result = await shop.handleSessionEnd(ctx, lineParsed, lineSignals);
           results.push({ ...result, logId });
 
         } else if (lineSignals.isCorrection && lineParsed.roomNumber) {
-          const result = await handleCorrectionWithTime(ctx, lineMsg, lineParsed.roomNumber);
+          const result = await shop.handleCorrectionWithTime(ctx, lineMsg, lineParsed.roomNumber);
           results.push({ ...result, logId });
 
         } else if (messageStartsWithCorrection && lineParsed.roomNumber) {
-          const result = await handleCorrectionCatchAll(ctx, lineMsg, lineParsed, lineSignals);
+          const result = await shop.handleCorrectionCatchAll(ctx, lineMsg, lineParsed, lineSignals);
           results.push({ ...result, logId });
 
         } else if (lineParsed.roomNumber && !lineSignals.isEnd && !lineSignals.isExtension && !lineSignals.isDesignatedFee && !lineSignals.isDesignatedHalfFee && !lineSignals.isDesignatedRoom && !lineSignals.isCorrection && !lineSignals.hasNoSignal) {
-          const result = await handleSessionStart(ctx, lineParsed, lineSignals);
+          const result = await shop.handleSessionStart(ctx, lineParsed, lineSignals);
           results.push({ ...result, logId });
 
         } else {

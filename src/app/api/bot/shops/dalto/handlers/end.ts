@@ -1,7 +1,7 @@
-import { ParsedMessage, GirlSignalResult, extractManualTime } from '@/lib/message-parser';
-import { HandlerContext, HandlerResult } from './types';
-import { updateStatusBoard, checkAndCloseRoom } from './shared';
-import { checkIsEvent } from './event';
+import { ParsedMessage, GirlSignalResult, extractManualTime } from '../parser';
+import { HandlerContext, HandlerResult } from '../../../_core/types';
+import { updateStatusBoard, checkAndCloseRoom } from '../../../_core/shared';
+import { checkIsEvent } from '../../../_core/event';
 
 // ============================================================
 // 세션 종료 처리 (상황판만 업데이트)

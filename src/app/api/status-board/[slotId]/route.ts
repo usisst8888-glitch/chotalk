@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/jwt';
 import { cookies } from 'next/headers';
-import { checkIsEvent } from '@/app/api/bot/handlers/event';
+import { checkIsEvent } from '@/app/api/bot/_core/event';
 
 function getKoreanTime(): string {
   return new Date(new Date().getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, -1);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
-import { getKoreanTime } from '@/app/api/bot/handlers/shared';
+import { getKoreanTime } from '@/app/api/bot/_core/shared';
 import { checkSuperAdmin } from '@/lib/auth';
 
 // pending 구매 요청 목록 조회

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
-import { getKoreanTime } from '@/app/api/bot/handlers/shared';
+import { getKoreanTime } from '@/app/api/bot/_core/shared';
 import { checkSuperAdmin } from '@/lib/auth';
 
 // ISO 문자열 변환 (Z 제거)
