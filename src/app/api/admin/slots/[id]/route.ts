@@ -100,6 +100,28 @@ export async function PATCH(
       updateData.is_active = body.isActive;
     }
 
+    // 만료일 연장 (superadmin 전용)
+    if (typeof body.extendDays === 'number' && body.extendDays > 0) {
+      if (authUser.role !== 'superadmin') {
+        return NextResponse.json({ error: '만료일 변경은 슈퍼관리자만 가능합니다.' }, { status: 403 });
+      }
+
+      // 현재 만료일 조회
+      const { data: slot } = await supabase
+        .from('slots')
+        .select('expires_at')
+        .eq('id', id)
+        .single();
+
+      if (slot?.expires_at) {
+        const currentExpiry = new Date(slot.expires_at);
+        currentExpiry.setDate(currentExpiry.getDate() + body.extendDays);
+        // 한국 시간 ISO 문자열 (Z 없이)
+        const newExpiry = new Date(currentExpiry.getTime() + (9 * 60 * 60 * 1000));
+        updateData.expires_at = newExpiry.toISOString().slice(0, -1);
+      }
+    }
+
     const { data: updatedSlot, error } = await supabase
       .from('slots')
       .update(updateData)

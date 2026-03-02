@@ -76,6 +76,8 @@ export default function DashboardPage() {
   const [purchaseForm, setPurchaseForm] = useState({ depositorName: '', slotCount: 1 });
   const [purchaseSubmitting, setPurchaseSubmitting] = useState(false);
   const [extendForm, setExtendForm] = useState({ depositorName: '' });
+  const [showAdminExtendModal, setShowAdminExtendModal] = useState(false);
+  const [adminExtendDays, setAdminExtendDays] = useState(30);
   const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'purchases' | 'rooms' | 'distributors' | 'bankAccount'>('slots');
   // 관리자용 회원관리
   const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; nickname: string | null; phone: string; role: string; slot_count: number; parent_id: string | null; created_at: string }>>([]);
@@ -928,7 +930,37 @@ export default function DashboardPage() {
 
   const openExtendModal = (slot: Slot) => {
     setSelectedSlot(slot);
-    setShowExtendModal(true);
+    if (user?.role === 'superadmin') {
+      setAdminExtendDays(30);
+      setShowAdminExtendModal(true);
+    } else {
+      setShowExtendModal(true);
+    }
+  };
+
+  const handleAdminExtend = async () => {
+    if (!selectedSlot || adminExtendDays <= 0) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/admin/slots/${selectedSlot.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ extendDays: adminExtendDays }),
+      });
+      if (res.ok) {
+        alert(`${selectedSlot.girl_name} 만료일이 ${adminExtendDays}일 연장되었습니다.`);
+        setShowAdminExtendModal(false);
+        fetchSlots();
+        if (user?.role === 'superadmin' || user?.role === 'admin') fetchAllSlots();
+      } else {
+        const data = await res.json();
+        alert(data.error || '연장 실패');
+      }
+    } catch {
+      alert('서버 오류가 발생했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleEditSlot = async (e: React.FormEvent) => {
@@ -3013,6 +3045,79 @@ export default function DashboardPage() {
                   setShowExtendModal(false);
                   setExtendForm({ depositorName: '' });
                 }}
+                className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 관리자 직접 연장 모달 (superadmin 전용) */}
+      {showAdminExtendModal && selectedSlot && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 w-full max-w-md mx-4">
+            <h3 className="text-xl font-bold text-white mb-4">만료일 연장 (관리자)</h3>
+
+            {/* 대상 정보 */}
+            <div className="bg-indigo-900/30 border border-indigo-500/30 rounded-xl p-4 mb-4">
+              <p className="text-indigo-300 text-sm mb-2">
+                대상: <span className="text-white font-bold">{selectedSlot.girl_name}</span>
+              </p>
+              <p className="text-neutral-500 text-xs">
+                현재 만료일: {formatDate(selectedSlot.expires_at)}
+                {(() => {
+                  const days = getDaysRemaining(selectedSlot.expires_at);
+                  if (days <= 0) return <span className="text-red-400 ml-2">(만료됨)</span>;
+                  if (days <= 7) return <span className="text-yellow-400 ml-2">({days}일 남음)</span>;
+                  return <span className="text-neutral-400 ml-2">({days}일 남음)</span>;
+                })()}
+              </p>
+            </div>
+
+            {/* 연장 일수 입력 */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-neutral-400 mb-2">
+                연장 일수
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={adminExtendDays}
+                  onChange={(e) => setAdminExtendDays(Math.max(1, parseInt(e.target.value) || 1))}
+                  min={1}
+                  className="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-center text-lg font-bold focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+                />
+                <span className="flex items-center text-neutral-400 font-medium">일</span>
+              </div>
+              <div className="flex gap-2 mt-2">
+                {[7, 15, 30, 60].map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setAdminExtendDays(d)}
+                    className={`flex-1 py-2 text-sm rounded-lg font-medium transition ${
+                      adminExtendDays === d
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-400'
+                    }`}
+                  >
+                    {d}일
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleAdminExtend}
+                disabled={submitting}
+                className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 text-white font-semibold rounded-xl transition"
+              >
+                {submitting ? '처리 중...' : `${adminExtendDays}일 연장`}
+              </button>
+              <button
+                onClick={() => setShowAdminExtendModal(false)}
                 className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
               >
                 닫기
