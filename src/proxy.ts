@@ -5,13 +5,10 @@ import { createClient } from '@supabase/supabase-js';
 const MAIN_DOMAINS = ['localhost', '127.0.0.1', 'chotalk.com', 'www.chotalk.com'];
 
 export async function proxy(request: NextRequest) {
-  // 카카오톡 크롤러 차단 → 빈 페이지 리턴 (미리보기 안 나옴)
+  // 카카오톡 크롤러 → 404 리턴 (미리보기 자체가 생성 안 됨)
   const userAgent = request.headers.get('user-agent') || '';
   if (userAgent.includes('kakaotalk-scrap') || userAgent.includes('Yeti/')) {
-    return new NextResponse('<html><head></head><body></body></html>', {
-      status: 200,
-      headers: { 'Content-Type': 'text/html; charset=utf-8' },
-    });
+    return new NextResponse('', { status: 404 });
   }
 
   const token = request.cookies.get('token')?.value;
