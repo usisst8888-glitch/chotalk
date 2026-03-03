@@ -14,8 +14,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "스타트봇 - 스타트톡 자동 카카오톡 발송기",
-  description: "스타트봇, 스타트톡 자동 카카오톡 발송기",
+  title: "스타트봇",
+  description: "스타트봇 자동 카카오톡 발송기",
+  other: {
+    'robots': 'index, follow',
+    'kakaotalk-scrap': 'none',
+  },
 };
 
 export default function RootLayout({

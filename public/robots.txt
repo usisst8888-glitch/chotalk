@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+User-agent: kakaotalk-scrap
+Disallow: /
+
+User-agent: Yeti
+Disallow: /
