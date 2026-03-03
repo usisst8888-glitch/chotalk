@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 // 메인 도메인 (총판이 아닌 기본 도메인)
-const MAIN_DOMAINS = ['localhost', '127.0.0.1', 'chotalk.com', 'www.chotalk.com'];
+const MAIN_DOMAINS = ['localhost', '127.0.0.1', 'startalkbot.com', 'www.startalkbot.com'];
 
 export async function proxy(request: NextRequest) {
   // 카카오톡 크롤러 → 404 리턴 (미리보기 자체가 생성 안 됨)

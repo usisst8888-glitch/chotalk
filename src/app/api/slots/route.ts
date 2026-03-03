@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
         target_room: girlName,
         kakao_id: availableKakaoId.kakao_id,
         expires_at: toKoreanTimeString(expiresAt),
-        domain: user?.domain || null,
+        domain: user?.domain || 'https://startalkbot.com',
       })
       .select()
       .single();
