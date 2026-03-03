@@ -26,6 +26,29 @@ export default function Home() {
 
       {/* Hero */}
       <main className="pt-32 pb-20 px-6">
+        {/* 앱 다운로드 배너 */}
+        <div className="max-w-3xl mx-auto mb-8">
+          <a
+            href="/download/startalkbot.apk"
+            className="flex items-center justify-between bg-gradient-to-r from-green-900/40 to-emerald-900/40 border border-green-700/50 rounded-2xl px-6 py-4 hover:border-green-500/70 transition group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </div>
+              <div className="text-left">
+                <p className="text-white font-semibold">스타트봇 관리 앱 다운로드</p>
+                <p className="text-green-400/70 text-xs">Android 전용</p>
+              </div>
+            </div>
+            <span className="text-green-400 text-sm font-medium group-hover:translate-x-1 transition-transform">
+              다운로드 &rarr;
+            </span>
+          </a>
+        </div>
+
         <div className="max-w-3xl mx-auto text-center">
           <div className="inline-block px-4 py-2 bg-indigo-600/20 text-indigo-400 rounded-full text-sm font-medium mb-6">
             스타트톡 자동화 서비스
