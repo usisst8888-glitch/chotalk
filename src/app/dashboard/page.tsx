@@ -107,6 +107,9 @@ export default function DashboardPage() {
   const [rooms, setRooms] = useState<Array<{ id: string; room_number: string; shop_name: string; room_start_time: string; room_end_time: string | null; is_active: boolean; created_at: string }>>([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
   const [roomShopFilter, setRoomShopFilter] = useState<string>('all');
+  // 유저용 슬롯 검색 및 정렬
+  const [slotSearch, setSlotSearch] = useState('');
+  const [slotSort, setSlotSort] = useState<'session' | 'expires'>('session');
   const [roomStatusFilter, setRoomStatusFilter] = useState<'all' | 'active' | 'ended'>('all');
   const [roomSort, setRoomSort] = useState<'start_desc' | 'start_asc' | 'end_desc' | 'end_asc'>('start_desc');
   // 관리자용 인원 추가 모달
@@ -136,6 +139,17 @@ export default function DashboardPage() {
   const isSuperAdmin = user?.role === 'superadmin';
   const isAdmin = user?.role === 'admin';
   const isAnyAdmin = isSuperAdmin || isAdmin;
+
+  // 유저용 슬롯 필터링 + 정렬
+  const filteredSlots = slots
+    .filter(s => !slotSearch || s.girl_name.includes(slotSearch) || s.shop_name?.includes(slotSearch))
+    .sort((a, b) => {
+      if (slotSort === 'expires') {
+        return new Date(a.expires_at).getTime() - new Date(b.expires_at).getTime();
+      }
+      // session: 최신 생성순 (기본)
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
 
   useEffect(() => {
     fetchUser();
@@ -1405,6 +1419,42 @@ export default function DashboardPage() {
           )}
         </div>
 
+        {/* 유저용 검색 + 정렬 */}
+        {!isAnyAdmin && slots.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-4">
+            <div className="relative flex-1">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                value={slotSearch}
+                onChange={(e) => setSlotSearch(e.target.value)}
+                placeholder="아가씨 이름 또는 가게명 검색"
+                className="w-full pl-10 pr-4 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-white text-sm placeholder-neutral-500 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setSlotSort('session')}
+                className={`px-3 py-2 text-xs rounded-lg font-medium transition ${
+                  slotSort === 'session' ? 'bg-indigo-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                }`}
+              >
+                최신순
+              </button>
+              <button
+                onClick={() => setSlotSort('expires')}
+                className={`px-3 py-2 text-xs rounded-lg font-medium transition ${
+                  slotSort === 'expires' ? 'bg-indigo-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                }`}
+              >
+                만료일순
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 슬롯 목록 - 데스크톱 테이블 */}
         <div className="hidden md:block bg-neutral-900 rounded-2xl border border-neutral-800 overflow-hidden">
           <div className="overflow-x-auto">
@@ -1523,7 +1573,7 @@ export default function DashboardPage() {
                   );
                 })}
                 {/* 일반 유저: 자신의 슬롯만 표시 */}
-                {!isAnyAdmin && slots.map((slot) => {
+                {!isAnyAdmin && filteredSlots.map((slot) => {
                   const daysRemaining = getDaysRemaining(slot.expires_at);
                   const isExpiringSoon = daysRemaining <= 7;
                   const isExpired = daysRemaining <= 0;
@@ -1805,7 +1855,7 @@ export default function DashboardPage() {
               );
             })}
             {/* 일반 유저: 자신의 슬롯만 */}
-            {!isAnyAdmin && slots.map((slot) => {
+            {!isAnyAdmin && filteredSlots.map((slot) => {
               const daysRemaining = getDaysRemaining(slot.expires_at);
               const isExpiringSoon = daysRemaining <= 7;
               const isExpired = daysRemaining <= 0;
