@@ -27,11 +27,12 @@ export async function POST(request: NextRequest) {
     // 가게 모듈 로드 (room = 카카오톡 방 이름 = shop_name)
     const shop = getShop(room);
 
-    // 활성화된 슬롯 가져오기
+    // 활성화된 슬롯 가져오기 (해당 가게의 슬롯만)
     const { data: slots, error: slotsError } = await supabase
       .from('slots')
       .select('id, user_id, girl_name, target_room, kakao_id, is_active, expires_at, shop_name')
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .eq('shop_name', room);
 
     if (slotsError) {
       console.error('Slots query error:', slotsError);
