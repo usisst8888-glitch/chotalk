@@ -82,10 +82,10 @@ export async function POST(request: NextRequest) {
 
     const supabase = getSupabase();
 
-    // 사용자의 슬롯 개수 확인
+    // 사용자의 슬롯 개수 및 도메인 확인
     const { data: user } = await supabase
       .from('users')
-      .select('slot_count')
+      .select('slot_count, domain')
       .eq('id', payload.userId)
       .single();
 
@@ -160,6 +160,7 @@ export async function POST(request: NextRequest) {
         target_room: girlName,
         kakao_id: availableKakaoId.kakao_id,
         expires_at: toKoreanTimeString(expiresAt),
+        domain: user?.domain || null,
       })
       .select()
       .single();

@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     if (authUser.role === 'superadmin') {
       const { data: users, error } = await supabase
         .from('users')
-        .select('id, username, nickname, phone, role, slot_count, parent_id, created_at')
+        .select('id, username, nickname, phone, role, slot_count, parent_id, domain, created_at')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     // admin(총판): 자기한테 배정된 유저만
     const { data: users, error } = await supabase
       .from('users')
-      .select('id, username, nickname, phone, role, slot_count, parent_id, created_at')
+      .select('id, username, nickname, phone, role, slot_count, parent_id, domain, created_at')
       .eq('parent_id', authUser.id)
       .order('created_at', { ascending: false });
 
@@ -48,7 +48,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
-    const { userId, slotCount, role, parentId } = await request.json();
+    const { userId, slotCount, role, parentId, domain } = await request.json();
 
     if (!userId) {
       return NextResponse.json({ error: '필수 정보가 누락되었습니다.' }, { status: 400 });
@@ -59,6 +59,7 @@ export async function PATCH(request: NextRequest) {
     if (slotCount !== undefined) updateData.slot_count = slotCount;
     if (role !== undefined) updateData.role = role;
     if (parentId !== undefined) updateData.parent_id = parentId || null;
+    if (domain !== undefined) updateData.domain = domain || null;
 
     const { error } = await supabase
       .from('users')

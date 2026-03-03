@@ -80,7 +80,7 @@ export default function DashboardPage() {
   const [adminExtendDays, setAdminExtendDays] = useState(30);
   const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'purchases' | 'rooms' | 'distributors' | 'bankAccount'>('slots');
   // 관리자용 회원관리
-  const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; nickname: string | null; phone: string; role: string; slot_count: number; parent_id: string | null; created_at: string }>>([]);
+  const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; nickname: string | null; phone: string; role: string; slot_count: number; parent_id: string | null; domain: string | null; created_at: string }>>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   // 관리자용 전체 인원관리
   const [allSlots, setAllSlots] = useState<Array<Slot & { username: string }>>([]);
@@ -1998,6 +1998,7 @@ export default function DashboardPage() {
                       <th className="text-left px-4 py-3 text-neutral-500 font-medium">전화번호</th>
                       <th className="text-center px-4 py-3 text-neutral-500 font-medium">등급</th>
                       <th className="text-center px-4 py-3 text-neutral-500 font-medium">소속 총판</th>
+                      <th className="text-left px-4 py-3 text-neutral-500 font-medium">도메인</th>
                       <th className="text-center px-4 py-3 text-neutral-500 font-medium">등록 가능 인원</th>
                       <th className="text-center px-4 py-3 text-neutral-500 font-medium">가입일</th>
                       <th className="text-center px-4 py-3 text-neutral-500 font-medium">관리</th>
@@ -2061,6 +2062,31 @@ export default function DashboardPage() {
                               <option key={admin.id} value={admin.id}>{admin.username}</option>
                             ))}
                           </select>
+                        </td>
+                        <td className="px-4 py-3 text-neutral-400">
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm truncate max-w-[160px]">{u.domain || '-'}</span>
+                            <button
+                              onClick={async () => {
+                                const newDomain = prompt('도메인 주소를 입력하세요 (예: example.com):', u.domain || '');
+                                if (newDomain !== null) {
+                                  const res = await fetch('/api/admin/users', {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ userId: u.id, domain: newDomain.trim() }),
+                                  });
+                                  if (res.ok) {
+                                    fetchAllUsers();
+                                  } else {
+                                    alert('도메인 수정에 실패했습니다.');
+                                  }
+                                }
+                              }}
+                              className="px-1.5 py-0.5 text-xs bg-neutral-700 hover:bg-neutral-600 text-neutral-400 rounded transition"
+                            >
+                              수정
+                            </button>
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-center text-neutral-400">{u.slot_count}명</td>
                         <td className="px-4 py-3 text-center text-neutral-500 text-sm">
