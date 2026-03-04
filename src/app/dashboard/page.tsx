@@ -111,6 +111,11 @@ export default function DashboardPage() {
   // 유저용 슬롯 검색 및 정렬
   const [slotSearch, setSlotSearch] = useState('');
   const [slotSort, setSlotSort] = useState<'session' | 'expires'>('session');
+  // 관리자용 일괄 선택
+  const [selectedSlotIds, setSelectedSlotIds] = useState<Set<string>>(new Set());
+  const [showBatchExtendModal, setShowBatchExtendModal] = useState(false);
+  const [batchExtendDays, setBatchExtendDays] = useState(30);
+  const [batchExtendMode, setBatchExtendMode] = useState<'add' | 'set'>('add');
   const [roomStatusFilter, setRoomStatusFilter] = useState<'all' | 'active' | 'ended'>('all');
   const [roomSort, setRoomSort] = useState<'start_desc' | 'start_asc' | 'end_desc' | 'end_asc'>('start_desc');
   // 관리자용 인원 추가 모달
@@ -984,6 +989,54 @@ export default function DashboardPage() {
     }
   };
 
+  const toggleSlotSelection = (id: string) => {
+    setSelectedSlotIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllSlots = () => {
+    if (selectedSlotIds.size === allSlots.length) {
+      setSelectedSlotIds(new Set());
+    } else {
+      setSelectedSlotIds(new Set(allSlots.map(s => s.id)));
+    }
+  };
+
+  const handleBatchExtend = async () => {
+    if (selectedSlotIds.size === 0 || batchExtendDays <= 0) return;
+    setSubmitting(true);
+    try {
+      const payload = batchExtendMode === 'add'
+        ? { extendDays: batchExtendDays }
+        : { setRemainingDays: batchExtendDays };
+      const results = await Promise.all(
+        Array.from(selectedSlotIds).map(id =>
+          fetch(`/api/admin/slots/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+        )
+      );
+      const successCount = results.filter(r => r.ok).length;
+      const msg = batchExtendMode === 'add'
+        ? `${successCount}개 슬롯 만료일이 ${batchExtendDays}일 연장되었습니다.`
+        : `${successCount}개 슬롯 만료일이 오늘부터 ${batchExtendDays}일로 설정되었습니다.`;
+      alert(msg);
+      setShowBatchExtendModal(false);
+      setSelectedSlotIds(new Set());
+      fetchSlots();
+      if (user?.role === 'superadmin' || user?.role === 'admin') fetchAllSlots();
+    } catch {
+      alert('서버 오류가 발생했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleEditSlot = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitting || !selectedSlot) return;
@@ -1356,20 +1409,41 @@ export default function DashboardPage() {
         <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 mb-6">
           {isAnyAdmin ? (
             // 관리자: 전체 인원 표시
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white">전체 인원 관리</h2>
-              <div className="flex items-center gap-3">
-                <span className="text-neutral-500">
-                  총 <span className="text-orange-400 font-medium">{allSlots.length}명</span> 등록됨
-                </span>
-                <button
-                  onClick={() => { if (allUsers.length === 0) fetchAllUsers(); setShowAdminAddModal(true); }}
-                  className="px-3 py-1 text-xs bg-green-600 hover:bg-green-500 text-white rounded transition"
-                >
-                  + 인원 추가
-                </button>
+            <>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-white">전체 인원 관리</h2>
+                <div className="flex items-center gap-3">
+                  <span className="text-neutral-500">
+                    총 <span className="text-orange-400 font-medium">{allSlots.length}명</span> 등록됨
+                  </span>
+                  <button
+                    onClick={() => { if (allUsers.length === 0) fetchAllUsers(); setShowAdminAddModal(true); }}
+                    className="px-3 py-1 text-xs bg-green-600 hover:bg-green-500 text-white rounded transition"
+                  >
+                    + 인원 추가
+                  </button>
+                </div>
               </div>
-            </div>
+              {selectedSlotIds.size > 0 && (
+                <div className="mt-3 flex items-center gap-3 bg-indigo-900/30 border border-indigo-500/30 rounded-xl px-4 py-3">
+                  <span className="text-indigo-300 text-sm font-medium">
+                    {selectedSlotIds.size}개 선택됨
+                  </span>
+                  <button
+                    onClick={() => setShowBatchExtendModal(true)}
+                    className="px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition"
+                  >
+                    일괄 연장
+                  </button>
+                  <button
+                    onClick={() => setSelectedSlotIds(new Set())}
+                    className="px-3 py-1.5 text-xs bg-neutral-700 hover:bg-neutral-600 text-neutral-300 rounded-lg font-medium transition"
+                  >
+                    선택 해제
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <>
               {/* 일반 유저: 데스크톱 한 줄 */}
@@ -1468,6 +1542,16 @@ export default function DashboardPage() {
             <table className="w-full">
               <thead className="bg-neutral-800/50">
                 <tr>
+                  {isAnyAdmin && (
+                    <th className="px-2 py-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={allSlots.length > 0 && selectedSlotIds.size === allSlots.length}
+                        onChange={toggleAllSlots}
+                        className="w-4 h-4 rounded border-neutral-600 bg-neutral-800 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      />
+                    </th>
+                  )}
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">활성화</th>
                   {isAnyAdmin && (
                     <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">회원</th>
@@ -1490,7 +1574,15 @@ export default function DashboardPage() {
                   const isExpired = daysRemaining <= 0;
 
                   return (
-                    <tr key={slot.id} className={`hover:bg-neutral-800/30 transition ${!slot.is_active ? 'opacity-50' : ''}`}>
+                    <tr key={slot.id} className={`hover:bg-neutral-800/30 transition ${!slot.is_active ? 'opacity-50' : ''} ${selectedSlotIds.has(slot.id) ? 'bg-indigo-900/20' : ''}`}>
+                      <td className="px-2 py-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedSlotIds.has(slot.id)}
+                          onChange={() => toggleSlotSelection(slot.id)}
+                          className="w-4 h-4 rounded border-neutral-600 bg-neutral-800 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        />
+                      </td>
                       <td className="px-4 py-3 text-center">
                         <div className={`w-12 h-6 rounded-full mx-auto ${
                           slot.is_active ? 'bg-green-500' : 'bg-neutral-700'
@@ -3221,6 +3313,88 @@ export default function DashboardPage() {
               </button>
               <button
                 onClick={() => setShowAdminExtendModal(false)}
+                className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 일괄 연장 모달 */}
+      {showBatchExtendModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 w-full max-w-md mx-4">
+            <h3 className="text-xl font-bold text-white mb-4">일괄 만료일 변경</h3>
+
+            <div className="bg-indigo-900/30 border border-indigo-500/30 rounded-xl p-4 mb-4">
+              <p className="text-indigo-300 text-sm">
+                선택된 슬롯: <span className="text-white font-bold">{selectedSlotIds.size}개</span>
+              </p>
+            </div>
+
+            {/* 모드 전환 */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setBatchExtendMode('add')}
+                className={`flex-1 py-2 text-sm rounded-lg font-medium transition ${
+                  batchExtendMode === 'add' ? 'bg-emerald-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                }`}
+              >
+                기존 만료일 + 추가
+              </button>
+              <button
+                onClick={() => setBatchExtendMode('set')}
+                className={`flex-1 py-2 text-sm rounded-lg font-medium transition ${
+                  batchExtendMode === 'set' ? 'bg-blue-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                }`}
+              >
+                오늘부터 기간 설정
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-neutral-400 mb-2">
+                {batchExtendMode === 'add' ? '연장 일수' : '남은 기간 (오늘부터)'}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={batchExtendDays}
+                  onChange={(e) => setBatchExtendDays(Math.max(1, parseInt(e.target.value) || 1))}
+                  min={1}
+                  className="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-center text-lg font-bold focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+                />
+                <span className="flex items-center text-neutral-400 font-medium">일</span>
+              </div>
+              <div className="flex gap-2 mt-2">
+                {[3, 7, 15, 30].map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setBatchExtendDays(d)}
+                    className={`flex-1 py-2 text-sm rounded-lg font-medium transition ${
+                      batchExtendDays === d
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-400'
+                    }`}
+                  >
+                    {d}일
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleBatchExtend}
+                disabled={submitting}
+                className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 text-white font-semibold rounded-xl transition"
+              >
+                {submitting ? '처리 중...' : batchExtendMode === 'add' ? `${selectedSlotIds.size}개 ${batchExtendDays}일 연장` : `${selectedSlotIds.size}개 오늘부터 ${batchExtendDays}일 설정`}
+              </button>
+              <button
+                onClick={() => setShowBatchExtendModal(false)}
                 className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
               >
                 닫기
