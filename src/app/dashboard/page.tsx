@@ -78,6 +78,7 @@ export default function DashboardPage() {
   const [extendForm, setExtendForm] = useState({ depositorName: '' });
   const [showAdminExtendModal, setShowAdminExtendModal] = useState(false);
   const [adminExtendDays, setAdminExtendDays] = useState(30);
+  const [adminExtendMode, setAdminExtendMode] = useState<'add' | 'set'>('add');
   const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'purchases' | 'rooms' | 'distributors' | 'bankAccount'>('slots');
   // 관리자용 회원관리
   const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; nickname: string | null; phone: string; role: string; slot_count: number; parent_id: string | null; domain: string | null; created_at: string }>>([]);
@@ -956,13 +957,19 @@ export default function DashboardPage() {
     if (!selectedSlot || adminExtendDays <= 0) return;
     setSubmitting(true);
     try {
+      const payload = adminExtendMode === 'add'
+        ? { extendDays: adminExtendDays }
+        : { setRemainingDays: adminExtendDays };
       const res = await fetch(`/api/admin/slots/${selectedSlot.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ extendDays: adminExtendDays }),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
-        alert(`${selectedSlot.girl_name} 만료일이 ${adminExtendDays}일 연장되었습니다.`);
+        const msg = adminExtendMode === 'add'
+          ? `${selectedSlot.girl_name} 만료일이 ${adminExtendDays}일 연장되었습니다.`
+          : `${selectedSlot.girl_name} 만료일이 오늘부터 ${adminExtendDays}일로 설정되었습니다.`;
+        alert(msg);
         setShowAdminExtendModal(false);
         fetchSlots();
         if (user?.role === 'superadmin' || user?.role === 'admin') fetchAllSlots();
@@ -3152,10 +3159,30 @@ export default function DashboardPage() {
               </p>
             </div>
 
+            {/* 모드 전환 */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setAdminExtendMode('add')}
+                className={`flex-1 py-2 text-sm rounded-lg font-medium transition ${
+                  adminExtendMode === 'add' ? 'bg-emerald-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                }`}
+              >
+                기존 만료일 + 추가
+              </button>
+              <button
+                onClick={() => setAdminExtendMode('set')}
+                className={`flex-1 py-2 text-sm rounded-lg font-medium transition ${
+                  adminExtendMode === 'set' ? 'bg-blue-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                }`}
+              >
+                오늘부터 기간 설정
+              </button>
+            </div>
+
             {/* 연장 일수 입력 */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-neutral-400 mb-2">
-                연장 일수
+                {adminExtendMode === 'add' ? '연장 일수' : '남은 기간 (오늘부터)'}
               </label>
               <div className="flex gap-2">
                 <input
@@ -3190,7 +3217,7 @@ export default function DashboardPage() {
                 disabled={submitting}
                 className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 text-white font-semibold rounded-xl transition"
               >
-                {submitting ? '처리 중...' : `${adminExtendDays}일 연장`}
+                {submitting ? '처리 중...' : adminExtendMode === 'add' ? `${adminExtendDays}일 연장` : `오늘부터 ${adminExtendDays}일 설정`}
               </button>
               <button
                 onClick={() => setShowAdminExtendModal(false)}

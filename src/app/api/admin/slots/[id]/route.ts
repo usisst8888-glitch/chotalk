@@ -122,6 +122,17 @@ export async function PATCH(
       }
     }
 
+    // 남은 기간 직접 설정 (superadmin 전용) - 오늘부터 N일
+    if (typeof body.setRemainingDays === 'number' && body.setRemainingDays > 0) {
+      if (authUser.role !== 'superadmin') {
+        return NextResponse.json({ error: '만료일 변경은 슈퍼관리자만 가능합니다.' }, { status: 403 });
+      }
+
+      const now = new Date(new Date().getTime() + (9 * 60 * 60 * 1000));
+      now.setDate(now.getDate() + body.setRemainingDays);
+      updateData.expires_at = now.toISOString().slice(0, -1);
+    }
+
     const { data: updatedSlot, error } = await supabase
       .from('slots')
       .update(updateData)
