@@ -3195,7 +3195,7 @@ export default function DashboardPage() {
                 <span className="flex items-center text-neutral-400 font-medium">일</span>
               </div>
               <div className="flex gap-2 mt-2">
-                {[7, 15, 30, 60].map((d) => (
+                {[3, 7, 15, 30].map((d) => (
                   <button
                     key={d}
                     onClick={() => setAdminExtendDays(d)}
