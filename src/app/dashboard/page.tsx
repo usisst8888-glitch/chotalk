@@ -1544,12 +1544,24 @@ export default function DashboardPage() {
                 <tr>
                   {isAnyAdmin && (
                     <th className="px-2 py-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={allSlots.length > 0 && selectedSlotIds.size === allSlots.length}
-                        onChange={toggleAllSlots}
-                        className="w-4 h-4 rounded border-neutral-600 bg-neutral-800 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                      />
+                      <button
+                        onClick={toggleAllSlots}
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition mx-auto ${
+                          allSlots.length > 0 && selectedSlotIds.size === allSlots.length
+                            ? 'bg-indigo-600 border-indigo-600'
+                            : selectedSlotIds.size > 0
+                            ? 'bg-indigo-600/30 border-indigo-500'
+                            : 'border-neutral-600 hover:border-neutral-400'
+                        }`}
+                      >
+                        {allSlots.length > 0 && selectedSlotIds.size === allSlots.length ? (
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : selectedSlotIds.size > 0 ? (
+                          <span className="w-2.5 h-0.5 bg-indigo-400 rounded" />
+                        ) : null}
+                      </button>
                     </th>
                   )}
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">활성화</th>
@@ -1576,12 +1588,20 @@ export default function DashboardPage() {
                   return (
                     <tr key={slot.id} className={`hover:bg-neutral-800/30 transition ${!slot.is_active ? 'opacity-50' : ''} ${selectedSlotIds.has(slot.id) ? 'bg-indigo-900/20' : ''}`}>
                       <td className="px-2 py-3 text-center">
-                        <input
-                          type="checkbox"
-                          checked={selectedSlotIds.has(slot.id)}
-                          onChange={() => toggleSlotSelection(slot.id)}
-                          className="w-4 h-4 rounded border-neutral-600 bg-neutral-800 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                        />
+                        <button
+                          onClick={() => toggleSlotSelection(slot.id)}
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition mx-auto ${
+                            selectedSlotIds.has(slot.id)
+                              ? 'bg-indigo-600 border-indigo-600'
+                              : 'border-neutral-600 hover:border-neutral-400'
+                          }`}
+                        >
+                          {selectedSlotIds.has(slot.id) && (
+                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </button>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <div className={`w-12 h-6 rounded-full mx-auto ${
