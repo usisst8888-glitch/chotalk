@@ -1604,7 +1604,9 @@ export default function DashboardPage() {
                         </button>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <div className={`w-12 h-6 rounded-full mx-auto ${
+                        <button
+                          onClick={() => toggleSlotActive(slot.id, slot.is_active, slot.expires_at)}
+                          className={`w-12 h-6 rounded-full mx-auto cursor-pointer transition-colors ${
                           slot.is_active ? 'bg-green-500' : 'bg-neutral-700'
                         }`}>
                           <span
@@ -1612,7 +1614,7 @@ export default function DashboardPage() {
                               slot.is_active ? 'ml-auto mr-1' : 'ml-1'
                             }`}
                           />
-                        </div>
+                        </button>
                       </td>
                       <td className="px-4 py-3 text-center text-orange-400 font-medium">{slot.username}</td>
                       <td className="px-4 py-3 text-center text-white font-medium">{slot.girl_name}</td>
