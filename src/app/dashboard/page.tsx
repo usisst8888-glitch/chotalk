@@ -1394,17 +1394,28 @@ export default function DashboardPage() {
               </button>
             )}
           </div>
-          <a
-            href="https://open.kakao.com/o/sWYX3Yci"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-4 py-2 rounded-lg font-medium transition bg-yellow-500 hover:bg-yellow-400 text-black flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 3C6.48 3 2 6.58 2 11c0 2.83 1.82 5.32 4.56 6.72-.2.74-.73 2.68-.84 3.09-.13.52.19.51.4.37.17-.11 2.62-1.78 3.68-2.51.72.11 1.46.16 2.2.16 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
-            </svg>
-            고객센터
-          </a>
+          <div className="flex gap-2">
+            <a
+              href="https://open.kakao.com/o/sWYX3Yci"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 rounded-lg font-medium transition bg-yellow-500 hover:bg-yellow-400 text-black flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 3C6.48 3 2 6.58 2 11c0 2.83 1.82 5.32 4.56 6.72-.2.74-.73 2.68-.84 3.09-.13.52.19.51.4.37.17-.11 2.62-1.78 3.68-2.51.72.11 1.46.16 2.2.16 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
+              </svg>
+              고객센터
+            </a>
+            <a
+              href="/download/startalkbot.apk"
+              className="px-4 py-2 rounded-lg font-medium transition bg-green-600 hover:bg-green-500 text-white flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              앱 다운로드
+            </a>
+          </div>
         </div>
 
         {activeTab === 'slots' && (
