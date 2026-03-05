@@ -1102,14 +1102,18 @@ export default function DashboardPage() {
       return;
     }
 
+    const isAdminUser = user?.role === 'superadmin' || user?.role === 'admin';
+    const apiUrl = isAdminUser ? `/api/admin/slots/${slotId}` : `/api/slots/${slotId}`;
+
     try {
-      const res = await fetch(`/api/slots/${slotId}`, {
+      const res = await fetch(apiUrl, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: !currentActive }),
       });
 
       if (res.ok) {
+        if (isAdminUser) fetchAllSlots();
         fetchSlots();
       } else {
         const data = await res.json();
@@ -1606,14 +1610,10 @@ export default function DashboardPage() {
                       <td className="px-4 py-3 text-center">
                         <button
                           onClick={() => toggleSlotActive(slot.id, slot.is_active, slot.expires_at)}
-                          className={`w-12 h-6 rounded-full mx-auto cursor-pointer transition-colors ${
-                          slot.is_active ? 'bg-green-500' : 'bg-neutral-700'
+                          className={`w-12 h-6 rounded-full mx-auto cursor-pointer transition-colors flex items-center px-1 ${
+                          slot.is_active ? 'bg-green-500 justify-end' : 'bg-neutral-700 justify-start'
                         }`}>
-                          <span
-                            className={`block w-4 h-4 bg-white rounded-full relative top-1 transition-transform ${
-                              slot.is_active ? 'ml-auto mr-1' : 'ml-1'
-                            }`}
-                          />
+                          <span className="block w-4 h-4 bg-white rounded-full" />
                         </button>
                       </td>
                       <td className="px-4 py-3 text-center text-orange-400 font-medium">{slot.username}</td>
@@ -1704,15 +1704,11 @@ export default function DashboardPage() {
                       <td className="px-4 py-3 text-center">
                         <button
                           onClick={() => toggleSlotActive(slot.id, slot.is_active, slot.expires_at)}
-                          className={`w-12 h-6 rounded-full transition-colors relative ${
-                            slot.is_active ? 'bg-green-500' : 'bg-neutral-700'
+                          className={`w-12 h-6 rounded-full transition-colors flex items-center px-1 ${
+                            slot.is_active ? 'bg-green-500 justify-end' : 'bg-neutral-700 justify-start'
                           }`}
                         >
-                          <span
-                            className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                              slot.is_active ? 'right-1' : 'left-1'
-                            }`}
-                          />
+                          <span className="block w-4 h-4 bg-white rounded-full" />
                         </button>
                       </td>
                       <td className="px-4 py-3 text-center text-white font-medium">{slot.girl_name}</td>
@@ -1988,15 +1984,11 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => toggleSlotActive(slot.id, slot.is_active, slot.expires_at)}
-                        className={`w-12 h-6 rounded-full transition-colors relative ${
-                          slot.is_active ? 'bg-green-500' : 'bg-neutral-700'
+                        className={`w-12 h-6 rounded-full transition-colors flex items-center px-1 ${
+                          slot.is_active ? 'bg-green-500 justify-end' : 'bg-neutral-700 justify-start'
                         }`}
                       >
-                        <span
-                          className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                            slot.is_active ? 'right-1' : 'left-1'
-                          }`}
-                        />
+                        <span className="block w-4 h-4 bg-white rounded-full" />
                       </button>
                       <span className="text-sm text-neutral-500">{slot.is_active ? '활성화' : '비활성화'}</span>
                     </div>

@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
         created_at,
         user_id,
         users:user_id (
-          username
+          username,
+          nickname
         )
       `)
       .order('expires_at', { ascending: true });
@@ -61,10 +62,10 @@ export async function GET(request: NextRequest) {
 
     // users 객체를 평탄화
     const formattedSlots = slots?.map(slot => {
-      const userInfo = slot.users as unknown as { username: string } | null;
+      const userInfo = slot.users as unknown as { username: string; nickname: string | null } | null;
       return {
         ...slot,
-        username: userInfo?.username || '알 수 없음',
+        username: userInfo?.nickname || userInfo?.username || '알 수 없음',
         users: undefined
       };
     });
