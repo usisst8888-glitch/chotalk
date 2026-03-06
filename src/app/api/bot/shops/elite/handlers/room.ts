@@ -1,7 +1,7 @@
 import { getSupabase } from '@/lib/supabase';
 import { extractRoomNumber, parseTransfer } from '../parser';
 import { MESSAGE_SIGNALS, hasSignalWithAliases } from '../config';
-import { getOrCreateRoom, checkAndCloseRoom, getKoreanTime } from '../../../_core/shared';
+import { getOrCreateRoom, checkAndCloseRoom, getKoreanTime } from '../shared';
 
 // ============================================================
 // 방(Room) 전담 핸들러 (status_board와 독립적으로 rooms 테이블 관리)

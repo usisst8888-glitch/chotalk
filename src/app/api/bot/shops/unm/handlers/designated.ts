@@ -1,6 +1,6 @@
 import { getSupabase } from '@/lib/supabase';
 import { parseDesignatedSection } from '../parser';
-import { getKoreanTime } from '../../../_core/shared';
+import { getKoreanTime } from '../shared';
 
 // ============================================================
 // ㅈ.ㅁ(지명) 섹션 처리

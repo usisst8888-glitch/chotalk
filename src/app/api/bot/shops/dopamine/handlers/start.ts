@@ -1,8 +1,8 @@
 import { ParsedMessage, extractManualTime } from '../parser';
 import { GirlSignalResult } from '../parser';
-import { HandlerContext, HandlerResult } from '../../../_core/types';
-import { updateStatusBoard } from '../../../_core/shared';
-import { checkIsEvent } from '../../../_core/event';
+import { HandlerContext, HandlerResult } from '../types';
+import { updateStatusBoard } from '../shared';
+import { checkIsEvent } from '../event';
 
 // ============================================================
 // 세션 시작 처리 (status_board에 저장)

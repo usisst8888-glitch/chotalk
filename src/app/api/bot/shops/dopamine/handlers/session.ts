@@ -1,6 +1,6 @@
 import { ParsedMessage } from '../parser';
-import { HandlerContext, HandlerResult } from '../../../_core/types';
-import { getKoreanTime, getOrCreateRoom } from '../../../_core/shared';
+import { HandlerContext, HandlerResult } from '../types';
+import { getKoreanTime, getOrCreateRoom } from '../shared';
 
 // ============================================================
 // 현시간재진행 처리 (ㅎㅅㄱㅈㅈㅎ) - 새 세션 INSERT

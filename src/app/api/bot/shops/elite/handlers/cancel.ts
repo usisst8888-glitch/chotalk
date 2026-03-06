@@ -1,5 +1,5 @@
-import { HandlerContext, HandlerResult } from '../../../_core/types';
-import { getKoreanTime } from '../../../_core/shared';
+import { HandlerContext, HandlerResult } from '../types';
+import { getKoreanTime } from '../shared';
 
 // ============================================================
 // 취소 처리 (ㄱㅌ) - trigger_type을 'canceled'로 변경
