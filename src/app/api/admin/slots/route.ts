@@ -105,6 +105,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 같은 가게+아가씨 이름 중복 체크
+    let dupQuery = supabase
+      .from('slots')
+      .select('id', { count: 'exact', head: true })
+      .eq('girl_name', girlName);
+    if (shopName) {
+      dupQuery = dupQuery.eq('shop_name', shopName);
+    } else {
+      dupQuery = dupQuery.is('shop_name', null);
+    }
+    const { count: dupCount } = await dupQuery;
+    if ((dupCount || 0) > 0) {
+      return NextResponse.json({ error: '같은 가게에 동일한 아가씨 이름이 이미 등록되어 있습니다.' }, { status: 400 });
+    }
+
     // 새 가게인 경우 이벤트 시간 테이블에 추가
     if (shopName) {
       const { data: existingShop } = await supabase
