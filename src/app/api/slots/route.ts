@@ -156,14 +156,9 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    // 50개 미만이면서 사용 횟수가 가장 적은 ID 선택
+    // 사용 횟수가 가장 적은 ID 선택
     const availableKakaoId = kakaoIdUsage
-      .filter((k) => k.usageCount < 50)
       .sort((a, b) => a.usageCount - b.usageCount)[0];
-
-    if (!availableKakaoId) {
-      return NextResponse.json({ error: '모든 카카오 초대 ID가 최대 사용량(50개)에 도달했습니다. 관리자에게 문의해주세요.' }, { status: 400 });
-    }
 
     // 슬롯 생성
     const { data: newSlot, error } = await supabase

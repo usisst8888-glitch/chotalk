@@ -158,12 +158,7 @@ export async function POST(request: NextRequest) {
     );
 
     const availableKakaoId = kakaoIdUsage
-      .filter((k) => k.usageCount < 50)
       .sort((a, b) => a.usageCount - b.usageCount)[0];
-
-    if (!availableKakaoId) {
-      return NextResponse.json({ error: '모든 카카오 초대 ID가 최대 사용량에 도달했습니다.' }, { status: 400 });
-    }
 
     const { data: newSlot, error } = await supabase
       .from('slots')
