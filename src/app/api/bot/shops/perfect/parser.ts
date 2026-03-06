@@ -366,6 +366,20 @@ export function parseGirlSignals(
   // 해당 아가씨에게 해당하는 부분만 추출 (이름 뒤)
   let afterSection = afterGirl.substring(0, nextGirlIndex);
 
+  // 미등록 이름에 직접 붙은 신호 제거
+  // 예: "소영ㅈㅁ" → 소영이 미등록이면 "소영"만 남기고 ㅈㅁ 제거
+  // 이렇게 해야 "다미 3 소영ㅈㅁ 2 ㄲ"에서 다미가 지명으로 잡히지 않음
+  const allSignalCodes = ['ㅈㅁㅂㅅㅅ', 'ㅈㅁㅅㅅ', 'ㅎㅅㄱㅈㅈㅎ', 'ㅈㅈㅎ', 'ㅈㅁ', 'ㅇㅈ', 'ㅈㅈ', 'ㄱㅌ', 'ㅋㅌ', 'ㄱㅋ', 'ㄲ', '끝'];
+  for (const sig of allSignalCodes) {
+    const regex = new RegExp(`([가-힣]{2,})(${sig.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g');
+    afterSection = afterSection.replace(regex, (_match, koreanPart: string, signalPart: string) => {
+      if (allGirlNames.includes(koreanPart)) {
+        return koreanPart + signalPart; // 등록된 이름이면 유지
+      }
+      return koreanPart; // 미등록 이름이면 신호 제거
+    });
+  }
+
   // 아가씨 이름 앞의 텍스트도 확인 (이름에 직접 붙은 신호 감지)
   // 이전 아가씨 이름이 끝나는 위치부터 현재 아가씨 이름 시작까지
   let prevGirlEndIndex = 0;

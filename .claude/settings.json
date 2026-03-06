@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(for shop in unm dalto perfect elite)",
+      "Bash(do cp -r dopamine \"$shop\")",
+      "Bash(done)",
+      "Bash(git rm --cached public/download/app-release.apk)",
+      "Bash(for shop in dalto dopamine elite perfect)",
+      "Bash(do)",
+      "Bash(echo \"=== $shop ===\")",
+      "Read(//Users/baecheol-eung/chotalk/src/app/api/bot/shops/$shop/**)",
+      "Bash(echo \"=== $shop diff above ===\")"
+    ]
+  }
+}

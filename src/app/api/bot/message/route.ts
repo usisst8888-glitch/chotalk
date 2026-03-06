@@ -244,6 +244,14 @@ export async function POST(request: NextRequest) {
           lineSignals.isCorrection = true;
         }
 
+        // ㅈㅈ(정정) + ㅇㅈ(연장) = ㅈㅈㅎ(재진행)과 동일하게 처리
+        // 예: "ㅈㅈ107 정훈 다미 4ㅇㅈ" → 시작시간 유지, end_time=null, 재진행
+        if (messageStartsWithCorrection && lineSignals.isExtension) {
+          lineSignals.isResume = true;
+          lineSignals.isExtension = false;
+          lineSignals.isCorrection = false;
+        }
+
         // 우선순위:
         // 0. ㄱㅌ(취소) → trigger_type을 'canceled'로 변경
         // 1. ㅎㅅㄱㅈㅈㅎ/현시간재진행 → 새 세션 INSERT
