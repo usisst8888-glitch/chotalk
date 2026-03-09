@@ -239,11 +239,6 @@ export async function POST(request: NextRequest) {
           lineParsed.roomNumber = effectiveRoom;
         }
 
-        // 원본 메시지 첫 줄이 ㅈㅈ로 시작했으면, ㄲ이 있는 아가씨에게만 정정 적용
-        if (messageStartsWithCorrection && lineSignals.isEnd) {
-          lineSignals.isCorrection = true;
-        }
-
         // ㅈㅈ(정정) + ㅇㅈ(연장) = ㅈㅈㅎ(재진행)과 동일하게 처리
         // 예: "ㅈㅈ107 정훈 다미 4ㅇㅈ" → 시작시간 유지, end_time=null, 재진행
         if (messageStartsWithCorrection && lineSignals.isExtension) {
@@ -252,15 +247,29 @@ export async function POST(request: NextRequest) {
           lineSignals.isCorrection = false;
         }
 
+        // ㅈㅈ(정정) + ㄲ(종료) → 정정 모드로 종료 처리
+        // 앞에 ㅈㅈ이 붙어도 ㄲ은 반드시 끝 트리거로 잡아야 함
+        if (messageStartsWithCorrection && lineSignals.isEnd) {
+          lineSignals.isCorrection = true;
+        }
+
         // 우선순위:
         // 0. ㄱㅌ(취소) → trigger_type을 'canceled'로 변경
-        // 1. ㅎㅅㄱㅈㅈㅎ/현시간재진행 → 새 세션 INSERT
-        // 2. ㅈㅈㅎ/재진행 → 가장 최근 종료 레코드를 시작으로 UPDATE
-        // 3. ㄲ(종료) → 세션 종료 처리
-        // 4. 방번호만 → 세션 시작 처리
+        // 1. ㅈㅈ+ㄲ(정정+종료) → 정정 모드로 세션 종료 (ㅈㅈ가 붙어도 ㄲ은 반드시 끝 트리거)
+        // 2. ㅎㅅㄱㅈㅈㅎ/현시간재진행 → 새 세션 INSERT
+        // 3. ㅈㅈㅎ/재진행 → 가장 최근 종료 레코드를 시작으로 UPDATE
+        // 4. ㄲ(종료) → 세션 종료 처리
+        // 5. 방번호만 → 세션 시작 처리
 
         if (lineSignals.isCancel) {
           const result = await shop.handleCancel(ctx, lineParsed.roomNumber);
+          results.push({ ...result, logId });
+
+        } else if (messageStartsWithCorrection && lineSignals.isEnd && lineParsed.roomNumber) {
+          // ㅈㅈ + ㄲ: 정정 모드로 종료 처리 (ㅈㅈ가 앞에 붙어도 ㄲ은 무시하면 안 됨)
+          lineSignals.isCorrection = true;
+          console.log('ㅈㅈ+ㄲ 정정종료:', slot.girl_name, '방:', lineParsed.roomNumber, 'duration:', lineSignals.usageDuration);
+          const result = await shop.handleSessionEnd(ctx, lineParsed, lineSignals);
           results.push({ ...result, logId });
 
         } else if (lineSignals.isNewSession && lineParsed.roomNumber) {
