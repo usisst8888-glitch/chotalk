@@ -123,7 +123,7 @@ export default function DashboardPage() {
   const [adminNewSlot, setAdminNewSlot] = useState({ userId: '', girlName: '', shopName: '', customShopName: '' });
   // 상황판 새 세션 추가 폼
   const [showAddSessionForm, setShowAddSessionForm] = useState(false);
-  const [addSessionForm, setAddSessionForm] = useState({ room_number: '', start_time: '', is_designated: false });
+  const [addSessionForm, setAddSessionForm] = useState({ room_number: '', start_hour: '', start_minute: '', start_ampm: 'PM' as 'AM' | 'PM', is_designated: false });
   // 상황판 초기화 확인 팝업
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   // 상황판 개별 삭제 확인 팝업
@@ -703,9 +703,15 @@ export default function DashboardPage() {
     try {
       const now = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
       const datePrefix = now.toISOString().slice(0, 11);
-      const startTime = addSessionForm.start_time
-        ? datePrefix + addSessionForm.start_time + ':00'
-        : undefined;
+      let startTime: string | undefined;
+      if (addSessionForm.start_hour && addSessionForm.start_minute) {
+        let h = parseInt(addSessionForm.start_hour, 10);
+        if (addSessionForm.start_ampm === 'PM' && h < 12) h += 12;
+        if (addSessionForm.start_ampm === 'AM' && h === 12) h = 0;
+        const hh = String(h).padStart(2, '0');
+        const mm = addSessionForm.start_minute.padStart(2, '0');
+        startTime = datePrefix + hh + ':' + mm + ':00';
+      }
       const res = await fetch(`/api/status-board/${selectedSlot.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -717,7 +723,7 @@ export default function DashboardPage() {
       });
       if (res.ok) {
         setShowAddSessionForm(false);
-        setAddSessionForm({ room_number: '', start_time: '', is_designated: false });
+        setAddSessionForm({ room_number: '', start_hour: '', start_minute: '', start_ampm: 'PM', is_designated: false });
         // 목록 새로고침
         const updated = await fetch(`/api/status-board/${selectedSlot.id}`);
         if (updated.ok) {
@@ -3489,14 +3495,39 @@ export default function DashboardPage() {
                         />
                       </div>
                       <div className="flex-1">
-                        <label className="block text-xs text-neutral-400 mb-1">시작시간 (HH:MM)</label>
-                        <input
-                          type="text"
-                          value={addSessionForm.start_time}
-                          onChange={(e) => setAddSessionForm({ ...addSessionForm, start_time: e.target.value })}
-                          placeholder="16:30"
-                          className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-green-500 outline-none"
-                        />
+                        <label className="block text-xs text-neutral-400 mb-1">시작시간</label>
+                        <div className="flex gap-1 items-center">
+                          <select
+                            value={addSessionForm.start_ampm}
+                            onChange={(e) => setAddSessionForm({ ...addSessionForm, start_ampm: e.target.value as 'AM' | 'PM' })}
+                            className="px-2 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                          >
+                            <option value="AM">오전</option>
+                            <option value="PM">오후</option>
+                          </select>
+                          <select
+                            value={addSessionForm.start_hour}
+                            onChange={(e) => setAddSessionForm({ ...addSessionForm, start_hour: e.target.value })}
+                            className="px-2 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                          >
+                            <option value="">시</option>
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
+                              <option key={h} value={String(h)}>{h}시</option>
+                            ))}
+                          </select>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={addSessionForm.start_minute}
+                            onChange={(e) => {
+                              const v = e.target.value.replace(/\D/g, '').slice(0, 2);
+                              setAddSessionForm({ ...addSessionForm, start_minute: v });
+                            }}
+                            placeholder="분"
+                            maxLength={2}
+                            className="w-14 px-2 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm text-center focus:ring-2 focus:ring-green-500 outline-none"
+                          />
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -3511,7 +3542,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => { setShowAddSessionForm(false); setAddSessionForm({ room_number: '', start_time: '', is_designated: false }); }}
+                        onClick={() => { setShowAddSessionForm(false); setAddSessionForm({ room_number: '', start_hour: '', start_minute: '', start_ampm: 'PM', is_designated: false }); }}
                         className="flex-1 py-2 bg-neutral-700 hover:bg-neutral-600 text-neutral-400 text-sm font-medium rounded-lg transition"
                       >
                         취소
