@@ -161,6 +161,7 @@ export default function DashboardPage() {
   const [newDistributorLogo, setNewDistributorLogo] = useState<File | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
   const [editingDistributor, setEditingDistributor] = useState<string | null>(null);
+  const [editDistForm, setEditDistForm] = useState({ domain: '', siteName: '', bankName: '', accountNumber: '', accountHolder: '', slotPrice: 100000, primaryColor: '#4f46e5', secondaryColor: '#7c3aed' });
   // 계좌/판매금액 설정 (admin/총판)
   const [distBankName, setDistBankName] = useState('');
   const [distAccountNumber, setDistAccountNumber] = useState('');
@@ -654,7 +655,7 @@ export default function DashboardPage() {
   };
 
   // 총판 수정 (superadmin)
-  const handleUpdateDistributor = async (id: string, data: Record<string, string | boolean>) => {
+  const handleUpdateDistributor = async (id: string, data: Record<string, string | boolean | number>) => {
     try {
       const res = await fetch('/api/admin/distributor', {
         method: 'PATCH',
@@ -2829,6 +2830,19 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex gap-2">
                         <button
+                          onClick={() => {
+                            setEditingDistributor(editingDistributor === d.id ? null : d.id);
+                            setEditDistForm({
+                              domain: d.domain, siteName: d.site_name,
+                              bankName: d.bank_name || '', accountNumber: d.account_number || '', accountHolder: d.account_holder || '',
+                              slotPrice: d.slot_price || 100000, primaryColor: d.primary_color, secondaryColor: d.secondary_color,
+                            });
+                          }}
+                          className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded transition"
+                        >
+                          {editingDistributor === d.id ? '닫기' : '수정'}
+                        </button>
+                        <button
                           onClick={() => handleUpdateDistributor(d.id, { isActive: !d.is_active })}
                           className={`px-3 py-1 text-xs rounded transition ${d.is_active ? 'bg-neutral-600 hover:bg-neutral-500 text-white' : 'bg-green-600 hover:bg-green-500 text-white'}`}
                         >
@@ -2880,6 +2894,80 @@ export default function DashboardPage() {
                         <span className="text-yellow-400">{(d.slot_price || 100000).toLocaleString()}원</span>
                       </div>
                     </div>
+
+                    {/* 수정 폼 */}
+                    {editingDistributor === d.id && (
+                      <div className="mt-4 pt-4 border-t border-neutral-700 space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-neutral-400 mb-1">도메인</label>
+                            <input type="text" value={editDistForm.domain} onChange={(e) => setEditDistForm({ ...editDistForm, domain: e.target.value })}
+                              className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-neutral-400 mb-1">사이트명</label>
+                            <input type="text" value={editDistForm.siteName} onChange={(e) => setEditDistForm({ ...editDistForm, siteName: e.target.value })}
+                              className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-xs text-neutral-400 mb-1">은행명</label>
+                            <input type="text" value={editDistForm.bankName} onChange={(e) => setEditDistForm({ ...editDistForm, bankName: e.target.value })}
+                              placeholder="국민은행" className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-sm placeholder-neutral-500 focus:ring-2 focus:ring-blue-500 outline-none" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-neutral-400 mb-1">계좌번호</label>
+                            <input type="text" value={editDistForm.accountNumber} onChange={(e) => setEditDistForm({ ...editDistForm, accountNumber: e.target.value })}
+                              placeholder="123-456-789" className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-sm placeholder-neutral-500 focus:ring-2 focus:ring-blue-500 outline-none" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-neutral-400 mb-1">예금주</label>
+                            <input type="text" value={editDistForm.accountHolder} onChange={(e) => setEditDistForm({ ...editDistForm, accountHolder: e.target.value })}
+                              placeholder="홍길동" className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-sm placeholder-neutral-500 focus:ring-2 focus:ring-blue-500 outline-none" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-xs text-neutral-400 mb-1">판매 금액 (원)</label>
+                            <input type="number" value={editDistForm.slotPrice} onChange={(e) => setEditDistForm({ ...editDistForm, slotPrice: parseInt(e.target.value) || 0 })}
+                              className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-neutral-400 mb-1">메인 색상</label>
+                            <div className="flex items-center gap-2">
+                              <input type="color" value={editDistForm.primaryColor} onChange={(e) => setEditDistForm({ ...editDistForm, primaryColor: e.target.value })} className="w-8 h-8 rounded cursor-pointer bg-transparent border-0" />
+                              <input type="text" value={editDistForm.primaryColor} onChange={(e) => setEditDistForm({ ...editDistForm, primaryColor: e.target.value })}
+                                className="flex-1 px-2 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-xs focus:outline-none" />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-neutral-400 mb-1">보조 색상</label>
+                            <div className="flex items-center gap-2">
+                              <input type="color" value={editDistForm.secondaryColor} onChange={(e) => setEditDistForm({ ...editDistForm, secondaryColor: e.target.value })} className="w-8 h-8 rounded cursor-pointer bg-transparent border-0" />
+                              <input type="text" value={editDistForm.secondaryColor} onChange={(e) => setEditDistForm({ ...editDistForm, secondaryColor: e.target.value })}
+                                className="flex-1 px-2 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-xs focus:outline-none" />
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleUpdateDistributor(d.id, {
+                            domain: editDistForm.domain,
+                            siteName: editDistForm.siteName,
+                            bankName: editDistForm.bankName,
+                            accountNumber: editDistForm.accountNumber,
+                            accountHolder: editDistForm.accountHolder,
+                            slotPrice: editDistForm.slotPrice,
+                            extensionPrice: editDistForm.slotPrice,
+                            primaryColor: editDistForm.primaryColor,
+                            secondaryColor: editDistForm.secondaryColor,
+                          })}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition"
+                        >
+                          저장
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -2931,41 +3019,23 @@ export default function DashboardPage() {
                     </div>
 
                     {/* 매출 상세 */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-3 bg-neutral-700/30 rounded-lg">
-                        <div className="text-neutral-400 text-xs mb-2">슬롯 구매</div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-neutral-300">건수</span>
-                          <span className="text-white">{s.purchaseCount}건 ({s.purchaseSlots}슬롯)</span>
-                        </div>
-                        <div className="flex justify-between text-sm mt-1">
-                          <span className="text-neutral-300">단가</span>
-                          <span className="text-yellow-400">{s.slotPrice.toLocaleString()}원</span>
-                        </div>
-                        <div className="flex justify-between text-sm mt-1 pt-1 border-t border-neutral-600">
-                          <span className="text-neutral-300">소계</span>
-                          <span className="text-white font-medium">{s.purchaseAmount.toLocaleString()}원</span>
-                        </div>
+                    <div className="p-3 bg-neutral-700/30 rounded-lg">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-neutral-300">판매 금액</span>
+                        <span className="text-yellow-400">{s.slotPrice.toLocaleString()}원</span>
                       </div>
-                      <div className="p-3 bg-neutral-700/30 rounded-lg">
-                        <div className="text-neutral-400 text-xs mb-2">슬롯 연장</div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-neutral-300">건수</span>
-                          <span className="text-white">{s.extensionCount}건 ({s.extensionSlots}슬롯)</span>
-                        </div>
-                        <div className="flex justify-between text-sm mt-1">
-                          <span className="text-neutral-300">단가</span>
-                          <span className="text-yellow-400">{s.extensionPrice.toLocaleString()}원</span>
-                        </div>
-                        <div className="flex justify-between text-sm mt-1 pt-1 border-t border-neutral-600">
-                          <span className="text-neutral-300">소계</span>
-                          <span className="text-white font-medium">{s.extensionAmount.toLocaleString()}원</span>
-                        </div>
+                      <div className="flex justify-between text-sm mt-2">
+                        <span className="text-neutral-300">구매</span>
+                        <span className="text-white">{s.purchaseCount}건 ({s.purchaseSlots}슬롯) = {s.purchaseAmount.toLocaleString()}원</span>
                       </div>
-                    </div>
-
-                    <div className="mt-3 text-xs text-neutral-500">
-                      소속 유저: {s.userCount}명
+                      <div className="flex justify-between text-sm mt-1">
+                        <span className="text-neutral-300">연장</span>
+                        <span className="text-white">{s.extensionCount}건 ({s.extensionSlots}슬롯) = {s.extensionAmount.toLocaleString()}원</span>
+                      </div>
+                      <div className="flex justify-between text-sm mt-2 pt-2 border-t border-neutral-600">
+                        <span className="text-neutral-300">소속 유저</span>
+                        <span className="text-neutral-400">{s.userCount}명</span>
+                      </div>
                     </div>
                   </div>
                 ))}
