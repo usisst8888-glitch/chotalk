@@ -198,10 +198,12 @@ export async function POST(request: NextRequest) {
       // 같은 아가씨가 여러 줄에 나오는지 확인
       const lines = message.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0);
 
-      // ➖➖➖➖ 이후 라인은 ㅈ.ㅁ(지명) 섹션이므로 세션 처리에서 제외
+      // ㅈ.ㅁ(지명) 섹션 이후 라인은 세션 처리에서 제외
       // ㅈ.ㅁ 섹션에 등록된 아가씨 이름이 있으면 시작/종료 등 트리거로 잡히면 안 됨
-      const separatorIdx = lines.findIndex((l: string) => l.includes('➖➖➖➖'));
-      const sessionLines = separatorIdx >= 0 ? lines.slice(0, separatorIdx) : lines;
+      // ➖➖➖➖는 상단 구분선으로도 쓰이므로, ㅈ.ㅁ 라인 기준으로 자름
+      const jmSectionIdx = lines.findIndex((l: string) => l.includes('ㅈ.ㅁ'));
+      const separatorIdx = jmSectionIdx >= 0 ? jmSectionIdx : -1;
+      const sessionLines = jmSectionIdx >= 0 ? lines.slice(0, jmSectionIdx) : lines;
 
       // 각 줄의 유효 방번호 계산 (이전 줄에서 방번호 상속)
       // 예: "603 태산\n연시 미쭈 1.5ㄲ\n905 이승기\n파이 ㄴㄱㅅㅌㅌ"
