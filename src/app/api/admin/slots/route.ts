@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       `)
       .order('expires_at', { ascending: true });
 
-    // admin(총판): 자기 유저 슬롯만 필터
+    // admin(총판): 자기 자신 + 자기 유저 슬롯만 필터
     if (authUser.role === 'admin') {
       const { data: assignedUsers } = await supabase
         .from('users')
@@ -48,9 +48,8 @@ export async function GET(request: NextRequest) {
         .eq('parent_id', authUser.id);
 
       const assignedUserIds = (assignedUsers || []).map(u => u.id);
-      if (assignedUserIds.length === 0) {
-        return NextResponse.json({ slots: [] });
-      }
+      // 총판 자기 자신도 포함
+      assignedUserIds.push(authUser.id);
       query = query.in('user_id', assignedUserIds);
     }
 
