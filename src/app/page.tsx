@@ -14,8 +14,11 @@ export default function Home() {
       <header className="fixed top-0 left-0 right-0 z-50 bg-neutral-950/80 backdrop-blur-sm border-b border-neutral-800">
         <div className="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <BrandedLogo width={48} height={48} className="h-12 w-12 rounded-lg" />
-            <span className="text-white font-bold text-lg">{siteName}</span>
+            {(distributor?.logo_url || !distributor) ? (
+              <BrandedLogo width={48} height={48} className="h-12 w-12 rounded-lg" />
+            ) : (
+              <span className="text-white font-bold text-lg">{siteName}</span>
+            )}
           </div>
           <div className="flex gap-3">
             <Link

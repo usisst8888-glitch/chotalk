@@ -1325,8 +1325,11 @@ export default function DashboardPage() {
       <header className="bg-neutral-900 border-b border-neutral-800">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <BrandedLogo width={48} height={48} className="h-12 w-12 rounded-lg" />
-            <span className="text-white font-bold text-lg">{distributor?.site_name || '스타트봇'}</span>
+            {(distributor?.logo_url || !distributor) ? (
+              <BrandedLogo width={48} height={48} className="h-12 w-12 rounded-lg" />
+            ) : (
+              <span className="text-white font-bold text-lg">{distributor.site_name}</span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button
