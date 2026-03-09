@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
         user_id,
         users:user_id (
           username,
-          nickname
+          nickname,
+          parent_id
         )
       `)
       .order('expires_at', { ascending: true });
@@ -59,12 +60,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // superadmin: 총판 이름 매핑용
+    let distributorMap: Record<string, string> = {};
+    if (authUser.role === 'superadmin') {
+      const { data: admins } = await supabase
+        .from('users')
+        .select('id, username, nickname')
+        .eq('role', 'admin');
+      if (admins) {
+        for (const a of admins) {
+          distributorMap[a.id] = a.nickname || a.username;
+        }
+      }
+    }
+
     // users 객체를 평탄화
     const formattedSlots = slots?.map(slot => {
-      const userInfo = slot.users as unknown as { username: string; nickname: string | null } | null;
+      const userInfo = slot.users as unknown as { username: string; nickname: string | null; parent_id: string | null } | null;
+      const parentId = userInfo?.parent_id || null;
       return {
         ...slot,
         username: userInfo?.nickname || userInfo?.username || '알 수 없음',
+        distributor_name: parentId ? (distributorMap[parentId] || '총판') : '본사',
         users: undefined
       };
     });

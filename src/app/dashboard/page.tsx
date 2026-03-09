@@ -58,6 +58,7 @@ interface Slot {
   is_active: boolean;
   expires_at: string;
   created_at: string;
+  distributor_name?: string;  // 소속 총판명
 }
 
 // 가게명 프리셋
@@ -1681,6 +1682,9 @@ export default function DashboardPage() {
                   {isAnyAdmin && (
                     <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">회원</th>
                   )}
+                  {isSuperAdmin && (
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">소속</th>
+                  )}
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">아가씨 닉네임</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">가게명</th>
                   {isAnyAdmin && (
@@ -1726,6 +1730,17 @@ export default function DashboardPage() {
                         </button>
                       </td>
                       <td className="px-4 py-3 text-center text-orange-400 font-medium">{slot.username}</td>
+                      {isSuperAdmin && (
+                        <td className="px-4 py-3 text-center">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            slot.distributor_name === '본사'
+                              ? 'bg-purple-600/20 text-purple-400'
+                              : 'bg-emerald-600/20 text-emerald-400'
+                          }`}>
+                            {slot.distributor_name || '본사'}
+                          </span>
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-center text-white font-medium">{slot.girl_name}</td>
                       <td className="px-4 py-3 text-center text-neutral-400">{slot.shop_name || '-'}</td>
                       <td className="px-4 py-3 text-center text-neutral-500">{slot.target_room}</td>
@@ -1993,6 +2008,18 @@ export default function DashboardPage() {
                       <span className="text-neutral-600 w-28 flex-shrink-0">회원</span>
                       <span className="text-orange-400 font-semibold">{slot.username}</span>
                     </div>
+                    {isSuperAdmin && (
+                      <div className="flex border-b border-neutral-800 pb-2">
+                        <span className="text-neutral-600 w-28 flex-shrink-0">소속</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          slot.distributor_name === '본사'
+                            ? 'bg-purple-600/20 text-purple-400'
+                            : 'bg-emerald-600/20 text-emerald-400'
+                        }`}>
+                          {slot.distributor_name || '본사'}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex border-b border-neutral-800 pb-2">
                       <span className="text-neutral-600 w-28 flex-shrink-0">아가씨 닉네임</span>
                       <span className="text-white font-semibold">{slot.girl_name}</span>
