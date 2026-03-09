@@ -161,8 +161,11 @@ export default function DashboardPage() {
   const [newDistributorLogo, setNewDistributorLogo] = useState<File | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
   const [editingDistributor, setEditingDistributor] = useState<string | null>(null);
-  // 계좌 설정 (admin/총판)
-  const [bankAccount, setBankAccount] = useState('');
+  // 계좌/판매금액 설정 (admin/총판)
+  const [distBankName, setDistBankName] = useState('');
+  const [distAccountNumber, setDistAccountNumber] = useState('');
+  const [distAccountHolder, setDistAccountHolder] = useState('');
+  const [distSlotPrice, setDistSlotPrice] = useState(100000);
   const [bankAccountSaving, setBankAccountSaving] = useState(false);
   // 정산 (superadmin)
   const [settlements, setSettlements] = useState<Settlement[]>([]);
@@ -202,8 +205,15 @@ export default function DashboardPage() {
     if (isSuperAdmin) {
       fetchKakaoInviteIds();
     }
-    if (isAdmin && user?.bank_account) {
-      setBankAccount(user.bank_account);
+    if (isAdmin) {
+      fetch('/api/admin/bank-account').then(res => res.ok ? res.json() : null).then(data => {
+        if (data) {
+          setDistBankName(data.bankName || '');
+          setDistAccountNumber(data.accountNumber || '');
+          setDistAccountHolder(data.accountHolder || '');
+          setDistSlotPrice(data.slotPrice || 100000);
+        }
+      });
     }
   }, [user]);
 
@@ -560,10 +570,15 @@ export default function DashboardPage() {
       const res = await fetch('/api/admin/bank-account', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bankAccount }),
+        body: JSON.stringify({
+          bankName: distBankName,
+          accountNumber: distAccountNumber,
+          accountHolder: distAccountHolder,
+          slotPrice: distSlotPrice,
+        }),
       });
       if (res.ok) {
-        alert('계좌번호가 저장되었습니다.');
+        alert('저장되었습니다.');
       } else {
         const data = await res.json();
         alert(data.error || '저장에 실패했습니다.');
@@ -2861,12 +2876,8 @@ export default function DashboardPage() {
                         </span>
                       </div>
                       <div className="flex gap-2">
-                        <span className="text-neutral-500 w-20">슬롯 가격</span>
+                        <span className="text-neutral-500 w-20">판매 금액</span>
                         <span className="text-yellow-400">{(d.slot_price || 100000).toLocaleString()}원</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <span className="text-neutral-500 w-20">연장 가격</span>
-                        <span className="text-yellow-400">{(d.extension_price || 50000).toLocaleString()}원</span>
                       </div>
                     </div>
                   </div>
@@ -2973,34 +2984,73 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* 계좌 설정 탭 (admin/총판 전용) */}
+        {/* 계좌/판매금액 설정 탭 (admin/총판 전용) */}
         {activeTab === 'bankAccount' && isAdmin && (
           <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
-            <h2 className="text-xl font-bold text-white mb-6">계좌 설정</h2>
-            <p className="text-neutral-400 text-sm mb-4">
-              유저들의 연장/구매 입금 시 안내될 계좌 정보를 설정합니다.
-            </p>
-            <div className="space-y-4 max-w-md">
-              <div>
-                <label className="block text-sm font-medium text-neutral-400 mb-2">
-                  계좌번호 (은행명 포함)
-                </label>
+            <h2 className="text-xl font-bold text-white mb-6">총판 설정</h2>
+
+            {/* 입금 계좌 */}
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-neutral-300 mb-3">입금 계좌</h3>
+              <p className="text-neutral-500 text-xs mb-3">본사에서 정산금을 입금할 계좌를 설정합니다.</p>
+              <div className="space-y-3 max-w-md">
+                <div>
+                  <label className="block text-xs text-neutral-400 mb-1">은행명</label>
+                  <input
+                    type="text"
+                    value={distBankName}
+                    onChange={(e) => setDistBankName(e.target.value)}
+                    placeholder="예: 국민은행"
+                    className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-neutral-400 mb-1">계좌번호</label>
+                  <input
+                    type="text"
+                    value={distAccountNumber}
+                    onChange={(e) => setDistAccountNumber(e.target.value)}
+                    placeholder="예: 123-456-789012"
+                    className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-neutral-400 mb-1">예금주</label>
+                  <input
+                    type="text"
+                    value={distAccountHolder}
+                    onChange={(e) => setDistAccountHolder(e.target.value)}
+                    placeholder="예: 홍길동"
+                    className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 판매 금액 */}
+            <div className="mb-6 pt-6 border-t border-neutral-700">
+              <h3 className="text-sm font-medium text-neutral-300 mb-3">판매 금액</h3>
+              <p className="text-neutral-500 text-xs mb-3">유저에게 슬롯 판매/연장 시 적용되는 금액입니다.</p>
+              <div className="max-w-md">
+                <label className="block text-xs text-neutral-400 mb-1">판매 금액 (원)</label>
                 <input
-                  type="text"
-                  value={bankAccount}
-                  onChange={(e) => setBankAccount(e.target.value)}
-                  placeholder="예: 카카오뱅크 3333-12-3456789 홍길동"
+                  type="number"
+                  value={distSlotPrice}
+                  onChange={(e) => setDistSlotPrice(parseInt(e.target.value) || 0)}
+                  placeholder="100000"
                   className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
                 />
+                <p className="text-neutral-500 text-xs mt-1">슬롯 구매 및 연장에 동일하게 적용됩니다.</p>
               </div>
-              <button
-                onClick={handleSaveBankAccount}
-                disabled={bankAccountSaving}
-                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
-              >
-                {bankAccountSaving ? '저장 중...' : '저장'}
-              </button>
             </div>
+
+            <button
+              onClick={handleSaveBankAccount}
+              disabled={bankAccountSaving}
+              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
+            >
+              {bankAccountSaving ? '저장 중...' : '저장'}
+            </button>
           </div>
         )}
       </main>
@@ -3143,25 +3193,15 @@ export default function DashboardPage() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-neutral-400 mb-2">슬롯 판매가</label>
-                  <input
-                    type="number"
-                    value={newDistributor.slotPrice || 100000}
-                    onChange={(e) => setNewDistributor({ ...newDistributor, slotPrice: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-pink-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-400 mb-2">연장 판매가</label>
-                  <input
-                    type="number"
-                    value={newDistributor.extensionPrice || 50000}
-                    onChange={(e) => setNewDistributor({ ...newDistributor, extensionPrice: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-pink-500 outline-none"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-400 mb-2">판매 금액 (원)</label>
+                <input
+                  type="number"
+                  value={newDistributor.slotPrice || 100000}
+                  onChange={(e) => setNewDistributor({ ...newDistributor, slotPrice: parseInt(e.target.value) || 0, extensionPrice: parseInt(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-pink-500 outline-none"
+                />
+                <p className="text-neutral-500 text-xs mt-1">슬롯 구매/연장에 동일 적용</p>
               </div>
               <div className="flex gap-3 pt-2">
                 <button
