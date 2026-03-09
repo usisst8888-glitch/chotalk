@@ -23,6 +23,30 @@ interface Distributor {
   is_active: boolean;
   created_at: string;
   username?: string;
+  bank_name: string | null;
+  account_number: string | null;
+  account_holder: string | null;
+  slot_price: number;
+  extension_price: number;
+}
+
+interface Settlement {
+  distributorId: string;
+  siteName: string;
+  username: string;
+  bankName: string | null;
+  accountNumber: string | null;
+  accountHolder: string | null;
+  slotPrice: number;
+  extensionPrice: number;
+  userCount: number;
+  purchaseCount: number;
+  purchaseSlots: number;
+  purchaseAmount: number;
+  extensionCount: number;
+  extensionSlots: number;
+  extensionAmount: number;
+  totalAmount: number;
 }
 
 interface Slot {
@@ -79,7 +103,7 @@ export default function DashboardPage() {
   const [showAdminExtendModal, setShowAdminExtendModal] = useState(false);
   const [adminExtendDays, setAdminExtendDays] = useState(30);
   const [adminExtendMode, setAdminExtendMode] = useState<'add' | 'set'>('add');
-  const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'purchases' | 'rooms' | 'distributors' | 'bankAccount'>('slots');
+  const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'purchases' | 'rooms' | 'distributors' | 'bankAccount' | 'settlement'>('slots');
   // 관리자용 회원관리
   const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; nickname: string | null; phone: string; role: string; slot_count: number; parent_id: string | null; domain: string | null; created_at: string }>>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -133,13 +157,20 @@ export default function DashboardPage() {
   const [distributors, setDistributors] = useState<Distributor[]>([]);
   const [distributorsLoading, setDistributorsLoading] = useState(false);
   const [showAddDistributorModal, setShowAddDistributorModal] = useState(false);
-  const [newDistributor, setNewDistributor] = useState({ userId: '', domain: '', siteName: '', primaryColor: '#4f46e5', secondaryColor: '#7c3aed' });
+  const [newDistributor, setNewDistributor] = useState({ userId: '', domain: '', siteName: '', primaryColor: '#4f46e5', secondaryColor: '#7c3aed', bankName: '', accountNumber: '', accountHolder: '', slotPrice: 100000, extensionPrice: 50000 });
   const [newDistributorLogo, setNewDistributorLogo] = useState<File | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
   const [editingDistributor, setEditingDistributor] = useState<string | null>(null);
   // 계좌 설정 (admin/총판)
   const [bankAccount, setBankAccount] = useState('');
   const [bankAccountSaving, setBankAccountSaving] = useState(false);
+  // 정산 (superadmin)
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [settlementMonth, setSettlementMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [settlementLoading, setSettlementLoading] = useState(false);
 
   // 역할 헬퍼
   const isSuperAdmin = user?.role === 'superadmin';
@@ -505,6 +536,23 @@ export default function DashboardPage() {
     }
   };
 
+  // 정산 데이터 조회 (superadmin)
+  const fetchSettlements = async (month?: string) => {
+    setSettlementLoading(true);
+    try {
+      const m = month || settlementMonth;
+      const res = await fetch(`/api/admin/settlement?month=${m}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSettlements(data.settlements);
+      }
+    } catch (error) {
+      console.error('Failed to fetch settlements:', error);
+    } finally {
+      setSettlementLoading(false);
+    }
+  };
+
   // 계좌 저장 (admin/총판)
   const handleSaveBankAccount = async () => {
     setBankAccountSaving(true);
@@ -559,7 +607,7 @@ export default function DashboardPage() {
       });
       if (res.ok) {
         setShowAddDistributorModal(false);
-        setNewDistributor({ userId: '', domain: '', siteName: '', primaryColor: '#4f46e5', secondaryColor: '#7c3aed' });
+        setNewDistributor({ userId: '', domain: '', siteName: '', primaryColor: '#4f46e5', secondaryColor: '#7c3aed', bankName: '', accountNumber: '', accountHolder: '', slotPrice: 100000, extensionPrice: 50000 });
         setNewDistributorLogo(null);
         fetchDistributors();
       } else {
@@ -1383,6 +1431,19 @@ export default function DashboardPage() {
                   }`}
                 >
                   총판 관리
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('settlement');
+                    fetchSettlements();
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    activeTab === 'settlement'
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
+                  }`}
+                >
+                  정산
                 </button>
               </>
             )}
@@ -2791,9 +2852,122 @@ export default function DashboardPage() {
                           <img src={d.logo_url} alt="logo" className="w-8 h-8 rounded" />
                         </div>
                       )}
+                      <div className="flex gap-2 col-span-2 mt-2 pt-2 border-t border-neutral-700">
+                        <span className="text-neutral-500 w-20">입금계좌</span>
+                        <span className="text-emerald-400">
+                          {d.bank_name && d.account_number
+                            ? `${d.bank_name} ${d.account_number} ${d.account_holder || ''}`
+                            : '미설정'}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <span className="text-neutral-500 w-20">슬롯 가격</span>
+                        <span className="text-yellow-400">{(d.slot_price || 100000).toLocaleString()}원</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <span className="text-neutral-500 w-20">연장 가격</span>
+                        <span className="text-yellow-400">{(d.extension_price || 50000).toLocaleString()}원</span>
+                      </div>
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 정산 탭 (superadmin 전용) */}
+        {activeTab === 'settlement' && isSuperAdmin && (
+          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">정산</h2>
+              <div className="flex items-center gap-2">
+                <input
+                  type="month"
+                  value={settlementMonth}
+                  onChange={(e) => {
+                    setSettlementMonth(e.target.value);
+                    fetchSettlements(e.target.value);
+                  }}
+                  className="px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+            </div>
+            {settlementLoading ? (
+              <div className="text-center py-12 text-neutral-400">로딩 중...</div>
+            ) : settlements.length === 0 ? (
+              <div className="text-center py-12 text-neutral-600">정산 데이터가 없습니다.</div>
+            ) : (
+              <div className="space-y-4">
+                {settlements.map((s) => (
+                  <div key={s.distributorId} className="p-5 bg-neutral-800 rounded-xl">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-white font-bold text-lg">{s.siteName}</span>
+                        <span className="text-neutral-400 text-sm">({s.username})</span>
+                      </div>
+                      <span className="text-amber-400 font-bold text-xl">{s.totalAmount.toLocaleString()}원</span>
+                    </div>
+
+                    {/* 계좌 정보 */}
+                    <div className="mb-4 p-3 bg-neutral-700/50 rounded-lg">
+                      <span className="text-neutral-400 text-xs">입금 계좌</span>
+                      <p className="text-emerald-400 font-medium mt-1">
+                        {s.bankName && s.accountNumber
+                          ? `${s.bankName} ${s.accountNumber} ${s.accountHolder || ''}`
+                          : '미설정'}
+                      </p>
+                    </div>
+
+                    {/* 매출 상세 */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-neutral-700/30 rounded-lg">
+                        <div className="text-neutral-400 text-xs mb-2">슬롯 구매</div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-neutral-300">건수</span>
+                          <span className="text-white">{s.purchaseCount}건 ({s.purchaseSlots}슬롯)</span>
+                        </div>
+                        <div className="flex justify-between text-sm mt-1">
+                          <span className="text-neutral-300">단가</span>
+                          <span className="text-yellow-400">{s.slotPrice.toLocaleString()}원</span>
+                        </div>
+                        <div className="flex justify-between text-sm mt-1 pt-1 border-t border-neutral-600">
+                          <span className="text-neutral-300">소계</span>
+                          <span className="text-white font-medium">{s.purchaseAmount.toLocaleString()}원</span>
+                        </div>
+                      </div>
+                      <div className="p-3 bg-neutral-700/30 rounded-lg">
+                        <div className="text-neutral-400 text-xs mb-2">슬롯 연장</div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-neutral-300">건수</span>
+                          <span className="text-white">{s.extensionCount}건 ({s.extensionSlots}슬롯)</span>
+                        </div>
+                        <div className="flex justify-between text-sm mt-1">
+                          <span className="text-neutral-300">단가</span>
+                          <span className="text-yellow-400">{s.extensionPrice.toLocaleString()}원</span>
+                        </div>
+                        <div className="flex justify-between text-sm mt-1 pt-1 border-t border-neutral-600">
+                          <span className="text-neutral-300">소계</span>
+                          <span className="text-white font-medium">{s.extensionAmount.toLocaleString()}원</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 text-xs text-neutral-500">
+                      소속 유저: {s.userCount}명
+                    </div>
+                  </div>
+                ))}
+
+                {/* 전체 합계 */}
+                <div className="p-4 bg-amber-600/10 border border-amber-600/30 rounded-xl">
+                  <div className="flex justify-between items-center">
+                    <span className="text-amber-400 font-medium">전체 합계</span>
+                    <span className="text-amber-400 font-bold text-2xl">
+                      {settlements.reduce((sum, s) => sum + s.totalAmount, 0).toLocaleString()}원
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -2943,12 +3117,58 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
+              <div className="border-t border-neutral-700 pt-4 mt-2">
+                <label className="block text-sm font-medium text-neutral-400 mb-2">입금 계좌 (본사 → 총판)</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <input
+                    type="text"
+                    value={newDistributor.bankName || ''}
+                    onChange={(e) => setNewDistributor({ ...newDistributor, bankName: e.target.value })}
+                    placeholder="은행명"
+                    className="px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm placeholder-neutral-500 focus:ring-2 focus:ring-pink-500 outline-none"
+                  />
+                  <input
+                    type="text"
+                    value={newDistributor.accountNumber || ''}
+                    onChange={(e) => setNewDistributor({ ...newDistributor, accountNumber: e.target.value })}
+                    placeholder="계좌번호"
+                    className="px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm placeholder-neutral-500 focus:ring-2 focus:ring-pink-500 outline-none"
+                  />
+                  <input
+                    type="text"
+                    value={newDistributor.accountHolder || ''}
+                    onChange={(e) => setNewDistributor({ ...newDistributor, accountHolder: e.target.value })}
+                    placeholder="예금주"
+                    className="px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm placeholder-neutral-500 focus:ring-2 focus:ring-pink-500 outline-none"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-400 mb-2">슬롯 판매가</label>
+                  <input
+                    type="number"
+                    value={newDistributor.slotPrice || 100000}
+                    onChange={(e) => setNewDistributor({ ...newDistributor, slotPrice: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-pink-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-400 mb-2">연장 판매가</label>
+                  <input
+                    type="number"
+                    value={newDistributor.extensionPrice || 50000}
+                    onChange={(e) => setNewDistributor({ ...newDistributor, extensionPrice: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-pink-500 outline-none"
+                  />
+                </div>
+              </div>
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => {
                     setShowAddDistributorModal(false);
-                    setNewDistributor({ userId: '', domain: '', siteName: '', primaryColor: '#4f46e5', secondaryColor: '#7c3aed' });
+                    setNewDistributor({ userId: '', domain: '', siteName: '', primaryColor: '#4f46e5', secondaryColor: '#7c3aed', bankName: '', accountNumber: '', accountHolder: '', slotPrice: 100000, extensionPrice: 50000 });
                     setNewDistributorLogo(null);
                   }}
                   className="flex-1 px-4 py-3 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl transition"
