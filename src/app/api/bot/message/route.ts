@@ -198,24 +198,35 @@ export async function POST(request: NextRequest) {
       // 같은 아가씨가 여러 줄에 나오는지 확인
       const lines = message.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0);
 
+      // ㅈ.ㅁ(지명) 섹션 이후 라인은 세션 처리에서 제외
+      // ㅈ.ㅁ 섹션에 등록된 아가씨 이름이 있으면 시작/종료 등 트리거로 잡히면 안 됨
+      const jmSectionIdx = lines.findIndex((l: string) => l.includes('ㅈ.ㅁ'));
+      const sessionLines = jmSectionIdx >= 0 ? lines.slice(0, jmSectionIdx) : lines;
+
       // 각 줄의 유효 방번호 계산 (이전 줄에서 방번호 상속)
       // 예: "603 태산\n연시 미쭈 1.5ㄲ\n905 이승기\n파이 ㄴㄱㅅㅌㅌ"
       // → 줄0: 603, 줄1: 603(상속), 줄2: 905, 줄3: 905(상속)
       let lastSeenRoom: string | null = null;
       const lineEffectiveRooms: (string | null)[] = [];
-      for (const line of lines) {
+      for (const line of sessionLines) {
         const roomNum = shop.extractRoomNumber(line);
         if (roomNum) lastSeenRoom = roomNum;
         lineEffectiveRooms.push(lastSeenRoom);
       }
 
-      // 아가씨가 포함된 줄의 인덱스와 유효 방번호를 함께 추적
-      const girlLineEntries = lines
+      // 아가씨가 포함된 줄의 인덱스와 유효 방번호를 함께 추적 (ㅈ.ㅁ 섹션 제외)
+      const girlLineEntries = sessionLines
         .map((line: string, idx: number) => ({ line, idx }))
         .filter(({ line }: { line: string }) => line.includes(slot.girl_name));
 
+      // ㅈ.ㅁ 섹션에만 이름이 있는 아가씨는 세션 처리 완전 스킵
+      if (girlLineEntries.length === 0 && jmSectionIdx >= 0) {
+        console.log('ㅈ.ㅁ 섹션에만 존재하는 아가씨 스킵:', slot.girl_name);
+        continue;
+      }
+
       // 원본 메시지 첫 줄이 ㅈㅈ/정정으로 시작하면, 전체 메시지가 정정
-      const messageStartsWithCorrection = lines.length > 0 && (lines[0].startsWith('ㅈㅈ') || lines[0].startsWith('정정'));
+      const messageStartsWithCorrection = sessionLines.length > 0 && (sessionLines[0].startsWith('ㅈㅈ') || sessionLines[0].startsWith('정정'));
 
       // 아가씨가 포함된 줄만 개별 처리 (줄바꿈 시 방번호가 다를 수 있으므로)
       const messagesToProcess = girlLineEntries.length > 0
