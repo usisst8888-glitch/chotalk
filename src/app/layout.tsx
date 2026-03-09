@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { DistributorProvider } from "@/lib/theme-context";
+import { headers } from "next/headers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,14 +14,19 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "스타트봇",
-  description: "스타트봇 자동 카카오톡 발송기",
-  other: {
-    'robots': 'index, follow',
-    'kakaotalk-scrap': 'none',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const headersList = await headers();
+  const siteName = headersList.get('x-distributor-site-name') || '스타트봇';
+
+  return {
+    title: siteName,
+    description: `${siteName} 자동 카카오톡 발송기`,
+    other: {
+      'robots': 'index, follow',
+      'kakaotalk-scrap': 'none',
+    },
+  };
+}
 
 export default function RootLayout({
   children,
