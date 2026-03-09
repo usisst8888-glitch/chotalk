@@ -28,10 +28,16 @@ export default function BrandedLogo({ width = 120, height = 120, className = 'ro
     );
   }
 
+  // 총판이지만 로고가 없으면 아무것도 표시하지 않음
+  if (distributor) {
+    return null;
+  }
+
+  // 본사 기본 로고
   return (
     <Image
       src="/logo.png"
-      alt="Chotalk"
+      alt="스타트봇"
       width={width}
       height={height}
       className={className}
