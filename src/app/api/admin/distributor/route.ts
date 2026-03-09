@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
         id, user_id, domain, site_name, logo_url,
         primary_color, secondary_color, is_active, created_at,
         bank_name, account_number, account_holder,
-        slot_price, extension_price,
+        slot_price, extension_price, cost_price,
         users:user_id (username)
       `)
       .order('created_at', { ascending: false });
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
-    const { userId, domain, siteName, primaryColor, secondaryColor, logoUrl, bankName, accountNumber, accountHolder, slotPrice, extensionPrice } = await request.json();
+    const { userId, domain, siteName, primaryColor, secondaryColor, logoUrl, bankName, accountNumber, accountHolder, slotPrice, extensionPrice, costPrice } = await request.json();
 
     if (!userId || !domain || !siteName) {
       return NextResponse.json({ error: '필수 정보가 누락되었습니다.' }, { status: 400 });
@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
         account_holder: accountHolder || null,
         slot_price: slotPrice || 100000,
         extension_price: extensionPrice || 50000,
+        cost_price: costPrice || 20000,
       })
       .select()
       .single();
@@ -88,7 +89,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
-    const { id, domain, siteName, primaryColor, secondaryColor, isActive, logoUrl, bankName, accountNumber, accountHolder, slotPrice, extensionPrice } = await request.json();
+    const { id, domain, siteName, primaryColor, secondaryColor, isActive, logoUrl, bankName, accountNumber, accountHolder, slotPrice, extensionPrice, costPrice } = await request.json();
 
     if (!id) {
       return NextResponse.json({ error: 'ID가 필요합니다.' }, { status: 400 });
@@ -107,6 +108,7 @@ export async function PATCH(request: NextRequest) {
     if (accountHolder !== undefined) updateData.account_holder = accountHolder;
     if (slotPrice !== undefined) updateData.slot_price = slotPrice;
     if (extensionPrice !== undefined) updateData.extension_price = extensionPrice;
+    if (costPrice !== undefined) updateData.cost_price = costPrice;
 
     const { error } = await supabase
       .from('distributors')

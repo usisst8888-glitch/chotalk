@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     // 총판 목록 조회
     let distributorQuery = supabase
       .from('distributors')
-      .select('id, user_id, site_name, bank_name, account_number, account_holder, slot_price, extension_price, users:user_id (username)');
+      .select('id, user_id, site_name, bank_name, account_number, account_holder, slot_price, extension_price, cost_price, users:user_id (username)');
 
     if (user.role === 'admin') {
       // 총판은 자기 것만
@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
 
     for (const dist of distributors || []) {
       const userInfo = dist.users as unknown as { username: string } | null;
+      const costPrice = dist.cost_price || 20000; // 본사 입금 단가
 
       // 이 총판 소속 유저들 조회 (parent_id = 총판의 user_id)
       const { data: users } = await supabase
@@ -55,12 +56,8 @@ export async function GET(request: NextRequest) {
 
       const userIds = (users || []).map(u => u.id);
 
-      let purchaseCount = 0;
-      let purchaseSlots = 0;
-      let purchaseAmount = 0;
-      let extensionCount = 0;
-      let extensionSlots = 0;
-      let extensionAmount = 0;
+      let totalSalesAmount = 0; // 총판이 유저에게 받은 총 금액
+      let totalSlotCount = 0; // 총 판매 인원수
 
       if (userIds.length > 0) {
         // 슬롯 구매 (approved만)
@@ -73,9 +70,8 @@ export async function GET(request: NextRequest) {
           .lte('created_at', endDateStr + 'T23:59:59');
 
         for (const p of purchases || []) {
-          purchaseCount++;
-          purchaseSlots += p.slot_count;
-          purchaseAmount += p.total_amount;
+          totalSlotCount += p.slot_count;
+          totalSalesAmount += p.total_amount;
         }
 
         // 슬롯 연장 (approved만)
@@ -88,11 +84,13 @@ export async function GET(request: NextRequest) {
           .lte('created_at', endDateStr + 'T23:59:59');
 
         for (const e of extensions || []) {
-          extensionCount++;
-          extensionSlots += e.slot_count;
-          extensionAmount += e.total_amount;
+          totalSlotCount += e.slot_count;
+          totalSalesAmount += e.total_amount;
         }
       }
+
+      const costToHQ = totalSlotCount * costPrice; // 본사 입금액
+      const settlementAmount = totalSalesAmount - costToHQ; // 정산 금액 (총판 수익)
 
       settlements.push({
         distributorId: dist.id,
@@ -102,15 +100,12 @@ export async function GET(request: NextRequest) {
         accountNumber: dist.account_number,
         accountHolder: dist.account_holder,
         slotPrice: dist.slot_price,
-        extensionPrice: dist.extension_price,
+        costPrice,
         userCount: userIds.length,
-        purchaseCount,
-        purchaseSlots,
-        purchaseAmount,
-        extensionCount,
-        extensionSlots,
-        extensionAmount,
-        totalAmount: purchaseAmount + extensionAmount,
+        totalSlotCount,
+        totalSalesAmount,
+        costToHQ,
+        settlementAmount,
       });
     }
 

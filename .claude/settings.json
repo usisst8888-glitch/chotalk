@@ -9,7 +9,9 @@
       "Bash(do)",
       "Bash(echo \"=== $shop ===\")",
       "Read(//Users/baecheol-eung/chotalk/src/app/api/bot/shops/$shop/**)",
-      "Bash(echo \"=== $shop diff above ===\")"
+      "Bash(echo \"=== $shop diff above ===\")",
+      "Bash(git checkout -- src/app/api/bot/shops/dopamine/shared.ts src/app/api/bot/shops/elite/shared.ts src/app/api/bot/shops/perfect/shared.ts src/app/api/bot/shops/dalto/shared.ts src/app/api/bot/_core/shared.ts)",
+      "Bash(git diff src/app/api/bot/shops/*/handlers/cancel.ts)"
     ]
   }
 }

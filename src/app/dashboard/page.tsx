@@ -30,6 +30,7 @@ interface Distributor {
   account_holder: string | null;
   slot_price: number;
   extension_price: number;
+  cost_price: number;
 }
 
 interface Settlement {
@@ -40,15 +41,12 @@ interface Settlement {
   accountNumber: string | null;
   accountHolder: string | null;
   slotPrice: number;
-  extensionPrice: number;
+  costPrice: number;
   userCount: number;
-  purchaseCount: number;
-  purchaseSlots: number;
-  purchaseAmount: number;
-  extensionCount: number;
-  extensionSlots: number;
-  extensionAmount: number;
-  totalAmount: number;
+  totalSlotCount: number;
+  totalSalesAmount: number;
+  costToHQ: number;
+  settlementAmount: number;
 }
 
 interface Slot {
@@ -165,7 +163,7 @@ export default function DashboardPage() {
   const [newDistributorLogo, setNewDistributorLogo] = useState<File | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
   const [editingDistributor, setEditingDistributor] = useState<string | null>(null);
-  const [editDistForm, setEditDistForm] = useState({ domain: '', siteName: '', bankName: '', accountNumber: '', accountHolder: '', slotPrice: 100000, primaryColor: '#4f46e5', secondaryColor: '#7c3aed' });
+  const [editDistForm, setEditDistForm] = useState({ domain: '', siteName: '', bankName: '', accountNumber: '', accountHolder: '', slotPrice: 100000, costPrice: 20000, primaryColor: '#4f46e5', secondaryColor: '#7c3aed' });
   // 계좌/판매금액 설정 (admin/총판)
   const [distBankName, setDistBankName] = useState('');
   const [distAccountNumber, setDistAccountNumber] = useState('');
@@ -2886,7 +2884,8 @@ export default function DashboardPage() {
                             setEditDistForm({
                               domain: d.domain, siteName: d.site_name,
                               bankName: d.bank_name || '', accountNumber: d.account_number || '', accountHolder: d.account_holder || '',
-                              slotPrice: d.slot_price || 100000, primaryColor: d.primary_color, secondaryColor: d.secondary_color,
+                              slotPrice: d.slot_price || 100000, costPrice: d.cost_price || 20000,
+                              primaryColor: d.primary_color, secondaryColor: d.secondary_color,
                             });
                           }}
                           className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded transition"
@@ -2944,6 +2943,10 @@ export default function DashboardPage() {
                         <span className="text-neutral-500 w-20">판매 금액</span>
                         <span className="text-yellow-400">{(d.slot_price || 100000).toLocaleString()}원</span>
                       </div>
+                      <div className="flex gap-2">
+                        <span className="text-neutral-500 w-20">본사 단가</span>
+                        <span className="text-orange-400">{(d.cost_price || 20000).toLocaleString()}원</span>
+                      </div>
                     </div>
 
                     {/* 수정 폼 */}
@@ -2985,6 +2988,11 @@ export default function DashboardPage() {
                               className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
                           </div>
                           <div>
+                            <label className="block text-xs text-neutral-400 mb-1">본사 입금 단가 (원)</label>
+                            <input type="number" value={editDistForm.costPrice} onChange={(e) => setEditDistForm({ ...editDistForm, costPrice: parseInt(e.target.value) || 0 })}
+                              className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                          </div>
+                          <div>
                             <label className="block text-xs text-neutral-400 mb-1">메인 색상</label>
                             <div className="flex items-center gap-2">
                               <input type="color" value={editDistForm.primaryColor} onChange={(e) => setEditDistForm({ ...editDistForm, primaryColor: e.target.value })} className="w-8 h-8 rounded cursor-pointer bg-transparent border-0" />
@@ -3010,6 +3018,7 @@ export default function DashboardPage() {
                             accountHolder: editDistForm.accountHolder,
                             slotPrice: editDistForm.slotPrice,
                             extensionPrice: editDistForm.slotPrice,
+                            costPrice: editDistForm.costPrice,
                             primaryColor: editDistForm.primaryColor,
                             secondaryColor: editDistForm.secondaryColor,
                           })}
@@ -3056,12 +3065,17 @@ export default function DashboardPage() {
                         <span className="text-white font-bold text-lg">{s.siteName}</span>
                         <span className="text-neutral-400 text-sm">({s.username})</span>
                       </div>
-                      <span className="text-amber-400 font-bold text-xl">{s.totalAmount.toLocaleString()}원</span>
+                      <div className="text-right">
+                        <span className="text-neutral-500 text-xs block">정산 금액</span>
+                        <span className={`font-bold text-xl ${s.settlementAmount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {s.settlementAmount.toLocaleString()}원
+                        </span>
+                      </div>
                     </div>
 
                     {/* 계좌 정보 */}
                     <div className="mb-4 p-3 bg-neutral-700/50 rounded-lg">
-                      <span className="text-neutral-400 text-xs">입금 계좌</span>
+                      <span className="text-neutral-400 text-xs">정산 입금 계좌</span>
                       <p className="text-emerald-400 font-medium mt-1">
                         {s.bankName && s.accountNumber
                           ? `${s.bankName} ${s.accountNumber} ${s.accountHolder || ''}`
@@ -3069,21 +3083,27 @@ export default function DashboardPage() {
                       </p>
                     </div>
 
-                    {/* 매출 상세 */}
-                    <div className="p-3 bg-neutral-700/30 rounded-lg">
+                    {/* 정산 상세 */}
+                    <div className="p-3 bg-neutral-700/30 rounded-lg space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-neutral-300">판매 금액</span>
-                        <span className="text-yellow-400">{s.slotPrice.toLocaleString()}원</span>
+                        <span className="text-neutral-300">총 판매 인원수</span>
+                        <span className="text-white font-medium">{s.totalSlotCount}건</span>
                       </div>
-                      <div className="flex justify-between text-sm mt-2">
-                        <span className="text-neutral-300">구매</span>
-                        <span className="text-white">{s.purchaseCount}건 ({s.purchaseSlots}인원) = {s.purchaseAmount.toLocaleString()}원</span>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-neutral-300">총 판매 금액 (유저 입금)</span>
+                        <span className="text-white">{s.totalSalesAmount.toLocaleString()}원</span>
                       </div>
-                      <div className="flex justify-between text-sm mt-1">
-                        <span className="text-neutral-300">연장</span>
-                        <span className="text-white">{s.extensionCount}건 ({s.extensionSlots}인원) = {s.extensionAmount.toLocaleString()}원</span>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-neutral-300">본사 입금액 ({s.costPrice.toLocaleString()}원 × {s.totalSlotCount}건)</span>
+                        <span className="text-red-400">-{s.costToHQ.toLocaleString()}원</span>
                       </div>
-                      <div className="flex justify-between text-sm mt-2 pt-2 border-t border-neutral-600">
+                      <div className="flex justify-between text-sm pt-2 border-t border-neutral-600">
+                        <span className="text-neutral-300 font-medium">정산 금액 (총판 수익)</span>
+                        <span className={`font-bold ${s.settlementAmount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {s.settlementAmount.toLocaleString()}원
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm pt-1">
                         <span className="text-neutral-300">소속 유저</span>
                         <span className="text-neutral-400">{s.userCount}명</span>
                       </div>
@@ -3093,10 +3113,22 @@ export default function DashboardPage() {
 
                 {/* 전체 합계 */}
                 <div className="p-4 bg-amber-600/10 border border-amber-600/30 rounded-xl">
-                  <div className="flex justify-between items-center">
-                    <span className="text-amber-400 font-medium">전체 합계</span>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-neutral-400 text-sm">전체 판매 금액</span>
+                    <span className="text-white font-medium">
+                      {settlements.reduce((sum, s) => sum + s.totalSalesAmount, 0).toLocaleString()}원
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-neutral-400 text-sm">전체 본사 입금액</span>
+                    <span className="text-red-400 font-medium">
+                      -{settlements.reduce((sum, s) => sum + s.costToHQ, 0).toLocaleString()}원
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-amber-600/30">
+                    <span className="text-amber-400 font-medium">전체 정산 금액</span>
                     <span className="text-amber-400 font-bold text-2xl">
-                      {settlements.reduce((sum, s) => sum + s.totalAmount, 0).toLocaleString()}원
+                      {settlements.reduce((sum, s) => sum + s.settlementAmount, 0).toLocaleString()}원
                     </span>
                   </div>
                 </div>
