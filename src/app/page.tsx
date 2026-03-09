@@ -6,7 +6,7 @@ import BrandedLogo from "@/components/BrandedLogo";
 
 export default function Home() {
   const { distributor } = useTheme();
-  const siteName = distributor?.site_name || '초톡봇';
+  const siteName = distributor?.site_name || '스타트봇';
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white">

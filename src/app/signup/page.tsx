@@ -7,7 +7,7 @@ import { useTheme } from '@/lib/theme-context';
 
 export default function SignupPage() {
   const { distributor } = useTheme();
-  const siteName = distributor?.site_name || '초톡봇';
+  const siteName = distributor?.site_name || '스타트봇';
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-950 px-4">
