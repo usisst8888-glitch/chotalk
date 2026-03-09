@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
-import { checkSuperAdmin } from '@/lib/auth';
+import { getAuthUser } from '@/lib/auth';
 
-// 총판별 정산 데이터 조회 (superadmin)
+// 총판별 정산 데이터 조회 (superadmin: 전체, admin: 자기 총판만)
 export async function GET(request: NextRequest) {
   try {
-    const admin = await checkSuperAdmin(request);
-    if (!admin) {
+    const user = await getAuthUser(request);
+    if (!user || (user.role !== 'superadmin' && user.role !== 'admin')) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
@@ -30,7 +30,10 @@ export async function GET(request: NextRequest) {
       .from('distributors')
       .select('id, user_id, site_name, bank_name, account_number, account_holder, slot_price, extension_price, users:user_id (username)');
 
-    if (distributorId) {
+    if (user.role === 'admin') {
+      // 총판은 자기 것만
+      distributorQuery = distributorQuery.eq('user_id', user.id);
+    } else if (distributorId) {
       distributorQuery = distributorQuery.eq('id', distributorId);
     }
 

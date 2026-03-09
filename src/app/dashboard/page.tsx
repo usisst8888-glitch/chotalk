@@ -1465,16 +1465,31 @@ export default function DashboardPage() {
             )}
             {/* admin(총판) 전용 탭 */}
             {isAdmin && (
-              <button
-                onClick={() => setActiveTab('bankAccount')}
-                className={`px-4 py-2 rounded-lg font-medium transition ${
-                  activeTab === 'bankAccount'
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
-                }`}
-              >
-                계좌 설정
-              </button>
+              <>
+                <button
+                  onClick={() => setActiveTab('bankAccount')}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    activeTab === 'bankAccount'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
+                  }`}
+                >
+                  총판 설정
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('settlement');
+                    fetchSettlements();
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    activeTab === 'settlement'
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
+                  }`}
+                >
+                  정산
+                </button>
+              </>
             )}
           </div>
           <div className="flex gap-2">
@@ -2976,7 +2991,7 @@ export default function DashboardPage() {
         )}
 
         {/* 정산 탭 (superadmin 전용) */}
-        {activeTab === 'settlement' && isSuperAdmin && (
+        {activeTab === 'settlement' && (isSuperAdmin || isAdmin) && (
           <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">정산</h2>
