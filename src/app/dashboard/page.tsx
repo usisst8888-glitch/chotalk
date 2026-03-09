@@ -1326,7 +1326,7 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
             {(distributor?.logo_url || !distributor) ? (
-              <BrandedLogo width={48} height={48} className="h-12 w-12 rounded-lg" />
+              <BrandedLogo className="h-12" />
             ) : (
               <span className="text-white font-bold text-lg">{distributor.site_name}</span>
             )}

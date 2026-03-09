@@ -16,7 +16,7 @@ export default function LoginPage() {
           <div className="text-center mb-8">
             {(distributor?.logo_url || !distributor) ? (
               <div className="flex justify-center mb-4">
-                <BrandedLogo />
+                <BrandedLogo className="h-[120px] rounded-xl" />
               </div>
             ) : (
               <h1 className="text-2xl font-bold text-white mb-4">{siteName}</h1>

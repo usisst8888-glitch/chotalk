@@ -15,7 +15,7 @@ export default function Home() {
         <div className="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
             {(distributor?.logo_url || !distributor) ? (
-              <BrandedLogo width={48} height={48} className="h-12 w-12 rounded-lg" />
+              <BrandedLogo className="h-12" />
             ) : (
               <span className="text-white font-bold text-lg">{siteName}</span>
             )}
