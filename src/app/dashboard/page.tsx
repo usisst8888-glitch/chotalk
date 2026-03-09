@@ -462,7 +462,7 @@ export default function DashboardPage() {
         body: JSON.stringify({ requestId }),
       });
       if (res.ok) {
-        alert('구매가 승인되었습니다. 슬롯이 추가되었습니다.');
+        alert('구매가 승인되었습니다. 인원이 추가되었습니다.');
         fetchPurchaseRequests();
       } else {
         const data = await res.json();
@@ -494,13 +494,13 @@ export default function DashboardPage() {
 
   // 관리자용: 슬롯 삭제
   const handleAdminDeleteSlot = async (slotId: string) => {
-    if (!confirm('정말 이 슬롯을 삭제하시겠습니까?\n연관된 모든 데이터(상황판, 메시지 로그 등)가 함께 삭제됩니다.')) return;
+    if (!confirm('정말 이 인원을 삭제하시겠습니까?\n연관된 모든 데이터(상황판, 메시지 로그 등)가 함께 삭제됩니다.')) return;
     try {
       const res = await fetch(`/api/admin/slots/${slotId}`, {
         method: 'DELETE',
       });
       if (res.ok) {
-        alert('슬롯이 삭제되었습니다.');
+        alert('인원이 삭제되었습니다.');
         fetchAllSlots();
       } else {
         const data = await res.json();
@@ -1093,8 +1093,8 @@ export default function DashboardPage() {
       );
       const successCount = results.filter(r => r.ok).length;
       const msg = batchExtendMode === 'add'
-        ? `${successCount}개 슬롯 만료일이 ${batchExtendDays}일 연장되었습니다.`
-        : `${successCount}개 슬롯 만료일이 오늘부터 ${batchExtendDays}일로 설정되었습니다.`;
+        ? `${successCount}개 인원 만료일이 ${batchExtendDays}일 연장되었습니다.`
+        : `${successCount}개 인원 만료일이 오늘부터 ${batchExtendDays}일로 설정되었습니다.`;
       alert(msg);
       setShowBatchExtendModal(false);
       setSelectedSlotIds(new Set());
@@ -2680,7 +2680,7 @@ export default function DashboardPage() {
                       <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">신청일</th>
                       <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">회원명</th>
                       <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">입금자명</th>
-                      <th className="w-[80px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">슬롯수</th>
+                      <th className="w-[80px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">인원수</th>
                       <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">금액</th>
                       <th className="w-[80px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">승인</th>
                     </tr>
@@ -3041,11 +3041,11 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex justify-between text-sm mt-2">
                         <span className="text-neutral-300">구매</span>
-                        <span className="text-white">{s.purchaseCount}건 ({s.purchaseSlots}슬롯) = {s.purchaseAmount.toLocaleString()}원</span>
+                        <span className="text-white">{s.purchaseCount}건 ({s.purchaseSlots}인원) = {s.purchaseAmount.toLocaleString()}원</span>
                       </div>
                       <div className="flex justify-between text-sm mt-1">
                         <span className="text-neutral-300">연장</span>
-                        <span className="text-white">{s.extensionCount}건 ({s.extensionSlots}슬롯) = {s.extensionAmount.toLocaleString()}원</span>
+                        <span className="text-white">{s.extensionCount}건 ({s.extensionSlots}인원) = {s.extensionAmount.toLocaleString()}원</span>
                       </div>
                       <div className="flex justify-between text-sm mt-2 pt-2 border-t border-neutral-600">
                         <span className="text-neutral-300">소속 유저</span>
@@ -3115,7 +3115,7 @@ export default function DashboardPage() {
             {/* 판매 금액 */}
             <div className="mb-6 pt-6 border-t border-neutral-700">
               <h3 className="text-sm font-medium text-neutral-300 mb-3">판매 금액</h3>
-              <p className="text-neutral-500 text-xs mb-3">유저에게 슬롯 판매/연장 시 적용되는 금액입니다.</p>
+              <p className="text-neutral-500 text-xs mb-3">유저에게 인원 판매/연장 시 적용되는 금액입니다.</p>
               <div className="max-w-md">
                 <label className="block text-xs text-neutral-400 mb-1">판매 금액 (원)</label>
                 <input
@@ -3125,7 +3125,7 @@ export default function DashboardPage() {
                   placeholder="100000"
                   className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
                 />
-                <p className="text-neutral-500 text-xs mt-1">슬롯 구매 및 연장에 동일하게 적용됩니다.</p>
+                <p className="text-neutral-500 text-xs mt-1">인원 구매 및 연장에 동일하게 적용됩니다.</p>
               </div>
             </div>
 
@@ -3286,7 +3286,7 @@ export default function DashboardPage() {
                   onChange={(e) => setNewDistributor({ ...newDistributor, slotPrice: parseInt(e.target.value) || 0, extensionPrice: parseInt(e.target.value) || 0 })}
                   className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-pink-500 outline-none"
                 />
-                <p className="text-neutral-500 text-xs mt-1">슬롯 구매/연장에 동일 적용</p>
+                <p className="text-neutral-500 text-xs mt-1">인원 구매/연장에 동일 적용</p>
               </div>
               <div className="flex gap-3 pt-2">
                 <button
@@ -3706,7 +3706,7 @@ export default function DashboardPage() {
 
             <div className="bg-indigo-900/30 border border-indigo-500/30 rounded-xl p-4 mb-4">
               <p className="text-indigo-300 text-sm">
-                선택된 슬롯: <span className="text-white font-bold">{selectedSlotIds.size}개</span>
+                선택된 인원: <span className="text-white font-bold">{selectedSlotIds.size}개</span>
               </p>
             </div>
 
