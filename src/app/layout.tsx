@@ -19,9 +19,14 @@ export async function generateMetadata(): Promise<Metadata> {
   const rawSiteName = headersList.get('x-distributor-site-name');
   const siteName = rawSiteName ? decodeURIComponent(rawSiteName) : '스타트봇';
 
+  const icons = rawSiteName
+    ? { icon: `/api/favicon?name=${encodeURIComponent(siteName)}` }
+    : { icon: '/favicon.ico' };
+
   return {
     title: siteName,
     description: `${siteName} 자동 카카오톡 발송기`,
+    icons,
     other: {
       'robots': 'index, follow',
       'kakaotalk-scrap': 'none',
