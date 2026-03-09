@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTheme } from '@/lib/theme-context';
+import BrandedLogo from '@/components/BrandedLogo';
 
 interface User {
   id: string;
@@ -66,6 +68,7 @@ const SHOP_NAMES = ['도파민', '유앤미', '달토', '퍼펙트', '엘리트'
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { distributor } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotCount, setSlotCount] = useState(0);
@@ -1321,7 +1324,10 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-neutral-950">
       <header className="bg-neutral-900 border-b border-neutral-800">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <img src="/logo.png" alt="Chotalk" className="h-12" />
+          <div className="flex items-center gap-3">
+            <BrandedLogo width={48} height={48} className="h-12 w-12 rounded-lg" />
+            <span className="text-white font-bold text-lg">{distributor?.site_name || '초톡봇'}</span>
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => router.push('/guide')}

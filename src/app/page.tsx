@@ -1,12 +1,22 @@
+'use client';
+
 import Link from "next/link";
+import { useTheme } from "@/lib/theme-context";
+import BrandedLogo from "@/components/BrandedLogo";
 
 export default function Home() {
+  const { distributor } = useTheme();
+  const siteName = distributor?.site_name || '초톡봇';
+
   return (
     <div className="min-h-screen bg-neutral-950 text-white">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-neutral-950/80 backdrop-blur-sm border-b border-neutral-800">
         <div className="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
-          <img src="/logo.png" alt="초톡" className="h-12" />
+          <div className="flex items-center gap-3">
+            <BrandedLogo width={48} height={48} className="h-12 w-12 rounded-lg" />
+            <span className="text-white font-bold text-lg">{siteName}</span>
+          </div>
           <div className="flex gap-3">
             <Link
               href="/login"
@@ -111,7 +121,7 @@ export default function Home() {
               </svg>
             </div>
             <h2 className="text-2xl font-bold">
-              <span className="text-indigo-400">초톡봇</span>이 해결해드립니다
+              <span className="text-indigo-400">{siteName}</span>이 해결해드립니다
             </h2>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
@@ -161,7 +171,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-neutral-800 py-10 px-6">
         <div className="max-w-5xl mx-auto flex flex-col items-center gap-3">
-          <p className="text-white font-bold text-lg tracking-wide">초톡봇</p>
+          <p className="text-white font-bold text-lg tracking-wide">{siteName}</p>
           <div className="flex items-center gap-2 text-neutral-500 text-sm">
             <span>Developed by</span>
             <span className="text-indigo-400 font-medium">AssistSolution</span>

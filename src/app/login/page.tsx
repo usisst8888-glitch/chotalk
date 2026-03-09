@@ -1,8 +1,14 @@
+'use client';
+
 import Link from 'next/link';
 import { LoginForm } from '@/components/auth';
 import BrandedLogo from '@/components/BrandedLogo';
+import { useTheme } from '@/lib/theme-context';
 
 export default function LoginPage() {
+  const { distributor } = useTheme();
+  const siteName = distributor?.site_name || '초톡봇';
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-950 px-4">
       <div className="w-full max-w-md">
@@ -11,6 +17,7 @@ export default function LoginPage() {
             <div className="flex justify-center mb-4">
               <BrandedLogo />
             </div>
+            <h1 className="text-xl font-bold text-white mb-2">{siteName}</h1>
             <p className="text-neutral-400">계정에 로그인하세요</p>
           </div>
 
