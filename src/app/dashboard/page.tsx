@@ -47,6 +47,9 @@ interface Settlement {
   totalSalesAmount: number;
   costToHQ: number;
   settlementAmount: number;
+  isPaid: boolean;
+  paidAt: string | null;
+  paidAmount: number;
 }
 
 interface Slot {
@@ -3038,6 +3041,10 @@ export default function DashboardPage() {
         {/* 정산 탭 (superadmin 전용) */}
         {activeTab === 'settlement' && (isSuperAdmin || isAdmin) && (
           <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
+            <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+              <p className="text-amber-400 text-sm font-medium">정산 안내</p>
+              <p className="text-neutral-300 text-xs mt-1">정산 기간: 매월 1일 ~ 말일 | 입금 일정: 다음 달 1~5일 이내 입금</p>
+            </div>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">정산</h2>
               <div className="flex items-center gap-2">
@@ -3064,14 +3071,66 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-3">
                         <span className="text-white font-bold text-lg">{s.siteName}</span>
                         <span className="text-neutral-400 text-sm">({s.username})</span>
+                        {s.isPaid ? (
+                          <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full">입금 완료</span>
+                        ) : (
+                          <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded-full">미입금</span>
+                        )}
                       </div>
-                      <div className="text-right">
-                        <span className="text-neutral-500 text-xs block">정산 금액</span>
-                        <span className={`font-bold text-xl ${s.settlementAmount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {s.settlementAmount.toLocaleString()}원
-                        </span>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <span className="text-neutral-500 text-xs block">정산 금액</span>
+                          <span className={`font-bold text-xl ${s.settlementAmount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {s.settlementAmount.toLocaleString()}원
+                          </span>
+                        </div>
+                        {isSuperAdmin && (
+                          <button
+                            onClick={async () => {
+                              if (s.isPaid) {
+                                if (!confirm('입금 취소하시겠습니까?')) return;
+                                try {
+                                  const res = await fetch('/api/admin/settlement', {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+                                    body: JSON.stringify({ distributorId: s.distributorId, month: settlementMonth, isPaid: false }),
+                                  });
+                                  if (res.ok) fetchSettlements(settlementMonth);
+                                  else alert('처리에 실패했습니다.');
+                                } catch { alert('오류가 발생했습니다.'); }
+                              } else {
+                                const amountStr = prompt(`${s.siteName}에 입금할 금액을 입력하세요.`, String(s.settlementAmount));
+                                if (amountStr === null) return;
+                                const paidAmount = parseInt(amountStr.replace(/,/g, ''));
+                                if (isNaN(paidAmount) || paidAmount <= 0) { alert('올바른 금액을 입력해주세요.'); return; }
+                                try {
+                                  const res = await fetch('/api/admin/settlement', {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+                                    body: JSON.stringify({ distributorId: s.distributorId, month: settlementMonth, isPaid: true, paidAmount }),
+                                  });
+                                  if (res.ok) fetchSettlements(settlementMonth);
+                                  else alert('처리에 실패했습니다.');
+                                } catch { alert('오류가 발생했습니다.'); }
+                              }
+                            }}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                              s.isPaid
+                                ? 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+                                : 'bg-emerald-600 text-white hover:bg-emerald-500'
+                            }`}
+                          >
+                            {s.isPaid ? '입금 취소' : '입금 처리'}
+                          </button>
+                        )}
                       </div>
                     </div>
+                    {s.isPaid && s.paidAt && (
+                      <div className="mb-3 p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-between">
+                        <span className="text-emerald-400 text-xs">입금 완료: {new Date(s.paidAt).toLocaleDateString('ko-KR')}</span>
+                        <span className="text-emerald-400 text-sm font-bold">{s.paidAmount.toLocaleString()}원 입금</span>
+                      </div>
+                    )}
 
                     {/* 계좌 정보 */}
                     <div className="mb-4 p-3 bg-neutral-700/50 rounded-lg">

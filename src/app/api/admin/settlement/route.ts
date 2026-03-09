@@ -2,6 +2,43 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
 import { getAuthUser } from '@/lib/auth';
 
+// 정산 입금 처리 (superadmin만)
+export async function PATCH(request: NextRequest) {
+  try {
+    const user = await getAuthUser(request);
+    if (!user || user.role !== 'superadmin') {
+      return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
+    }
+
+    const { distributorId, month, isPaid, paidAmount } = await request.json();
+
+    if (!distributorId || !month) {
+      return NextResponse.json({ error: '필수 정보가 누락되었습니다.' }, { status: 400 });
+    }
+
+    const supabase = getSupabase();
+
+    const { error } = await supabase
+      .from('settlement_records')
+      .upsert({
+        distributor_id: distributorId,
+        month,
+        is_paid: isPaid,
+        paid_amount: isPaid ? (paidAmount || 0) : 0,
+        paid_at: isPaid ? new Date().toISOString() : null,
+        paid_by: isPaid ? user.id : null,
+      }, { onConflict: 'distributor_id,month' });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: isPaid ? '입금 처리 완료' : '입금 취소 완료' });
+  } catch {
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
+  }
+}
+
 // 총판별 정산 데이터 조회 (superadmin: 전체, admin: 자기 총판만)
 export async function GET(request: NextRequest) {
   try {
@@ -40,6 +77,21 @@ export async function GET(request: NextRequest) {
     const { data: distributors, error: distError } = await distributorQuery;
     if (distError) {
       return NextResponse.json({ error: distError.message }, { status: 500 });
+    }
+
+    // 정산 입금 기록 조회
+    const distributorIds = (distributors || []).map(d => d.id);
+    let settlementRecords: Record<string, { isPaid: boolean; paidAt: string | null; paidAmount: number }> = {};
+    if (distributorIds.length > 0) {
+      const { data: records } = await supabase
+        .from('settlement_records')
+        .select('distributor_id, is_paid, paid_at, paid_amount')
+        .in('distributor_id', distributorIds)
+        .eq('month', month);
+
+      for (const r of records || []) {
+        settlementRecords[r.distributor_id] = { isPaid: r.is_paid, paidAt: r.paid_at, paidAmount: r.paid_amount || 0 };
+      }
     }
 
     const settlements = [];
@@ -92,6 +144,7 @@ export async function GET(request: NextRequest) {
       const costToHQ = totalSlotCount * costPrice; // 본사 입금액
       const settlementAmount = totalSalesAmount - costToHQ; // 정산 금액 (총판 수익)
 
+      const record = settlementRecords[dist.id];
       settlements.push({
         distributorId: dist.id,
         siteName: dist.site_name,
@@ -106,6 +159,9 @@ export async function GET(request: NextRequest) {
         totalSalesAmount,
         costToHQ,
         settlementAmount,
+        isPaid: record?.isPaid || false,
+        paidAt: record?.paidAt || null,
+        paidAmount: record?.paidAmount || 0,
       });
     }
 
