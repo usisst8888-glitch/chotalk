@@ -13,17 +13,24 @@ export async function handleCancel(
 
   console.log('handleCancel called for:', slot.girl_name, 'roomNumber:', roomNumber);
 
-  // 가장 최근 레코드 찾기 (진행 중 또는 종료 상태 모두 취소 가능)
-  const { data: recentRecord, error: findError } = await supabase
+  // 가장 최근 레코드 찾기
+  // 방번호가 있으면 해당 방의 최근 레코드를 직접 찾음 (다른 방 레코드와 충돌 방지)
+  let query = supabase
     .from('status_board')
     .select('id, room_number, trigger_type')
-    .eq('slot_id', slot.id)
+    .eq('slot_id', slot.id);
+
+  if (roomNumber) {
+    query = query.eq('room_number', roomNumber);
+  }
+
+  const { data: recentRecord, error: findError } = await query
     .order('created_at', { ascending: false })
     .limit(1)
     .single();
 
   if (findError || !recentRecord) {
-    console.log('handleCancel - no record found:', findError);
+    console.log('handleCancel - no record found:', findError, 'room:', roomNumber);
     return {
       type: 'cancel_failed',
       slotId: slot.id,
@@ -40,17 +47,6 @@ export async function handleCancel(
       slotId: slot.id,
       girlName: slot.girl_name,
       reason: '이미 취소된 레코드',
-    };
-  }
-
-  // 방번호가 일치하는지 확인 (메시지에 방번호가 있으면 반드시 일치해야 함)
-  if (roomNumber && recentRecord.room_number !== roomNumber) {
-    console.log('handleCancel - room number mismatch:', recentRecord.room_number, '!=', roomNumber);
-    return {
-      type: 'ignored',
-      slotId: slot.id,
-      girlName: slot.girl_name,
-      reason: `방번호 불일치 (진행중: ${recentRecord.room_number}, 메시지: ${roomNumber})`,
     };
   }
 
