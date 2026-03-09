@@ -35,7 +35,7 @@ export async function proxy(request: NextRequest) {
           distributorHeaders = new Headers(request.headers);
           distributorHeaders.set('x-distributor-id', distributor.id);
           distributorHeaders.set('x-distributor-user-id', distributor.user_id);
-          distributorHeaders.set('x-distributor-site-name', distributor.site_name);
+          distributorHeaders.set('x-distributor-site-name', encodeURIComponent(distributor.site_name));
         }
       }
     } catch {

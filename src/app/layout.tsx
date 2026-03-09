@@ -16,7 +16,8 @@ const geistMono = Geist_Mono({
 
 export async function generateMetadata(): Promise<Metadata> {
   const headersList = await headers();
-  const siteName = headersList.get('x-distributor-site-name') || '스타트봇';
+  const rawSiteName = headersList.get('x-distributor-site-name');
+  const siteName = rawSiteName ? decodeURIComponent(rawSiteName) : '스타트봇';
 
   return {
     title: siteName,
