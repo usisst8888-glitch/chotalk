@@ -41,6 +41,8 @@ export function DistributorProvider({ children }: { children: ReactNode }) {
             // CSS 변수 적용
             document.documentElement.style.setProperty('--color-primary', data.distributor.primary_color);
             document.documentElement.style.setProperty('--color-secondary', data.distributor.secondary_color);
+            // 브라우저 탭 제목 변경
+            document.title = data.distributor.site_name;
           }
         }
       } catch {
