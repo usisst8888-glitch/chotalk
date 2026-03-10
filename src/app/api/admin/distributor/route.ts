@@ -89,7 +89,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
-    const { id, userId, domain, siteName, primaryColor, secondaryColor, isActive, logoUrl, bankName, accountNumber, accountHolder, slotPrice, extensionPrice, costPrice } = await request.json();
+    const { id, domain, siteName, primaryColor, secondaryColor, isActive, logoUrl, bankName, accountNumber, accountHolder, slotPrice, extensionPrice, costPrice } = await request.json();
 
     if (!id) {
       return NextResponse.json({ error: 'ID가 필요합니다.' }, { status: 400 });
@@ -97,7 +97,6 @@ export async function PATCH(request: NextRequest) {
 
     const supabase = getSupabase();
     const updateData: Record<string, unknown> = {};
-    if (userId !== undefined) updateData.user_id = userId;
     if (domain !== undefined) updateData.domain = domain;
     if (siteName !== undefined) updateData.site_name = siteName;
     if (primaryColor !== undefined) updateData.primary_color = primaryColor;
