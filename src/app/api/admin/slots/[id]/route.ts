@@ -90,6 +90,11 @@ export async function PATCH(
       updated_at: getKoreanTime(),
     };
 
+    // 회원 변경
+    if (body.userId !== undefined) {
+      updateData.user_id = body.userId;
+    }
+
     // 카카오 ID 수정
     if (body.kakaoId !== undefined) {
       updateData.kakao_id = body.kakaoId;

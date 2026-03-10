@@ -54,6 +54,7 @@ interface Settlement {
 
 interface Slot {
   id: string;
+  user_id: string;
   girl_name: string;
   shop_name: string | null;  // 가게명
   target_room: string;  // 발송할 채팅방
@@ -61,6 +62,7 @@ interface Slot {
   is_active: boolean;
   expires_at: string;
   created_at: string;
+  username?: string;
   distributor_name?: string;  // 소속 총판명
 }
 
@@ -121,6 +123,7 @@ export default function DashboardPage() {
   const [showAddKakaoIdModal, setShowAddKakaoIdModal] = useState(false);
   const [newKakaoId, setNewKakaoId] = useState({ kakaoId: '', description: '' });
   const [editingSlotKakaoId, setEditingSlotKakaoId] = useState<string | null>(null);
+  const [editingSlotUserId, setEditingSlotUserId] = useState<string | null>(null);
   const [editingKakaoIdDescription, setEditingKakaoIdDescription] = useState<string | null>(null);
   const [editDescriptionValue, setEditDescriptionValue] = useState('');
   // 관리자용 연장 요청 관리
@@ -166,7 +169,7 @@ export default function DashboardPage() {
   const [newDistributorLogo, setNewDistributorLogo] = useState<File | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
   const [editingDistributor, setEditingDistributor] = useState<string | null>(null);
-  const [editDistForm, setEditDistForm] = useState({ domain: '', siteName: '', bankName: '', accountNumber: '', accountHolder: '', slotPrice: 100000, costPrice: 20000, primaryColor: '#4f46e5', secondaryColor: '#7c3aed' });
+  const [editDistForm, setEditDistForm] = useState({ userId: '', domain: '', siteName: '', bankName: '', accountNumber: '', accountHolder: '', slotPrice: 100000, costPrice: 20000, primaryColor: '#4f46e5', secondaryColor: '#7c3aed' });
   // 계좌/판매금액 설정 (admin/총판)
   const [distBankName, setDistBankName] = useState('');
   const [distAccountNumber, setDistAccountNumber] = useState('');
@@ -513,6 +516,25 @@ export default function DashboardPage() {
       }
     } catch {
       alert('삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 관리자용: 슬롯의 회원 변경
+  const handleChangeSlotUser = async (slotId: string, newUserId: string) => {
+    try {
+      const res = await fetch(`/api/admin/slots/${slotId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: newUserId }),
+      });
+      if (res.ok) {
+        setEditingSlotUserId(null);
+        fetchAllSlots();
+      } else {
+        alert('수정에 실패했습니다.');
+      }
+    } catch {
+      alert('서버 오류가 발생했습니다.');
     }
   };
 
@@ -1739,7 +1761,32 @@ export default function DashboardPage() {
                           <span className="block w-4 h-4 bg-white rounded-full" />
                         </button>
                       </td>
-                      <td className="px-4 py-3 text-center text-orange-400 font-medium">{slot.username}</td>
+                      <td className="px-4 py-3 text-center">
+                        {editingSlotUserId === slot.id ? (
+                          <select
+                            defaultValue={slot.user_id}
+                            onChange={(e) => handleChangeSlotUser(slot.id, e.target.value)}
+                            onBlur={() => setEditingSlotUserId(null)}
+                            autoFocus
+                            className="px-2 py-1 bg-neutral-800 border border-orange-500 rounded text-white text-sm focus:outline-none"
+                          >
+                            <option value={slot.user_id}>{slot.username}</option>
+                            {allUsers
+                              .filter((u) => u.id !== slot.user_id)
+                              .map((u) => (
+                                <option key={u.id} value={u.id}>{u.username}</option>
+                              ))}
+                          </select>
+                        ) : (
+                          <span
+                            onClick={() => setEditingSlotUserId(slot.id)}
+                            className="text-orange-400 font-medium cursor-pointer hover:text-orange-300 transition"
+                            title="클릭하여 회원 변경"
+                          >
+                            {slot.username}
+                          </span>
+                        )}
+                      </td>
                       {isSuperAdmin && (
                         <td className="px-4 py-3 text-center">
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -2016,7 +2063,30 @@ export default function DashboardPage() {
                   <div className="space-y-2 text-sm">
                     <div className="flex border-b border-neutral-800 pb-2">
                       <span className="text-neutral-600 w-28 flex-shrink-0">회원</span>
-                      <span className="text-orange-400 font-semibold">{slot.username}</span>
+                      {editingSlotUserId === slot.id ? (
+                        <select
+                          defaultValue={slot.user_id}
+                          onChange={(e) => handleChangeSlotUser(slot.id, e.target.value)}
+                          onBlur={() => setEditingSlotUserId(null)}
+                          autoFocus
+                          className="px-2 py-1 bg-neutral-800 border border-orange-500 rounded text-white text-sm focus:outline-none"
+                        >
+                          <option value={slot.user_id}>{slot.username}</option>
+                          {allUsers
+                            .filter((u) => u.id !== slot.user_id)
+                            .map((u) => (
+                              <option key={u.id} value={u.id}>{u.username}</option>
+                            ))}
+                        </select>
+                      ) : (
+                        <span
+                          onClick={() => setEditingSlotUserId(slot.id)}
+                          className="text-orange-400 font-semibold cursor-pointer hover:text-orange-300 transition"
+                          title="클릭하여 회원 변경"
+                        >
+                          {slot.username}
+                        </span>
+                      )}
                     </div>
                     {isSuperAdmin && (
                       <div className="flex border-b border-neutral-800 pb-2">
@@ -2885,7 +2955,7 @@ export default function DashboardPage() {
                           onClick={() => {
                             setEditingDistributor(editingDistributor === d.id ? null : d.id);
                             setEditDistForm({
-                              domain: d.domain, siteName: d.site_name,
+                              userId: d.user_id, domain: d.domain, siteName: d.site_name,
                               bankName: d.bank_name || '', accountNumber: d.account_number || '', accountHolder: d.account_holder || '',
                               slotPrice: d.slot_price || 100000, costPrice: d.cost_price || 20000,
                               primaryColor: d.primary_color, secondaryColor: d.secondary_color,
@@ -2955,6 +3025,15 @@ export default function DashboardPage() {
                     {/* 수정 폼 */}
                     {editingDistributor === d.id && (
                       <div className="mt-4 pt-4 border-t border-neutral-700 space-y-3">
+                        <div>
+                          <label className="block text-xs text-neutral-400 mb-1">담당자</label>
+                          <select value={editDistForm.userId} onChange={(e) => setEditDistForm({ ...editDistForm, userId: e.target.value })}
+                            className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            {allUsers.filter(u => u.role !== 'superadmin').map(u => (
+                              <option key={u.id} value={u.id}>{u.username} ({u.role === 'admin' ? '총판' : '일반회원'})</option>
+                            ))}
+                          </select>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
                             <label className="block text-xs text-neutral-400 mb-1">도메인</label>
@@ -3014,6 +3093,7 @@ export default function DashboardPage() {
                         </div>
                         <button
                           onClick={() => handleUpdateDistributor(d.id, {
+                            userId: editDistForm.userId,
                             domain: editDistForm.domain,
                             siteName: editDistForm.siteName,
                             bankName: editDistForm.bankName,

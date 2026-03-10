@@ -162,9 +162,32 @@ export async function PATCH(
     const updateData: Record<string, string | null> = {};
     if (girlName) {
       updateData.girl_name = girlName;
-      updateData.target_room = girlName; // target_room은 girl_name과 동일
+      updateData.target_room = girlName;
     }
     if (shopName !== undefined) updateData.shop_name = shopName || null;
+
+    // 같은 가게+아가씨 이름 중복 체크 (자기 자신 제외)
+    if (girlName || shopName !== undefined) {
+      const checkGirlName = girlName || (await supabase.from('slots').select('girl_name').eq('id', id).single()).data?.girl_name;
+      const checkShopName = shopName !== undefined ? (shopName || null) : (await supabase.from('slots').select('shop_name').eq('id', id).single()).data?.shop_name;
+
+      let dupQuery = supabase
+        .from('slots')
+        .select('id', { count: 'exact', head: true })
+        .eq('girl_name', checkGirlName)
+        .neq('id', id);
+
+      if (checkShopName) {
+        dupQuery = dupQuery.eq('shop_name', checkShopName);
+      } else {
+        dupQuery = dupQuery.is('shop_name', null);
+      }
+
+      const { count: dupCount } = await dupQuery;
+      if ((dupCount || 0) > 0) {
+        return NextResponse.json({ error: '같은 가게에 동일한 아가씨 이름이 이미 등록되어 있습니다.' }, { status: 400 });
+      }
+    }
 
     let updateQ = supabase.from('slots').update(updateData).eq('id', id);
     if (!isAdmin) updateQ = updateQ.eq('user_id', payload.userId);
