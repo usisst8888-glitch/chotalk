@@ -142,7 +142,7 @@ export async function PATCH(
     }
 
     // 만료일 연장 (superadmin 전용)
-    if (typeof body.extendDays === 'number' && body.extendDays > 0) {
+    if (typeof body.extendDays === 'number' && body.extendDays !== 0) {
       if (authUser.role !== 'superadmin') {
         return NextResponse.json({ error: '만료일 변경은 슈퍼관리자만 가능합니다.' }, { status: 403 });
       }

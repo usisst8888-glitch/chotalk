@@ -1077,15 +1077,27 @@ export default function DashboardPage() {
   };
 
   const toggleAllSlots = () => {
-    if (selectedSlotIds.size === allSlots.length) {
-      setSelectedSlotIds(new Set());
+    const filteredSlots = filterUserIds.length > 0
+      ? allSlots.filter(s => filterUserIds.includes(s.user_id))
+      : allSlots;
+    const allFilteredSelected = filteredSlots.length > 0 && filteredSlots.every(s => selectedSlotIds.has(s.id));
+    if (allFilteredSelected) {
+      setSelectedSlotIds(prev => {
+        const next = new Set(prev);
+        filteredSlots.forEach(s => next.delete(s.id));
+        return next;
+      });
     } else {
-      setSelectedSlotIds(new Set(allSlots.map(s => s.id)));
+      setSelectedSlotIds(prev => {
+        const next = new Set(prev);
+        filteredSlots.forEach(s => next.add(s.id));
+        return next;
+      });
     }
   };
 
   const handleBatchExtend = async () => {
-    if (selectedSlotIds.size === 0 || batchExtendDays <= 0) return;
+    if (selectedSlotIds.size === 0 || batchExtendDays === 0) return;
     setSubmitting(true);
     try {
       const payload = batchExtendMode === 'add'
@@ -1102,7 +1114,9 @@ export default function DashboardPage() {
       );
       const successCount = results.filter(r => r.ok).length;
       const msg = batchExtendMode === 'add'
-        ? `${successCount}개 인원 만료일이 ${batchExtendDays}일 연장되었습니다.`
+        ? batchExtendDays > 0
+          ? `${successCount}개 인원 만료일이 ${batchExtendDays}일 연장되었습니다.`
+          : `${successCount}개 인원 만료일이 ${Math.abs(batchExtendDays)}일 차감되었습니다.`
         : `${successCount}개 인원 만료일이 오늘부터 ${batchExtendDays}일로 설정되었습니다.`;
       alert(msg);
       setShowBatchExtendModal(false);
@@ -1713,20 +1727,26 @@ export default function DashboardPage() {
                       <button
                         onClick={toggleAllSlots}
                         className={`w-5 h-5 rounded border-2 flex items-center justify-center transition mx-auto ${
-                          allSlots.length > 0 && selectedSlotIds.size === allSlots.length
-                            ? 'bg-indigo-600 border-indigo-600'
-                            : selectedSlotIds.size > 0
-                            ? 'bg-indigo-600/30 border-indigo-500'
-                            : 'border-neutral-600 hover:border-neutral-400'
+                          (() => {
+                            const filtered = filterUserIds.length > 0 ? allSlots.filter(s => filterUserIds.includes(s.user_id)) : allSlots;
+                            const allChecked = filtered.length > 0 && filtered.every(s => selectedSlotIds.has(s.id));
+                            const someChecked = filtered.some(s => selectedSlotIds.has(s.id));
+                            return allChecked ? 'bg-indigo-600 border-indigo-600' : someChecked ? 'bg-indigo-600/30 border-indigo-500' : 'border-neutral-600 hover:border-neutral-400';
+                          })()
                         }`}
                       >
-                        {allSlots.length > 0 && selectedSlotIds.size === allSlots.length ? (
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        ) : selectedSlotIds.size > 0 ? (
-                          <span className="w-2.5 h-0.5 bg-indigo-400 rounded" />
-                        ) : null}
+                        {(() => {
+                          const filtered = filterUserIds.length > 0 ? allSlots.filter(s => filterUserIds.includes(s.user_id)) : allSlots;
+                          const allChecked = filtered.length > 0 && filtered.every(s => selectedSlotIds.has(s.id));
+                          const someChecked = filtered.some(s => selectedSlotIds.has(s.id));
+                          return allChecked ? (
+                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : someChecked ? (
+                            <span className="w-2.5 h-0.5 bg-indigo-400 rounded" />
+                          ) : null;
+                        })()}
                       </button>
                     </th>
                   )}
@@ -3901,18 +3921,46 @@ export default function DashboardPage() {
 
             <div className="mb-4">
               <label className="block text-sm font-medium text-neutral-400 mb-2">
-                {batchExtendMode === 'add' ? '연장 일수' : '남은 기간 (오늘부터)'}
+                {batchExtendMode === 'add' ? '연장/차감 일수 (마이너스 = 차감)' : '남은 기간 (오늘부터)'}
               </label>
               <div className="flex gap-2">
                 <input
                   type="number"
                   value={batchExtendDays}
-                  onChange={(e) => setBatchExtendDays(Math.max(1, parseInt(e.target.value) || 1))}
-                  min={1}
-                  className="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-center text-lg font-bold focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    if (batchExtendMode === 'set') {
+                      setBatchExtendDays(Math.max(1, val || 1));
+                    } else {
+                      setBatchExtendDays(isNaN(val) ? 0 : val);
+                    }
+                  }}
+                  min={batchExtendMode === 'set' ? 1 : undefined}
+                  className={`flex-1 px-4 py-3 bg-neutral-800 border rounded-xl text-center text-lg font-bold focus:ring-2 focus:border-transparent outline-none transition ${
+                    batchExtendDays < 0
+                      ? 'border-red-500/50 text-red-400 focus:ring-red-500'
+                      : 'border-neutral-700 text-white focus:ring-emerald-500'
+                  }`}
                 />
                 <span className="flex items-center text-neutral-400 font-medium">일</span>
               </div>
+              {batchExtendMode === 'add' && (
+                <div className="flex gap-2 mt-2">
+                  {[-30, -15, -7, -3].map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setBatchExtendDays(d)}
+                      className={`flex-1 py-2 text-sm rounded-lg font-medium transition ${
+                        batchExtendDays === d
+                          ? 'bg-red-600 text-white'
+                          : 'bg-neutral-800 hover:bg-neutral-700 text-red-400'
+                      }`}
+                    >
+                      {d}일
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="flex gap-2 mt-2">
                 {[3, 7, 15, 30].map((d) => (
                   <button
@@ -3924,7 +3972,7 @@ export default function DashboardPage() {
                         : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-400'
                     }`}
                   >
-                    {d}일
+                    +{d}일
                   </button>
                 ))}
               </div>
@@ -3934,9 +3982,17 @@ export default function DashboardPage() {
               <button
                 onClick={handleBatchExtend}
                 disabled={submitting}
-                className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 text-white font-semibold rounded-xl transition"
+                className={`flex-1 py-3 text-white font-semibold rounded-xl transition ${
+                  batchExtendDays < 0
+                    ? 'bg-red-600 hover:bg-red-500 disabled:bg-red-800'
+                    : 'bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800'
+                }`}
               >
-                {submitting ? '처리 중...' : batchExtendMode === 'add' ? `${selectedSlotIds.size}개 ${batchExtendDays}일 연장` : `${selectedSlotIds.size}개 오늘부터 ${batchExtendDays}일 설정`}
+                {submitting ? '처리 중...' : batchExtendMode === 'add'
+                  ? batchExtendDays >= 0
+                    ? `${selectedSlotIds.size}개 ${batchExtendDays}일 연장`
+                    : `${selectedSlotIds.size}개 ${Math.abs(batchExtendDays)}일 차감`
+                  : `${selectedSlotIds.size}개 오늘부터 ${batchExtendDays}일 설정`}
               </button>
               <button
                 onClick={() => setShowBatchExtendModal(false)}
