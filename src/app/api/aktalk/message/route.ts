@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
 import { ROOM_TYPE_TABLE, VALID_ROOM_TYPES } from '../config';
+import { parseGongjiMessage } from '../gongji-parser';
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,7 +55,51 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 테이블별 INSERT 데이터 구성
+    // 공지방: 라인업 파싱 → 층별 담당자 업데이트
+    if (roomType === '공지방') {
+      const assignments = parseGongjiMessage(message);
+
+      if (assignments.length === 0) {
+        return NextResponse.json({ success: true, stored: false, reason: '라인업 파싱 결과 없음' });
+      }
+
+      // 해당 가게 기존 데이터 삭제
+      const { error: deleteError } = await supabase
+        .from('aktalk_gongji')
+        .delete()
+        .eq('shop_name', shopName);
+
+      if (deleteError) {
+        console.error('aktalk_gongji delete error:', deleteError);
+        return NextResponse.json({ error: 'DB 삭제 실패', detail: deleteError.message }, { status: 500 });
+      }
+
+      // 새 데이터 일괄 INSERT
+      const insertRows = assignments.map(a => ({
+        shop_name: shopName,
+        floor: a.floor,
+        name: a.name,
+        phone: a.phone,
+      }));
+
+      const { error: insertError } = await supabase
+        .from('aktalk_gongji')
+        .insert(insertRows);
+
+      if (insertError) {
+        console.error('aktalk_gongji insert error:', insertError);
+        return NextResponse.json({ error: 'DB 저장 실패', detail: insertError.message }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        stored: true,
+        count: assignments.length,
+        assignments,
+      });
+    }
+
+    // 아톡, 초톡: 기존 방식 INSERT
     const insertData: Record<string, unknown> = {
       shop_name: shopName,
       room_name: room,
@@ -63,7 +108,6 @@ export async function POST(request: NextRequest) {
       received_at: receivedAt || new Date().toISOString(),
     };
 
-    // 아톡만 team_name 포함
     if (roomType === '아톡') {
       insertData.team_name = teamName;
     }

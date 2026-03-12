@@ -2,7 +2,6 @@
 export const ROOM_TYPE_TABLE: Record<string, string> = {
   '아톡': 'aktalk_atok',
   '공지방': 'aktalk_gongji',
-  '웨톡': 'aktalk_wetok',
   '초톡': 'aktalk_chotok',
 };
 
