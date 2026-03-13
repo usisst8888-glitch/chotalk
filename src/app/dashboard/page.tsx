@@ -4,70 +4,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/lib/theme-context';
 import BrandedLogo from '@/components/BrandedLogo';
-
-interface User {
-  id: string;
-  username: string;
-  role: 'user' | 'admin' | 'superadmin';
-  created_at: string;
-  parent_id?: string | null;
-  bank_account?: string | null;
-}
-
-interface Distributor {
-  id: string;
-  user_id: string;
-  domain: string;
-  site_name: string;
-  logo_url: string | null;
-  primary_color: string;
-  secondary_color: string;
-  is_active: boolean;
-  created_at: string;
-  username?: string;
-  bank_name: string | null;
-  account_number: string | null;
-  account_holder: string | null;
-  slot_price: number;
-  extension_price: number;
-  cost_price: number;
-}
-
-interface Settlement {
-  distributorId: string;
-  siteName: string;
-  username: string;
-  bankName: string | null;
-  accountNumber: string | null;
-  accountHolder: string | null;
-  slotPrice: number;
-  costPrice: number;
-  userCount: number;
-  totalSlotCount: number;
-  totalSalesAmount: number;
-  costToHQ: number;
-  settlementAmount: number;
-  isPaid: boolean;
-  paidAt: string | null;
-  paidAmount: number;
-}
-
-interface Slot {
-  id: string;
-  user_id: string;
-  girl_name: string;
-  shop_name: string | null;  // 가게명
-  target_room: string;  // 발송할 채팅방
-  kakao_id: string;
-  is_active: boolean;
-  expires_at: string;
-  created_at: string;
-  username?: string;
-  distributor_name?: string;  // 소속 총판명
-}
-
-// 가게명 프리셋
-const SHOP_NAMES = ['도파민', '유앤미', '달토', '퍼펙트', '엘리트'];
+import { User, Distributor, Settlement, Slot, SHOP_NAMES } from './types';
+import {
+  SlotsTab, UsersTab, KakaoIdsTab, EventTimesTab,
+  ExtensionsTab, PurchasesTab, RoomsTab, DistributorsTab,
+  SettlementTab, BankAccountTab, ErrandTalkTab, ChoiceTalkTab, PackageTab,
+  ServiceManageTab,
+} from './tabs';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -110,7 +53,8 @@ export default function DashboardPage() {
   const [showAdminExtendModal, setShowAdminExtendModal] = useState(false);
   const [adminExtendDays, setAdminExtendDays] = useState(30);
   const [adminExtendMode, setAdminExtendMode] = useState<'add' | 'set'>('add');
-  const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'purchases' | 'rooms' | 'distributors' | 'bankAccount' | 'settlement'>('slots');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'purchases' | 'rooms' | 'distributors' | 'bankAccount' | 'settlement' | 'errandTalk' | 'choiceTalk' | 'package' | 'serviceManage'>('slots');
   // 관리자용 회원관리
   const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; nickname: string | null; phone: string; role: string; slot_count: number; parent_id: string | null; domain: string | null; created_at: string }>>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -1350,21 +1294,100 @@ export default function DashboardPage() {
               <span className="text-white font-bold text-lg">{distributor.site_name}</span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          {/* 데스크톱 메뉴 */}
+          <div className="hidden md:flex items-center gap-2">
+            <a
+              href="https://open.kakao.com/o/sWYX3Yci"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-2 text-sm text-yellow-400 hover:text-yellow-300 hover:bg-neutral-800 rounded-lg transition flex items-center gap-1.5"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 3C6.48 3 2 6.58 2 11c0 2.83 1.82 5.32 4.56 6.72-.2.74-.73 2.68-.84 3.09-.13.52.19.51.4.37.17-.11 2.62-1.78 3.68-2.51.72.11 1.46.16 2.2.16 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
+              </svg>
+              고객센터
+            </a>
+            <a
+              href="/download/startalkbot.apk"
+              className="px-3 py-2 text-sm text-green-400 hover:text-green-300 hover:bg-neutral-800 rounded-lg transition flex items-center gap-1.5"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              앱 다운로드
+            </a>
             <button
               onClick={() => router.push('/guide')}
-              className="px-4 py-2 text-sm text-neutral-500 hover:text-white hover:bg-neutral-800 rounded-lg transition"
+              className="px-3 py-2 text-sm text-neutral-500 hover:text-white hover:bg-neutral-800 rounded-lg transition"
             >
               사용방법
             </button>
             <button
               onClick={handleLogout}
-              className="px-4 py-2 text-sm text-neutral-500 hover:text-white hover:bg-neutral-800 rounded-lg transition"
+              className="px-3 py-2 text-sm text-neutral-500 hover:text-white hover:bg-neutral-800 rounded-lg transition"
             >
               로그아웃
             </button>
           </div>
+          {/* 모바일 햄버거 버튼 */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-lg transition"
+          >
+            {mobileMenuOpen ? (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
         </div>
+        {/* 모바일 메뉴 드롭다운 */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-neutral-800 px-4 py-3 space-y-1">
+            <a
+              href="https://open.kakao.com/o/sWYX3Yci"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-3 py-2.5 text-sm text-yellow-400 hover:bg-neutral-800 rounded-lg transition"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 3C6.48 3 2 6.58 2 11c0 2.83 1.82 5.32 4.56 6.72-.2.74-.73 2.68-.84 3.09-.13.52.19.51.4.37.17-.11 2.62-1.78 3.68-2.51.72.11 1.46.16 2.2.16 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
+              </svg>
+              고객센터
+            </a>
+            <a
+              href="/download/startalkbot.apk"
+              className="flex items-center gap-2 px-3 py-2.5 text-sm text-green-400 hover:bg-neutral-800 rounded-lg transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              앱 다운로드
+            </a>
+            <button
+              onClick={() => { router.push('/guide'); setMobileMenuOpen(false); }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-lg transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              사용방법
+            </button>
+            <button
+              onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-lg transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              로그아웃
+            </button>
+          </div>
+        )}
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
@@ -1379,7 +1402,37 @@ export default function DashboardPage() {
                   : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
               }`}
             >
-              인원 관리
+              스타트톡
+            </button>
+            <button
+              onClick={() => setActiveTab('errandTalk')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                activeTab === 'errandTalk'
+                  ? 'bg-teal-600 text-white'
+                  : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
+              }`}
+            >
+              심부름톡
+            </button>
+            <button
+              onClick={() => setActiveTab('choiceTalk')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                activeTab === 'choiceTalk'
+                  ? 'bg-violet-600 text-white'
+                  : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
+              }`}
+            >
+              초이스톡
+            </button>
+            <button
+              onClick={() => setActiveTab('package')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                activeTab === 'package'
+                  ? 'bg-rose-600 text-white'
+                  : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
+              }`}
+            >
+              패키지
             </button>
             {/* superadmin 전용 탭들 */}
             {isSuperAdmin && (
@@ -1518,1814 +1571,190 @@ export default function DashboardPage() {
                 >
                   정산
                 </button>
+                <button
+                  onClick={() => setActiveTab('serviceManage')}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    activeTab === 'serviceManage'
+                      ? 'bg-cyan-600 text-white'
+                      : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
+                  }`}
+                >
+                  서비스 관리
+                </button>
               </>
             )}
-          </div>
-          <div className="flex gap-2">
-            <a
-              href="https://open.kakao.com/o/sWYX3Yci"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 rounded-lg font-medium transition bg-yellow-500 hover:bg-yellow-400 text-black flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 3C6.48 3 2 6.58 2 11c0 2.83 1.82 5.32 4.56 6.72-.2.74-.73 2.68-.84 3.09-.13.52.19.51.4.37.17-.11 2.62-1.78 3.68-2.51.72.11 1.46.16 2.2.16 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
-              </svg>
-              고객센터
-            </a>
-            <a
-              href="/download/startalkbot.apk"
-              className="px-4 py-2 rounded-lg font-medium transition bg-green-600 hover:bg-green-500 text-white flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              앱 다운로드
-            </a>
           </div>
         </div>
 
         {activeTab === 'slots' && (
-        <>
-        {/* 슬롯 현황 */}
-        <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 mb-6">
-          {isAnyAdmin ? (
-            // 관리자: 전체 인원 표시
-            <>
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <h2 className="text-xl font-bold text-white">전체 인원 관리</h2>
-                <div className="flex items-center gap-3">
-                  <select
-                    value=""
-                    onChange={(e) => {
-                      if (e.target.value && !filterUserIds.includes(e.target.value)) {
-                        setFilterUserIds([...filterUserIds, e.target.value]);
-                      }
-                    }}
-                    className="px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                  >
-                    <option value="">회원 선택</option>
-                    {allUsers.filter(u => u.role !== 'superadmin' && !filterUserIds.includes(u.id)).map(u => (
-                      <option key={u.id} value={u.id}>{u.nickname || u.username}</option>
-                    ))}
-                  </select>
-                  <span className="text-neutral-500">
-                    총 <span className="text-orange-400 font-medium">{filterUserIds.length > 0 ? allSlots.filter(s => filterUserIds.includes(s.user_id)).length : allSlots.length}명</span> 등록됨
-                  </span>
-                  <button
-                    onClick={() => { if (allUsers.length === 0) fetchAllUsers(); setShowAdminAddModal(true); }}
-                    className="px-3 py-1 text-xs bg-green-600 hover:bg-green-500 text-white rounded transition"
-                  >
-                    + 인원 추가
-                  </button>
-                </div>
-              </div>
-              {filterUserIds.length > 0 && (
-                <div className="mt-3 flex items-center gap-2 flex-wrap">
-                  {filterUserIds.map(uid => {
-                    const u = allUsers.find(u => u.id === uid);
-                    return (
-                      <span key={uid} className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 text-sm rounded-full">
-                        {u?.nickname || u?.username || uid}
-                        <button
-                          onClick={() => setFilterUserIds(filterUserIds.filter(id => id !== uid))}
-                          className="ml-1 text-indigo-400 hover:text-white transition"
-                        >
-                          ✕
-                        </button>
-                      </span>
-                    );
-                  })}
-                  <button
-                    onClick={() => setFilterUserIds([])}
-                    className="px-2 py-1 text-xs text-neutral-500 hover:text-neutral-300 transition"
-                  >
-                    전체 해제
-                  </button>
-                </div>
-              )}
-              {selectedSlotIds.size > 0 && (
-                <div className="mt-3 flex items-center gap-3 bg-indigo-900/30 border border-indigo-500/30 rounded-xl px-4 py-3">
-                  <span className="text-indigo-300 text-sm font-medium">
-                    {selectedSlotIds.size}개 선택됨
-                  </span>
-                  <button
-                    onClick={() => setShowBatchExtendModal(true)}
-                    className="px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition"
-                  >
-                    일괄 연장
-                  </button>
-                  <button
-                    onClick={() => setSelectedSlotIds(new Set())}
-                    className="px-3 py-1.5 text-xs bg-neutral-700 hover:bg-neutral-600 text-neutral-300 rounded-lg font-medium transition"
-                  >
-                    선택 해제
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              {/* 일반 유저: 데스크톱 한 줄 */}
-              <div className="hidden md:flex items-center justify-between">
-                <h2 className="text-xl font-bold text-white">{user?.username}님의 등록 인원</h2>
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="text-neutral-500">등록된 인원: <span className="text-white font-medium">{usedSlots}명</span></span>
-                  <span className="text-neutral-500">
-                    등록 가능: <span className="text-green-400 font-medium">{slotCount}명</span>
-                  </span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setShowExtendAllModal(true)}
-                      disabled={slots.length === 0}
-                      className="px-3 py-1 text-xs bg-orange-600 hover:bg-orange-500 disabled:bg-neutral-700 disabled:text-neutral-500 text-white rounded transition"
-                    >
-                      전체 연장
-                    </button>
-                    <button
-                      onClick={() => setShowSlotPurchaseModal(true)}
-                      className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded transition"
-                    >
-                      + 추가 구매
-                    </button>
-                  </div>
-                </div>
-              </div>
-              {/* 일반 유저: 모바일 두 줄 */}
-              <div className="md:hidden">
-                <h2 className="text-xl font-bold text-white">{user?.username}님의 등록 인원</h2>
-                <div className="flex flex-wrap gap-4 mt-2 text-sm">
-                  <span className="text-neutral-500">등록된 인원: <span className="text-white font-medium">{usedSlots}명</span></span>
-                  <span className="text-neutral-500">
-                    등록 가능: <span className="text-green-400 font-medium">{slotCount}명</span>
-                  </span>
-                </div>
-                <div className="flex gap-2 mt-3">
-                  <button
-                    onClick={() => setShowExtendAllModal(true)}
-                    disabled={slots.length === 0}
-                    className="px-3 py-1.5 text-xs bg-orange-600 hover:bg-orange-500 disabled:bg-neutral-700 disabled:text-neutral-500 text-white rounded transition"
-                  >
-                    전체 연장
-                  </button>
-                  <button
-                    onClick={() => setShowSlotPurchaseModal(true)}
-                    className="px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded transition"
-                  >
-                    + 추가 구매
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* 유저용 검색 + 정렬 */}
-        {!isAnyAdmin && slots.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-4">
-            <div className="relative flex-1">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                value={slotSearch}
-                onChange={(e) => setSlotSearch(e.target.value)}
-                placeholder="아가씨 이름 또는 가게명 검색"
-                className="w-full pl-10 pr-4 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-white text-sm placeholder-neutral-500 focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setSlotSort('session')}
-                className={`px-3 py-2 text-xs rounded-lg font-medium transition ${
-                  slotSort === 'session' ? 'bg-indigo-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:text-white'
-                }`}
-              >
-                최신순
-              </button>
-              <button
-                onClick={() => setSlotSort('expires')}
-                className={`px-3 py-2 text-xs rounded-lg font-medium transition ${
-                  slotSort === 'expires' ? 'bg-indigo-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:text-white'
-                }`}
-              >
-                만료일순
-              </button>
-            </div>
-          </div>
+          <SlotsTab
+            user={user}
+            isAnyAdmin={isAnyAdmin}
+            isSuperAdmin={isSuperAdmin}
+            slots={slots}
+            filteredSlots={filteredSlots}
+            allSlots={allSlots}
+            slotCount={slotCount}
+            usedSlots={usedSlots}
+            emptySlots={emptySlots}
+            shops={shops}
+            allUsers={allUsers}
+            filterUserIds={filterUserIds}
+            setFilterUserIds={setFilterUserIds}
+            selectedSlotIds={selectedSlotIds}
+            setSelectedSlotIds={setSelectedSlotIds}
+            setShowBatchExtendModal={setShowBatchExtendModal}
+            setShowExtendAllModal={setShowExtendAllModal}
+            setShowSlotPurchaseModal={setShowSlotPurchaseModal}
+            setShowAdminAddModal={setShowAdminAddModal}
+            slotSearch={slotSearch}
+            setSlotSearch={setSlotSearch}
+            slotSort={slotSort}
+            setSlotSort={setSlotSort}
+            editingSlotIndex={editingSlotIndex}
+            setEditingSlotIndex={setEditingSlotIndex}
+            inlineNewSlot={inlineNewSlot}
+            setInlineNewSlot={setInlineNewSlot}
+            submitting={submitting}
+            editingSlotKakaoId={editingSlotKakaoId}
+            setEditingSlotKakaoId={setEditingSlotKakaoId}
+            kakaoInviteIds={kakaoInviteIds}
+            toggleSlotActive={toggleSlotActive}
+            toggleSlotSelection={toggleSlotSelection}
+            toggleAllSlots={toggleAllSlots}
+            openEditModal={openEditModal}
+            openExtendModal={openExtendModal}
+            openStatusModal={openStatusModal}
+            handleAdminDeleteSlot={handleAdminDeleteSlot}
+            handleChangeSlotKakaoId={handleChangeSlotKakaoId}
+            handleInlineAddSlot={handleInlineAddSlot}
+            cancelInlineEdit={cancelInlineEdit}
+            copyToClipboard={copyToClipboard}
+            formatDate={formatDate}
+            getDaysRemaining={getDaysRemaining}
+            fetchAllUsers={fetchAllUsers}
+          />
         )}
 
-        {/* 슬롯 목록 - 데스크톱 테이블 */}
-        <div className="hidden md:block bg-neutral-900 rounded-2xl border border-neutral-800 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-neutral-800/50">
-                <tr>
-                  {isAnyAdmin && (
-                    <th className="px-2 py-3 text-center">
-                      <button
-                        onClick={toggleAllSlots}
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition mx-auto ${
-                          (() => {
-                            const filtered = filterUserIds.length > 0 ? allSlots.filter(s => filterUserIds.includes(s.user_id)) : allSlots;
-                            const allChecked = filtered.length > 0 && filtered.every(s => selectedSlotIds.has(s.id));
-                            const someChecked = filtered.some(s => selectedSlotIds.has(s.id));
-                            return allChecked ? 'bg-indigo-600 border-indigo-600' : someChecked ? 'bg-indigo-600/30 border-indigo-500' : 'border-neutral-600 hover:border-neutral-400';
-                          })()
-                        }`}
-                      >
-                        {(() => {
-                          const filtered = filterUserIds.length > 0 ? allSlots.filter(s => filterUserIds.includes(s.user_id)) : allSlots;
-                          const allChecked = filtered.length > 0 && filtered.every(s => selectedSlotIds.has(s.id));
-                          const someChecked = filtered.some(s => selectedSlotIds.has(s.id));
-                          return allChecked ? (
-                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                          ) : someChecked ? (
-                            <span className="w-2.5 h-0.5 bg-indigo-400 rounded" />
-                          ) : null;
-                        })()}
-                      </button>
-                    </th>
-                  )}
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">활성화</th>
-                  {isAnyAdmin && (
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">회원</th>
-                  )}
-                  {isSuperAdmin && (
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">소속</th>
-                  )}
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">아가씨 닉네임</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">가게명</th>
-                  {isAnyAdmin && (
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">채팅방</th>
-                  )}
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">초대할 ID</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">만료일</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-400">관리</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-800">
-                {/* 관리자: 전체 슬롯 표시 */}
-                {isAnyAdmin && allSlots.filter(s => filterUserIds.length === 0 || filterUserIds.includes(s.user_id)).map((slot) => {
-                  const daysRemaining = getDaysRemaining(slot.expires_at);
-                  const isExpiringSoon = daysRemaining <= 7;
-                  const isExpired = daysRemaining <= 0;
-
-                  return (
-                    <tr key={slot.id} className={`hover:bg-neutral-800/30 transition ${!slot.is_active ? 'opacity-50' : ''} ${selectedSlotIds.has(slot.id) ? 'bg-indigo-900/20' : ''}`}>
-                      <td className="px-2 py-3 text-center">
-                        <button
-                          onClick={() => toggleSlotSelection(slot.id)}
-                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition mx-auto ${
-                            selectedSlotIds.has(slot.id)
-                              ? 'bg-indigo-600 border-indigo-600'
-                              : 'border-neutral-600 hover:border-neutral-400'
-                          }`}
-                        >
-                          {selectedSlotIds.has(slot.id) && (
-                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => toggleSlotActive(slot.id, slot.is_active, slot.expires_at)}
-                          className={`w-12 h-6 rounded-full mx-auto cursor-pointer transition-colors flex items-center px-1 ${
-                          slot.is_active ? 'bg-green-500 justify-end' : 'bg-neutral-700 justify-start'
-                        }`}>
-                          <span className="block w-4 h-4 bg-white rounded-full" />
-                        </button>
-                      </td>
-                      <td className="px-4 py-3 text-center text-orange-400 font-medium">{slot.username}</td>
-                      {isSuperAdmin && (
-                        <td className="px-4 py-3 text-center">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                            slot.distributor_name === '본사'
-                              ? 'bg-purple-600/20 text-purple-400'
-                              : 'bg-emerald-600/20 text-emerald-400'
-                          }`}>
-                            {slot.distributor_name || '본사'}
-                          </span>
-                        </td>
-                      )}
-                      <td className="px-4 py-3 text-center text-white font-medium">{slot.girl_name}</td>
-                      <td className="px-4 py-3 text-center text-neutral-400">{slot.shop_name || '-'}</td>
-                      <td className="px-4 py-3 text-center text-neutral-500">{slot.target_room}</td>
-                      <td className="px-4 py-3 text-center">
-                        {isSuperAdmin ? (
-                          editingSlotKakaoId === slot.id ? (
-                            <select
-                              defaultValue={slot.kakao_id}
-                              onChange={(e) => handleChangeSlotKakaoId(slot.id, e.target.value)}
-                              onBlur={() => setEditingSlotKakaoId(null)}
-                              autoFocus
-                              className="px-2 py-1 bg-neutral-800 border border-yellow-500 rounded text-white text-sm focus:outline-none"
-                            >
-                              <option value={slot.kakao_id}>{slot.kakao_id}</option>
-                              {kakaoInviteIds
-                                .filter((k) => k.is_active && k.kakao_id !== slot.kakao_id)
-                                .map((k) => (
-                                  <option key={k.id} value={k.kakao_id}>
-                                    {k.kakao_id} {k.description ? `(${k.description})` : ''}
-                                  </option>
-                                ))}
-                            </select>
-                          ) : (
-                            <span
-                              onClick={() => setEditingSlotKakaoId(slot.id)}
-                              className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
-                              title="클릭하여 수정"
-                            >
-                              {slot.kakao_id}
-                            </span>
-                          )
-                        ) : (
-                          <span className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium">
-                            {slot.kakao_id}
-                          </span>
-                        )}
-                      </td>
-                      <td className={`px-4 py-3 text-center ${isExpired ? 'text-red-400' : isExpiringSoon ? 'text-yellow-400' : 'text-neutral-500'}`}>
-                        {formatDate(slot.expires_at)}
-                        {isExpired ? ' (만료됨)' : isExpiringSoon ? ` (${daysRemaining}일)` : ''}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => openEditModal(slot)}
-                            className="px-3 py-1.5 text-sm bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 rounded-lg font-medium transition"
-                          >
-                            수정
-                          </button>
-                          <button
-                            onClick={() => openExtendModal(slot)}
-                            className={`px-3 py-1.5 text-sm rounded-lg font-medium transition ${
-                              isExpired || isExpiringSoon
-                                ? 'bg-yellow-600 hover:bg-yellow-500 text-white'
-                                : 'bg-neutral-700 hover:bg-neutral-600 text-neutral-400'
-                            }`}
-                          >
-                            연장
-                          </button>
-                          <button
-                            onClick={() => openStatusModal(slot)}
-                            className="px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg font-medium transition"
-                          >
-                            상황판
-                          </button>
-                          <button
-                            onClick={() => handleAdminDeleteSlot(slot.id)}
-                            className="px-3 py-1.5 text-sm bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg font-medium transition"
-                          >
-                            삭제
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {/* 일반 유저: 자신의 슬롯만 표시 */}
-                {!isAnyAdmin && filteredSlots.map((slot) => {
-                  const daysRemaining = getDaysRemaining(slot.expires_at);
-                  const isExpiringSoon = daysRemaining <= 7;
-                  const isExpired = daysRemaining <= 0;
-
-                  return (
-                    <tr key={slot.id} className={`hover:bg-neutral-800/30 transition ${!slot.is_active ? 'opacity-50' : ''}`}>
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => toggleSlotActive(slot.id, slot.is_active, slot.expires_at)}
-                          className={`w-12 h-6 rounded-full transition-colors flex items-center px-1 ${
-                            slot.is_active ? 'bg-green-500 justify-end' : 'bg-neutral-700 justify-start'
-                          }`}
-                        >
-                          <span className="block w-4 h-4 bg-white rounded-full" />
-                        </button>
-                      </td>
-                      <td className="px-4 py-3 text-center text-white font-medium">{slot.girl_name}</td>
-                      <td className="px-4 py-3 text-center text-neutral-400">{slot.shop_name || '-'}</td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <span
-                            onClick={() => copyToClipboard(slot.kakao_id)}
-                            className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
-                            title="클릭하여 복사"
-                          >
-                            {slot.kakao_id}
-                          </span>
-                          <button
-                            onClick={() => copyToClipboard(slot.kakao_id)}
-                            className="p-1 hover:bg-neutral-700 rounded transition"
-                            title="복사"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-amber-400 hover:text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
-                      <td className={`px-4 py-3 text-center ${isExpired ? 'text-red-400' : isExpiringSoon ? 'text-yellow-400' : 'text-neutral-500'}`}>
-                        {formatDate(slot.expires_at)}
-                        {isExpired ? ' (만료됨)' : isExpiringSoon ? ` (${daysRemaining}일)` : ''}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => openEditModal(slot)}
-                            className="px-3 py-1.5 text-sm bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 rounded-lg font-medium transition"
-                          >
-                            수정
-                          </button>
-                          <button
-                            onClick={() => openExtendModal(slot)}
-                            className={`px-3 py-1.5 text-sm rounded-lg font-medium transition ${
-                              isExpired || isExpiringSoon
-                                ? 'bg-yellow-600 hover:bg-yellow-500 text-white'
-                                : 'bg-neutral-700 hover:bg-neutral-600 text-neutral-400'
-                            }`}
-                          >
-                            연장
-                          </button>
-                          <button
-                            onClick={() => openStatusModal(slot)}
-                            className="px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg font-medium transition"
-                          >
-                            상황판
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {/* 빈 슬롯 행들 (일반 유저만) */}
-                {!isAnyAdmin && emptySlots.map((index) => (
-                  <tr key={`empty-${index}`} className="hover:bg-neutral-800/30 transition bg-neutral-900/50">
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex justify-center">
-                        <div className="w-12 h-6 rounded-full bg-neutral-800 opacity-30" />
-                      </div>
-                    </td>
-                    {editingSlotIndex === index ? (
-                      <>
-                        <td className="px-4 py-3">
-                          <input
-                            type="text"
-                            value={inlineNewSlot.girlName}
-                            onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, girlName: e.target.value })}
-                            placeholder="아가씨 닉네임"
-                            className="w-full px-2 py-1 bg-neutral-800 border border-neutral-700 rounded text-white text-sm focus:outline-none focus:border-indigo-500"
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <select
-                            value={inlineNewSlot.shopName}
-                            onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, shopName: e.target.value, customShopName: '' })}
-                            className="w-full px-2 py-1 pr-8 bg-neutral-800 border border-neutral-700 rounded text-white text-sm focus:outline-none focus:border-indigo-500 appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%239ca3af%22%20d%3D%22M2%204l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.5rem_center]"
-                          >
-                            {SHOP_NAMES.map((name) => (
-                              <option key={name} value={name}>{name}</option>
-                            ))}
-                            <option value="기타">기타</option>
-                          </select>
-                          {inlineNewSlot.shopName === '기타' && (
-                            <input
-                              type="text"
-                              value={inlineNewSlot.customShopName}
-                              onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, customShopName: e.target.value })}
-                              placeholder="직접 입력"
-                              className="w-full mt-1 px-2 py-1 bg-neutral-800 border border-neutral-700 rounded text-white text-sm focus:outline-none focus:border-indigo-500"
-                            />
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-neutral-600 text-center">-</td>
-                        <td className="px-4 py-3 text-neutral-600 text-center">-</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleInlineAddSlot(index)}
-                              disabled={submitting}
-                              className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-500 disabled:bg-neutral-700 text-white rounded-lg font-medium transition"
-                            >
-                              {submitting ? '저장중...' : '저장'}
-                            </button>
-                            <button
-                              onClick={cancelInlineEdit}
-                              className="px-3 py-1.5 text-sm bg-neutral-700 hover:bg-neutral-600 text-neutral-400 rounded-lg font-medium transition"
-                            >
-                              취소
-                            </button>
-                          </div>
-                        </td>
-                      </>
-                    ) : (
-                      <td colSpan={6} className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => {
-                            setEditingSlotIndex(index);
-                            setInlineNewSlot({ girlName: '', shopName: shops[0]?.shop_name || '', customShopName: '', customClosingTime: '', targetRoom: '' });
-                          }}
-                          className="text-neutral-600 hover:text-indigo-400 transition"
-                        >
-                          + 인원 추가하기
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {isAnyAdmin && allSlots.length === 0 && (
-              <div className="text-center py-12 text-neutral-600">
-                등록된 인원이 없습니다.
-              </div>
-            )}
-            {!isAnyAdmin && slots.length === 0 && emptySlots.length === 0 && (
-              <div className="text-center py-12 text-neutral-600">
-                등록 가능한 인원이 없습니다. 인원을 추가 구매해주세요.
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 모바일 리스트 */}
-        <div className="block md:hidden space-y-4">
-            {/* 관리자: 전체 슬롯 */}
-            {isAnyAdmin && allSlots.filter(s => filterUserIds.length === 0 || filterUserIds.includes(s.user_id)).map((slot) => {
-              const daysRemaining = getDaysRemaining(slot.expires_at);
-              const isExpiringSoon = daysRemaining <= 7;
-              const isExpired = daysRemaining <= 0;
-
-              return (
-                <div key={slot.id} className={`bg-neutral-900 border border-neutral-800 rounded-2xl p-4 ${!slot.is_active ? 'opacity-50' : ''}`}>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-12 h-6 rounded-full ${slot.is_active ? 'bg-green-500' : 'bg-neutral-700'}`}>
-                        <span className={`block w-4 h-4 bg-white rounded-full relative top-1 ${slot.is_active ? 'ml-auto mr-1' : 'ml-1'}`} />
-                      </div>
-                      <span className="text-sm text-neutral-500">{slot.is_active ? '활성화' : '비활성화'}</span>
-                    </div>
-                    {(isExpired || isExpiringSoon) && (
-                      <span className={`text-xs px-2 py-1 rounded-full ${isExpired ? 'bg-red-600/20 text-red-400' : 'bg-yellow-600/20 text-yellow-400'}`}>
-                        {isExpired ? '만료됨' : `${daysRemaining}일 남음`}
-                      </span>
-                    )}
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex border-b border-neutral-800 pb-2">
-                      <span className="text-neutral-600 w-28 flex-shrink-0">회원</span>
-                      <span className="text-orange-400 font-semibold">{slot.username}</span>
-                    </div>
-                    {isSuperAdmin && (
-                      <div className="flex border-b border-neutral-800 pb-2">
-                        <span className="text-neutral-600 w-28 flex-shrink-0">소속</span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          slot.distributor_name === '본사'
-                            ? 'bg-purple-600/20 text-purple-400'
-                            : 'bg-emerald-600/20 text-emerald-400'
-                        }`}>
-                          {slot.distributor_name || '본사'}
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex border-b border-neutral-800 pb-2">
-                      <span className="text-neutral-600 w-28 flex-shrink-0">아가씨 닉네임</span>
-                      <span className="text-white font-semibold">{slot.girl_name}</span>
-                    </div>
-                    <div className="flex border-b border-neutral-800 pb-2">
-                      <span className="text-neutral-600 w-28 flex-shrink-0">가게명</span>
-                      <span className="text-neutral-400">{slot.shop_name || '-'}</span>
-                    </div>
-                    <div className="flex border-b border-neutral-800 pb-2">
-                      <span className="text-neutral-600 w-28 flex-shrink-0">채팅방</span>
-                      <span className="text-neutral-400">{slot.target_room}</span>
-                    </div>
-                    <div className="flex border-b border-neutral-800 pb-2 items-center">
-                      <span className="text-neutral-600 w-28 flex-shrink-0">초대할 ID</span>
-                      {isSuperAdmin ? (
-                        editingSlotKakaoId === slot.id ? (
-                          <select
-                            defaultValue={slot.kakao_id}
-                            onChange={(e) => handleChangeSlotKakaoId(slot.id, e.target.value)}
-                            onBlur={() => setEditingSlotKakaoId(null)}
-                            autoFocus
-                            className="px-2 py-1 bg-neutral-800 border border-yellow-500 rounded text-white text-sm focus:outline-none"
-                          >
-                            <option value={slot.kakao_id}>{slot.kakao_id}</option>
-                            {kakaoInviteIds
-                              .filter((k) => k.is_active && k.kakao_id !== slot.kakao_id)
-                              .map((k) => (
-                                <option key={k.id} value={k.kakao_id}>
-                                  {k.kakao_id} {k.description ? `(${k.description})` : ''}
-                                </option>
-                              ))}
-                          </select>
-                        ) : (
-                          <span
-                            onClick={() => setEditingSlotKakaoId(slot.id)}
-                            className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
-                            title="클릭하여 수정"
-                          >
-                            {slot.kakao_id}
-                          </span>
-                        )
-                      ) : (
-                        <span className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium">
-                          {slot.kakao_id}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex">
-                      <span className="text-neutral-600 w-28 flex-shrink-0">만료일</span>
-                      <span className={isExpired ? 'text-red-400' : isExpiringSoon ? 'text-yellow-400' : 'text-neutral-400'}>
-                        {formatDate(slot.expires_at)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => openEditModal(slot)}
-                      className="flex-1 py-2 text-sm bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 rounded-lg font-medium transition"
-                    >
-                      수정
-                    </button>
-                    <button
-                      onClick={() => openExtendModal(slot)}
-                      className={`flex-1 py-2 text-sm rounded-lg font-medium transition ${
-                        isExpired || isExpiringSoon
-                          ? 'bg-yellow-600 hover:bg-yellow-500 text-white'
-                          : 'bg-neutral-700 hover:bg-neutral-600 text-neutral-400'
-                      }`}
-                    >
-                      연장
-                    </button>
-                    <button
-                      onClick={() => openStatusModal(slot)}
-                      className="flex-1 py-2 text-sm bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg font-medium transition"
-                    >
-                      상황판
-                    </button>
-                    <button
-                      onClick={() => handleAdminDeleteSlot(slot.id)}
-                      className="flex-1 py-2 text-sm bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg font-medium transition"
-                    >
-                      삭제
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-            {/* 일반 유저: 자신의 슬롯만 */}
-            {!isAnyAdmin && filteredSlots.map((slot) => {
-              const daysRemaining = getDaysRemaining(slot.expires_at);
-              const isExpiringSoon = daysRemaining <= 7;
-              const isExpired = daysRemaining <= 0;
-
-              return (
-                <div key={slot.id} className={`bg-neutral-900 border border-neutral-800 rounded-2xl p-4 ${!slot.is_active ? 'opacity-50' : ''}`}>
-                  {/* 활성화 토글 + 만료 경고 배지 */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => toggleSlotActive(slot.id, slot.is_active, slot.expires_at)}
-                        className={`w-12 h-6 rounded-full transition-colors flex items-center px-1 ${
-                          slot.is_active ? 'bg-green-500 justify-end' : 'bg-neutral-700 justify-start'
-                        }`}
-                      >
-                        <span className="block w-4 h-4 bg-white rounded-full" />
-                      </button>
-                      <span className="text-sm text-neutral-500">{slot.is_active ? '활성화' : '비활성화'}</span>
-                    </div>
-                    {(isExpired || isExpiringSoon) && (
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        isExpired ? 'bg-red-600/20 text-red-400' : 'bg-yellow-600/20 text-yellow-400'
-                      }`}>
-                        {isExpired ? '만료됨' : `${daysRemaining}일 남음`}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* 정보 테이블 형식 */}
-                  <div className="space-y-2 text-sm mb-4">
-                    <div className="flex border-b border-neutral-800 pb-2">
-                      <span className="text-neutral-600 w-28 flex-shrink-0">아가씨 닉네임</span>
-                      <span className="text-white font-semibold">{slot.girl_name}</span>
-                    </div>
-                    <div className="flex border-b border-neutral-800 pb-2">
-                      <span className="text-neutral-600 w-28 flex-shrink-0">가게명</span>
-                      <span className="text-neutral-400">{slot.shop_name || '-'}</span>
-                    </div>
-                    <div className="flex border-b border-neutral-800 pb-2 items-center">
-                      <span className="text-neutral-600 w-28 flex-shrink-0">초대할 ID</span>
-                      <span
-                        onClick={() => copyToClipboard(slot.kakao_id)}
-                        className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
-                        title="클릭하여 복사"
-                      >
-                        {slot.kakao_id}
-                      </span>
-                      <button
-                        onClick={() => copyToClipboard(slot.kakao_id)}
-                        className="ml-2 px-2 py-1 text-xs bg-neutral-700 hover:bg-neutral-600 text-amber-400 rounded transition"
-                      >
-                        복사
-                      </button>
-                    </div>
-                    <div className="flex">
-                      <span className="text-neutral-600 w-28 flex-shrink-0">만료일</span>
-                      <span className={isExpired ? 'text-red-400' : isExpiringSoon ? 'text-yellow-400' : 'text-neutral-400'}>
-                        {formatDate(slot.expires_at)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => openEditModal(slot)}
-                      className="flex-1 py-2 text-sm bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 rounded-lg font-medium transition"
-                    >
-                      수정
-                    </button>
-                    <button
-                      onClick={() => openExtendModal(slot)}
-                      className={`flex-1 py-2 text-sm rounded-lg font-medium transition ${
-                        isExpired || isExpiringSoon
-                          ? 'bg-yellow-600 hover:bg-yellow-500 text-white'
-                          : 'bg-neutral-700 hover:bg-neutral-600 text-neutral-400'
-                      }`}
-                    >
-                      연장
-                    </button>
-                    <button
-                      onClick={() => openStatusModal(slot)}
-                      className="flex-1 py-2 text-sm bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg font-medium transition"
-                    >
-                      상황판
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-            {/* 모바일 빈 슬롯 (일반 유저만) */}
-            {!isAnyAdmin && emptySlots.map((index) => (
-              <div key={`empty-mobile-${index}`} className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-4">
-                {editingSlotIndex === index ? (
-                  <div className="space-y-3">
-                    <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-xl p-3">
-                      <p className="text-yellow-400 text-xs">
-                        초톡 단톡방에 있는 정확한 아가씨 닉네임을 입력해주세요.
-                      </p>
-                    </div>
-                    <input
-                      type="text"
-                      value={inlineNewSlot.girlName}
-                      onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, girlName: e.target.value })}
-                      placeholder="아가씨 닉네임"
-                      className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
-                    />
-                    <div>
-                      <label className="block text-sm text-neutral-500 mb-2">가게명</label>
-                      <select
-                        value={inlineNewSlot.shopName}
-                        onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, shopName: e.target.value, customShopName: '' })}
-                        className="w-full px-3 py-2 pr-10 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500 appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%239ca3af%22%20d%3D%22M2%204l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.75rem_center]"
-                      >
-                        {shops.map((shop) => (
-                          <option key={shop.id} value={shop.shop_name}>{shop.shop_name}</option>
-                        ))}
-                        <option value="기타">기타 (직접입력)</option>
-                      </select>
-                      {inlineNewSlot.shopName === '기타' && (
-                        <>
-                          <input
-                            type="text"
-                            value={inlineNewSlot.customShopName}
-                            onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, customShopName: e.target.value })}
-                            placeholder="가게명 직접 입력"
-                            className="w-full mt-2 px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
-                          />
-                        </>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleInlineAddSlot(index)}
-                        disabled={submitting}
-                        className="flex-1 py-2 text-sm bg-green-600 hover:bg-green-500 disabled:bg-neutral-700 text-white rounded-lg font-medium transition"
-                      >
-                        {submitting ? '저장중...' : '저장'}
-                      </button>
-                      <button
-                        onClick={cancelInlineEdit}
-                        className="flex-1 py-2 text-sm bg-neutral-700 hover:bg-neutral-600 text-neutral-400 rounded-lg font-medium transition"
-                      >
-                        취소
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setEditingSlotIndex(index);
-                      setInlineNewSlot({ girlName: '', shopName: shops[0]?.shop_name || '', customShopName: '', customClosingTime: '', targetRoom: '' });
-                    }}
-                    className="w-full py-6 text-neutral-600 hover:text-indigo-400 transition text-center"
-                  >
-                    + 인원 추가하기
-                  </button>
-                )}
-              </div>
-            ))}
-            {isAnyAdmin && allSlots.length === 0 && (
-              <div className="text-center py-12 text-neutral-600 bg-neutral-900 border border-neutral-800 rounded-2xl">
-                등록된 인원이 없습니다.
-              </div>
-            )}
-            {!isAnyAdmin && slots.length === 0 && emptySlots.length === 0 && (
-              <div className="text-center py-12 text-neutral-600 bg-neutral-900 border border-neutral-800 rounded-2xl">
-                등록 가능한 인원이 없습니다. 인원을 추가 구매해주세요.
-              </div>
-            )}
-        </div>
-        </>
-        )}
-
-        {/* 회원관리 탭 (관리자 전용) */}
         {activeTab === 'users' && isSuperAdmin && (
-          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
-            <h2 className="text-xl font-bold text-white mb-6">회원 관리</h2>
-            {usersLoading ? (
-              <div className="text-center py-12 text-neutral-400">로딩 중...</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-neutral-800">
-                      <th className="text-left px-4 py-3 text-neutral-500 font-medium">아이디</th>
-                      <th className="text-left px-4 py-3 text-neutral-500 font-medium">담당자 닉네임</th>
-                      <th className="text-left px-4 py-3 text-neutral-500 font-medium">전화번호</th>
-                      <th className="text-center px-4 py-3 text-neutral-500 font-medium">등급</th>
-                      <th className="text-center px-4 py-3 text-neutral-500 font-medium">소속 총판</th>
-                      <th className="text-left px-4 py-3 text-neutral-500 font-medium">도메인</th>
-                      <th className="text-center px-4 py-3 text-neutral-500 font-medium">등록 가능 인원</th>
-                      <th className="text-center px-4 py-3 text-neutral-500 font-medium">가입일</th>
-                      <th className="text-center px-4 py-3 text-neutral-500 font-medium">관리</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {allUsers.map((u) => (
-                      <tr key={u.id} className="border-b border-neutral-800 hover:bg-neutral-800/50">
-                        <td className="px-4 py-3 text-white">{u.username}</td>
-                        <td className="px-4 py-3 text-neutral-400">{u.nickname || '-'}</td>
-                        <td className="px-4 py-3 text-neutral-400">{u.phone || '-'}</td>
-                        <td className="px-4 py-3 text-center">
-                          <select
-                            value={u.role}
-                            onChange={async (e) => {
-                              const newRole = e.target.value;
-                              const res = await fetch('/api/admin/users', {
-                                method: 'PATCH',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ userId: u.id, role: newRole }),
-                              });
-                              if (res.ok) {
-                                fetchAllUsers();
-                              } else {
-                                alert('역할 변경에 실패했습니다.');
-                              }
-                            }}
-                            className={`px-2 py-1 text-xs rounded-full border-0 cursor-pointer focus:outline-none ${
-                              u.role === 'superadmin'
-                                ? 'bg-purple-600/20 text-purple-400'
-                                : u.role === 'admin'
-                                ? 'bg-red-600/20 text-red-400'
-                                : 'bg-neutral-700 text-neutral-400'
-                            }`}
-                          >
-                            <option value="user">일반회원</option>
-                            <option value="admin">총판</option>
-                            <option value="superadmin">슈퍼관리자</option>
-                          </select>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <select
-                            value={u.parent_id || ''}
-                            onChange={async (e) => {
-                              const parentId = e.target.value || null;
-                              const res = await fetch('/api/admin/users', {
-                                method: 'PATCH',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ userId: u.id, parentId }),
-                              });
-                              if (res.ok) {
-                                fetchAllUsers();
-                              } else {
-                                alert('총판 배정에 실패했습니다.');
-                              }
-                            }}
-                            className="px-2 py-1 text-xs bg-neutral-800 text-neutral-400 rounded border border-neutral-700 cursor-pointer focus:outline-none focus:border-indigo-500"
-                          >
-                            <option value="">없음</option>
-                            {allUsers.filter(au => au.role === 'admin').map(admin => (
-                              <option key={admin.id} value={admin.id}>{admin.username}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-4 py-3 text-neutral-400">
-                          <div className="flex items-center gap-1">
-                            <span className="text-sm truncate max-w-[160px]">{u.domain || '-'}</span>
-                            <button
-                              onClick={async () => {
-                                const newDomain = prompt('도메인 주소를 입력하세요 (예: example.com):', u.domain || '');
-                                if (newDomain !== null) {
-                                  const res = await fetch('/api/admin/users', {
-                                    method: 'PATCH',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ userId: u.id, domain: newDomain.trim() }),
-                                  });
-                                  if (res.ok) {
-                                    fetchAllUsers();
-                                  } else {
-                                    alert('도메인 수정에 실패했습니다.');
-                                  }
-                                }
-                              }}
-                              className="px-1.5 py-0.5 text-xs bg-neutral-700 hover:bg-neutral-600 text-neutral-400 rounded transition"
-                            >
-                              수정
-                            </button>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-center text-neutral-400">{u.slot_count}명</td>
-                        <td className="px-4 py-3 text-center text-neutral-500 text-sm">
-                          {new Date(u.created_at).toLocaleDateString('ko-KR')}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            onClick={async () => {
-                              const newCount = prompt('새로운 등록 가능 인원 수를 입력하세요:', String(u.slot_count));
-                              if (newCount && !isNaN(Number(newCount))) {
-                                const res = await fetch('/api/admin/users', {
-                                  method: 'PATCH',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ userId: u.id, slotCount: Number(newCount) }),
-                                });
-                                if (res.ok) {
-                                  fetchAllUsers();
-                                } else {
-                                  alert('수정에 실패했습니다.');
-                                }
-                              }
-                            }}
-                            className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded transition"
-                          >
-                            인원수정
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {allUsers.length === 0 && (
-                  <div className="text-center py-12 text-neutral-600">
-                    회원이 없습니다.
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <UsersTab
+            allUsers={allUsers}
+            usersLoading={usersLoading}
+            fetchAllUsers={fetchAllUsers}
+          />
         )}
 
-        {/* 카카오 초대 아이디 관리 탭 (관리자 전용) */}
         {activeTab === 'kakaoIds' && isSuperAdmin && (
-          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">초대 카카오 아이디 관리</h2>
-              <button
-                onClick={() => setShowAddKakaoIdModal(true)}
-                className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg font-medium transition"
-              >
-                + 아이디 추가
-              </button>
-            </div>
-            {kakaoIdsLoading ? (
-              <div className="text-center py-12 text-neutral-400">로딩 중...</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-neutral-800">
-                      <th className="text-left px-4 py-3 text-neutral-500 font-medium">카카오 아이디</th>
-                      <th className="text-left px-4 py-3 text-neutral-500 font-medium">설명</th>
-                      <th className="text-center px-4 py-3 text-neutral-500 font-medium">등록 수</th>
-                      <th className="text-center px-4 py-3 text-neutral-500 font-medium">상태</th>
-                      <th className="text-center px-4 py-3 text-neutral-500 font-medium">등록일</th>
-                      <th className="text-center px-4 py-3 text-neutral-500 font-medium">관리</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {kakaoInviteIds.map((item) => (
-                      <tr key={item.id} className="border-b border-neutral-800 hover:bg-neutral-800/50">
-                        <td className="px-4 py-3 text-white font-medium">{item.kakao_id}</td>
-                        <td className="px-4 py-3">
-                          {editingKakaoIdDescription === item.id ? (
-                            <input
-                              type="text"
-                              value={editDescriptionValue}
-                              onChange={(e) => setEditDescriptionValue(e.target.value)}
-                              onBlur={() => {
-                                handleUpdateKakaoIdDescription(item.id, editDescriptionValue);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  handleUpdateKakaoIdDescription(item.id, editDescriptionValue);
-                                } else if (e.key === 'Escape') {
-                                  setEditingKakaoIdDescription(null);
-                                }
-                              }}
-                              autoFocus
-                              className="px-2 py-1 bg-neutral-800 border border-yellow-500 rounded text-white text-sm focus:outline-none"
-                              placeholder="설명 입력"
-                            />
-                          ) : (
-                            <span
-                              onClick={() => {
-                                setEditingKakaoIdDescription(item.id);
-                                setEditDescriptionValue(item.description || '');
-                              }}
-                              className="text-neutral-400 cursor-pointer hover:text-white transition"
-                              title="클릭하여 수정"
-                            >
-                              {item.description || '-'}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            item.slot_count > 0
-                              ? 'bg-indigo-600/20 text-indigo-400'
-                              : 'bg-neutral-700 text-neutral-500'
-                          }`}>
-                            {item.slot_count}명
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            onClick={() => handleToggleKakaoIdActive(item.id, item.is_active)}
-                            className={`px-2 py-1 text-xs rounded-full ${
-                              item.is_active
-                                ? 'bg-green-600/20 text-green-400'
-                                : 'bg-neutral-700 text-neutral-400'
-                            }`}
-                          >
-                            {item.is_active ? '활성' : '비활성'}
-                          </button>
-                        </td>
-                        <td className="px-4 py-3 text-center text-neutral-500 text-sm">
-                          {new Date(item.created_at).toLocaleDateString('ko-KR')}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            onClick={() => handleDeleteKakaoId(item.id)}
-                            className="px-3 py-1 text-xs bg-red-600 hover:bg-red-500 text-white rounded transition"
-                          >
-                            삭제
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {kakaoInviteIds.length === 0 && (
-                  <div className="text-center py-12 text-neutral-600">
-                    등록된 카카오 아이디가 없습니다.
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <KakaoIdsTab
+            kakaoInviteIds={kakaoInviteIds}
+            kakaoIdsLoading={kakaoIdsLoading}
+            setShowAddKakaoIdModal={setShowAddKakaoIdModal}
+            editingKakaoIdDescription={editingKakaoIdDescription}
+            setEditingKakaoIdDescription={setEditingKakaoIdDescription}
+            editDescriptionValue={editDescriptionValue}
+            setEditDescriptionValue={setEditDescriptionValue}
+            handleToggleKakaoIdActive={handleToggleKakaoIdActive}
+            handleDeleteKakaoId={handleDeleteKakaoId}
+            handleUpdateKakaoIdDescription={handleUpdateKakaoIdDescription}
+          />
         )}
 
-        {/* 가게 관리 탭 (관리자 전용) */}
         {activeTab === 'eventTimes' && isSuperAdmin && (
-          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
-            <h2 className="text-xl font-bold text-white mb-6">가게 관리</h2>
-            {eventTimesLoading ? (
-              <div className="text-center py-12 text-neutral-400">로딩 중...</div>
-            ) : (
-              <div className="space-y-4">
-                {eventTimes.map((item) => (
-                  <div key={item.id} className="p-4 bg-neutral-800 rounded-xl">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-white font-medium text-lg">{item.shop_name}</span>
-                      {editingEventTime !== item.id && (
-                        <button
-                          onClick={() => setEditingEventTime(item.id)}
-                          className="px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm transition"
-                        >
-                          수정
-                        </button>
-                      )}
-                    </div>
-                    {editingEventTime === item.id ? (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <label className="text-neutral-400 text-sm w-20">이벤트 시간</label>
-                          <input
-                            type="text"
-                            id={`start-${item.id}`}
-                            defaultValue={item.start_time.slice(0, 5)}
-                            placeholder="15:00"
-                            className="w-20 px-2 py-1 bg-neutral-700 border border-purple-500 rounded text-white text-center focus:outline-none text-sm"
-                          />
-                          <span className="text-neutral-400">~</span>
-                          <input
-                            type="text"
-                            id={`end-${item.id}`}
-                            defaultValue={item.end_time.slice(0, 5)}
-                            placeholder="21:00"
-                            className="w-20 px-2 py-1 bg-neutral-700 border border-purple-500 rounded text-white text-center focus:outline-none text-sm"
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <label className="text-neutral-400 text-sm w-20">주소</label>
-                          <input
-                            type="text"
-                            id={`address-${item.id}`}
-                            defaultValue={item.address || ''}
-                            placeholder="가게 주소 입력"
-                            className="flex-1 px-3 py-1 bg-neutral-700 border border-purple-500 rounded text-white focus:outline-none text-sm"
-                          />
-                        </div>
-                        <div className="flex gap-2 justify-end">
-                          <button
-                            onClick={() => setEditingEventTime(null)}
-                            className="px-3 py-1 bg-neutral-600 hover:bg-neutral-500 rounded text-white text-sm transition"
-                          >
-                            취소
-                          </button>
-                          <button
-                            onClick={() => {
-                              const startInput = document.getElementById(`start-${item.id}`) as HTMLInputElement;
-                              const endInput = document.getElementById(`end-${item.id}`) as HTMLInputElement;
-                              const addressInput = document.getElementById(`address-${item.id}`) as HTMLInputElement;
-                              const startVal = startInput?.value;
-                              const endVal = endInput?.value;
-                              const addressVal = addressInput?.value;
-                              if (/^\d{1,2}:\d{2}$/.test(startVal) && /^\d{1,2}:\d{2}$/.test(endVal)) {
-                                handleUpdateEventTime(item.id, startVal, endVal, addressVal);
-                              } else {
-                                alert('시간 형식이 올바르지 않습니다. (예: 15:00)');
-                              }
-                            }}
-                            className="px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm transition"
-                          >
-                            저장
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-neutral-400 text-sm w-20">이벤트 시간</span>
-                          <span className="text-purple-400 font-medium">
-                            {item.start_time.slice(0, 5)} ~ {item.end_time.slice(0, 5)}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-neutral-400 text-sm w-20">주소</span>
-                          <span className="text-neutral-300">
-                            {item.address || '(미등록)'}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {eventTimes.length === 0 && (
-                  <div className="text-center py-12 text-neutral-600">
-                    등록된 가게가 없습니다.
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <EventTimesTab
+            eventTimes={eventTimes}
+            eventTimesLoading={eventTimesLoading}
+            editingEventTime={editingEventTime}
+            setEditingEventTime={setEditingEventTime}
+            handleUpdateEventTime={handleUpdateEventTime}
+          />
         )}
 
-        {/* 연장 요청 탭 (관리자 전용) */}
         {activeTab === 'extensions' && isSuperAdmin && (
-          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
-            <h2 className="text-xl font-bold text-white mb-6">연장 요청</h2>
-            {extensionsLoading ? (
-              <p className="text-neutral-500 text-center py-8">로딩 중...</p>
-            ) : extensionRequests.length === 0 ? (
-              <p className="text-neutral-500 text-center py-8">대기 중인 연장 요청이 없습니다.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px]">
-                  <thead className="bg-neutral-800/50">
-                    <tr>
-                      <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">신청일</th>
-                      <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">회원명</th>
-                      <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">입금자명</th>
-                      <th className="w-[80px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">인원수</th>
-                      <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">금액</th>
-                      <th className="w-[80px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">승인</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-800">
-                    {extensionRequests.map((req) => (
-                      <tr key={req.id} className="hover:bg-neutral-800/30">
-                        <td className="px-4 py-3 text-center text-neutral-400 text-sm">
-                          {new Date(req.created_at).toLocaleDateString('ko-KR')}
-                        </td>
-                        <td className="px-4 py-3 text-center text-white">{req.username}</td>
-                        <td className="px-4 py-3 text-center text-yellow-400 font-medium">{req.depositor_name}</td>
-                        <td className="px-4 py-3 text-center text-neutral-300">{req.slot_count}명</td>
-                        <td className="px-4 py-3 text-center text-neutral-300">{req.total_amount.toLocaleString()}원</td>
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            onClick={() => handleApproveExtension(req.id)}
-                            className="px-4 py-1.5 bg-green-600 hover:bg-green-500 text-white text-sm font-medium rounded-lg transition"
-                          >
-                            승인
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          <ExtensionsTab
+            extensionRequests={extensionRequests}
+            extensionsLoading={extensionsLoading}
+            handleApproveExtension={handleApproveExtension}
+          />
         )}
 
-        {/* 추가 구매 탭 (관리자 전용) */}
         {activeTab === 'purchases' && isSuperAdmin && (
-          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
-            <h2 className="text-xl font-bold text-white mb-6">추가 구매 요청</h2>
-            {purchasesLoading ? (
-              <p className="text-neutral-500 text-center py-8">로딩 중...</p>
-            ) : purchaseRequests.length === 0 ? (
-              <p className="text-neutral-500 text-center py-8">대기 중인 구매 요청이 없습니다.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px]">
-                  <thead className="bg-neutral-800/50">
-                    <tr>
-                      <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">신청일</th>
-                      <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">회원명</th>
-                      <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">입금자명</th>
-                      <th className="w-[80px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">인원수</th>
-                      <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">금액</th>
-                      <th className="w-[80px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">승인</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-800">
-                    {purchaseRequests.map((req) => (
-                      <tr key={req.id} className="hover:bg-neutral-800/30">
-                        <td className="px-4 py-3 text-center text-neutral-400 text-sm">
-                          {new Date(req.created_at).toLocaleDateString('ko-KR')}
-                        </td>
-                        <td className="px-4 py-3 text-center text-white">{req.username}</td>
-                        <td className="px-4 py-3 text-center text-yellow-400 font-medium">{req.depositor_name}</td>
-                        <td className="px-4 py-3 text-center text-neutral-300">{req.slot_count}개</td>
-                        <td className="px-4 py-3 text-center text-neutral-300">{req.total_amount.toLocaleString()}원</td>
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            onClick={() => handleApprovePurchase(req.id)}
-                            className="px-4 py-1.5 bg-orange-600 hover:bg-orange-500 text-white text-sm font-medium rounded-lg transition"
-                          >
-                            승인
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          <PurchasesTab
+            purchaseRequests={purchaseRequests}
+            purchasesLoading={purchasesLoading}
+            handleApprovePurchase={handleApprovePurchase}
+          />
         )}
 
         {activeTab === 'rooms' && isSuperAdmin && (
-          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
-            <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
-              <h2 className="text-xl font-bold text-white">방상태</h2>
-              <div className="flex flex-wrap items-center gap-2">
-                <select
-                  value={roomShopFilter}
-                  onChange={(e) => setRoomShopFilter(e.target.value)}
-                  className="px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
-                >
-                  <option value="all">전체 가게</option>
-                  {eventTimes.map((et) => (
-                    <option key={et.id} value={et.shop_name}>{et.shop_name}</option>
-                  ))}
-                </select>
-                <select
-                  value={roomStatusFilter}
-                  onChange={(e) => setRoomStatusFilter(e.target.value as 'all' | 'active' | 'ended')}
-                  className="px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
-                >
-                  <option value="all">전체 상태</option>
-                  <option value="active">활성</option>
-                  <option value="ended">종료</option>
-                </select>
-                <select
-                  value={roomSort}
-                  onChange={(e) => setRoomSort(e.target.value as 'start_desc' | 'start_asc' | 'end_desc' | 'end_asc')}
-                  className="px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
-                >
-                  <option value="start_desc">시작시간 최신순</option>
-                  <option value="start_asc">시작시간 오래된순</option>
-                  <option value="end_desc">종료시간 최신순</option>
-                  <option value="end_asc">종료시간 오래된순</option>
-                </select>
-                <button
-                  onClick={fetchRooms}
-                  className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium rounded-lg transition"
-                >
-                  새로고침
-                </button>
-              </div>
-            </div>
-            {roomsLoading ? (
-              <p className="text-neutral-500 text-center py-8">로딩 중...</p>
-            ) : rooms.length === 0 ? (
-              <p className="text-neutral-500 text-center py-8">등록된 방이 없습니다.</p>
-            ) : (() => {
-              const filteredRooms = rooms
-                .filter(r => roomShopFilter === 'all' || r.shop_name === roomShopFilter)
-                .filter(r => roomStatusFilter === 'all' || (roomStatusFilter === 'active' ? r.is_active : !r.is_active))
-                .sort((a, b) => {
-                  const getTime = (t: string | null) => t ? new Date(t).getTime() : 0;
-                  switch (roomSort) {
-                    case 'start_desc': return getTime(b.room_start_time) - getTime(a.room_start_time);
-                    case 'start_asc': return getTime(a.room_start_time) - getTime(b.room_start_time);
-                    case 'end_desc': return getTime(b.room_end_time) - getTime(a.room_end_time);
-                    case 'end_asc': return getTime(a.room_end_time) - getTime(b.room_end_time);
-                    default: return 0;
-                  }
-                });
-              return filteredRooms.length === 0 ? (
-                <p className="text-neutral-500 text-center py-8">조건에 맞는 방이 없습니다.</p>
-              ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px]">
-                  <thead className="bg-neutral-800/50">
-                    <tr>
-                      <th className="w-[80px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">방번호</th>
-                      <th className="w-[120px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">가게명</th>
-                      <th className="w-[80px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">상태</th>
-                      <th className="w-[160px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">시작시간</th>
-                      <th className="w-[160px] px-4 py-3 text-center text-sm font-semibold text-neutral-400">종료시간</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-800">
-                    {filteredRooms.map((room) => (
-                      <tr key={room.id} className="hover:bg-neutral-800/30">
-                        <td className="px-4 py-3 text-center text-white font-medium">{room.room_number}</td>
-                        <td className="px-4 py-3 text-center text-neutral-300">{room.shop_name || '-'}</td>
-                        <td className="px-4 py-3 text-center">
-                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                            room.is_active
-                              ? 'bg-green-600/20 text-green-400 border border-green-600/30'
-                              : 'bg-neutral-700/30 text-neutral-500 border border-neutral-700/30'
-                          }`}>
-                            {room.is_active ? '활성' : '종료'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center text-neutral-400 text-sm">
-                          {room.room_start_time ? new Date(room.room_start_time).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-center text-neutral-400 text-sm">
-                          {room.room_end_time ? new Date(room.room_end_time).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              );
-            })()}
-          </div>
+          <RoomsTab
+            rooms={rooms}
+            roomsLoading={roomsLoading}
+            roomShopFilter={roomShopFilter}
+            setRoomShopFilter={setRoomShopFilter}
+            roomStatusFilter={roomStatusFilter}
+            setRoomStatusFilter={setRoomStatusFilter}
+            roomSort={roomSort}
+            setRoomSort={setRoomSort}
+            eventTimes={eventTimes}
+            fetchRooms={fetchRooms}
+          />
         )}
 
-        {/* 총판 관리 탭 (superadmin 전용) */}
         {activeTab === 'distributors' && isSuperAdmin && (
-          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">총판 관리</h2>
-              <button
-                onClick={() => setShowAddDistributorModal(true)}
-                className="px-4 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-lg font-medium transition"
-              >
-                + 총판 추가
-              </button>
-            </div>
-            {distributorsLoading ? (
-              <div className="text-center py-12 text-neutral-400">로딩 중...</div>
-            ) : distributors.length === 0 ? (
-              <div className="text-center py-12 text-neutral-600">등록된 총판이 없습니다.</div>
-            ) : (
-              <div className="space-y-4">
-                {distributors.map((d) => (
-                  <div key={d.id} className="p-4 bg-neutral-800 rounded-xl">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <span className="text-white font-medium text-lg">{d.site_name}</span>
-                        <span className={`text-xs px-2 py-1 rounded-full ${d.is_active ? 'bg-green-600/20 text-green-400' : 'bg-neutral-700 text-neutral-400'}`}>
-                          {d.is_active ? '활성' : '비활성'}
-                        </span>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            setEditingDistributor(editingDistributor === d.id ? null : d.id);
-                            setEditDistForm({
-                              domain: d.domain, siteName: d.site_name,
-                              bankName: d.bank_name || '', accountNumber: d.account_number || '', accountHolder: d.account_holder || '',
-                              slotPrice: d.slot_price || 100000, costPrice: d.cost_price || 20000,
-                              primaryColor: d.primary_color, secondaryColor: d.secondary_color,
-                            });
-                          }}
-                          className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded transition"
-                        >
-                          {editingDistributor === d.id ? '닫기' : '수정'}
-                        </button>
-                        <button
-                          onClick={() => handleUpdateDistributor(d.id, { isActive: !d.is_active })}
-                          className={`px-3 py-1 text-xs rounded transition ${d.is_active ? 'bg-neutral-600 hover:bg-neutral-500 text-white' : 'bg-green-600 hover:bg-green-500 text-white'}`}
-                        >
-                          {d.is_active ? '비활성화' : '활성화'}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteDistributor(d.id)}
-                          className="px-3 py-1 text-xs bg-red-600 hover:bg-red-500 text-white rounded transition"
-                        >
-                          삭제
-                        </button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                      <div className="flex gap-2">
-                        <span className="text-neutral-500 w-20">도메인</span>
-                        <span className="text-indigo-400">{d.domain}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <span className="text-neutral-500 w-20">담당자</span>
-                        <span className="text-orange-400">{d.username || '-'}</span>
-                      </div>
-                      <div className="flex gap-2 items-center">
-                        <span className="text-neutral-500 w-20">메인 색상</span>
-                        <div className="w-5 h-5 rounded" style={{ backgroundColor: d.primary_color }} />
-                        <span className="text-neutral-400">{d.primary_color}</span>
-                      </div>
-                      <div className="flex gap-2 items-center">
-                        <span className="text-neutral-500 w-20">보조 색상</span>
-                        <div className="w-5 h-5 rounded" style={{ backgroundColor: d.secondary_color }} />
-                        <span className="text-neutral-400">{d.secondary_color}</span>
-                      </div>
-                      {d.logo_url && (
-                        <div className="flex gap-2 items-center col-span-2">
-                          <span className="text-neutral-500 w-20">로고</span>
-                          <img src={d.logo_url} alt="logo" className="w-8 h-8 rounded" />
-                        </div>
-                      )}
-                      <div className="flex gap-2 col-span-2 mt-2 pt-2 border-t border-neutral-700">
-                        <span className="text-neutral-500 w-20">입금계좌</span>
-                        <span className="text-emerald-400">
-                          {d.bank_name && d.account_number
-                            ? `${d.bank_name} ${d.account_number} ${d.account_holder || ''}`
-                            : '미설정'}
-                        </span>
-                      </div>
-                      <div className="flex gap-2">
-                        <span className="text-neutral-500 w-20">판매 금액</span>
-                        <span className="text-yellow-400">{(d.slot_price || 100000).toLocaleString()}원</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <span className="text-neutral-500 w-20">본사 단가</span>
-                        <span className="text-orange-400">{(d.cost_price || 20000).toLocaleString()}원</span>
-                      </div>
-                    </div>
-
-                    {/* 수정 폼 */}
-                    {editingDistributor === d.id && (
-                      <div className="mt-4 pt-4 border-t border-neutral-700 space-y-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs text-neutral-400 mb-1">도메인</label>
-                            <input type="text" value={editDistForm.domain} onChange={(e) => setEditDistForm({ ...editDistForm, domain: e.target.value })}
-                              className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-neutral-400 mb-1">사이트명</label>
-                            <input type="text" value={editDistForm.siteName} onChange={(e) => setEditDistForm({ ...editDistForm, siteName: e.target.value })}
-                              className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          <div>
-                            <label className="block text-xs text-neutral-400 mb-1">은행명</label>
-                            <input type="text" value={editDistForm.bankName} onChange={(e) => setEditDistForm({ ...editDistForm, bankName: e.target.value })}
-                              placeholder="국민은행" className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-sm placeholder-neutral-500 focus:ring-2 focus:ring-blue-500 outline-none" />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-neutral-400 mb-1">계좌번호</label>
-                            <input type="text" value={editDistForm.accountNumber} onChange={(e) => setEditDistForm({ ...editDistForm, accountNumber: e.target.value })}
-                              placeholder="123-456-789" className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-sm placeholder-neutral-500 focus:ring-2 focus:ring-blue-500 outline-none" />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-neutral-400 mb-1">예금주</label>
-                            <input type="text" value={editDistForm.accountHolder} onChange={(e) => setEditDistForm({ ...editDistForm, accountHolder: e.target.value })}
-                              placeholder="홍길동" className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-sm placeholder-neutral-500 focus:ring-2 focus:ring-blue-500 outline-none" />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <div>
-                            <label className="block text-xs text-neutral-400 mb-1">판매 금액 (원)</label>
-                            <input type="number" value={editDistForm.slotPrice} onChange={(e) => setEditDistForm({ ...editDistForm, slotPrice: parseInt(e.target.value) || 0 })}
-                              className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-neutral-400 mb-1">본사 입금 단가 (원)</label>
-                            <input type="number" value={editDistForm.costPrice} onChange={(e) => setEditDistForm({ ...editDistForm, costPrice: parseInt(e.target.value) || 0 })}
-                              className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-neutral-400 mb-1">메인 색상</label>
-                            <div className="flex items-center gap-2">
-                              <input type="color" value={editDistForm.primaryColor} onChange={(e) => setEditDistForm({ ...editDistForm, primaryColor: e.target.value })} className="w-8 h-8 rounded cursor-pointer bg-transparent border-0" />
-                              <input type="text" value={editDistForm.primaryColor} onChange={(e) => setEditDistForm({ ...editDistForm, primaryColor: e.target.value })}
-                                className="flex-1 px-2 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-xs focus:outline-none" />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-xs text-neutral-400 mb-1">보조 색상</label>
-                            <div className="flex items-center gap-2">
-                              <input type="color" value={editDistForm.secondaryColor} onChange={(e) => setEditDistForm({ ...editDistForm, secondaryColor: e.target.value })} className="w-8 h-8 rounded cursor-pointer bg-transparent border-0" />
-                              <input type="text" value={editDistForm.secondaryColor} onChange={(e) => setEditDistForm({ ...editDistForm, secondaryColor: e.target.value })}
-                                className="flex-1 px-2 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white text-xs focus:outline-none" />
-                            </div>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleUpdateDistributor(d.id, {
-                            domain: editDistForm.domain,
-                            siteName: editDistForm.siteName,
-                            bankName: editDistForm.bankName,
-                            accountNumber: editDistForm.accountNumber,
-                            accountHolder: editDistForm.accountHolder,
-                            slotPrice: editDistForm.slotPrice,
-                            extensionPrice: editDistForm.slotPrice,
-                            costPrice: editDistForm.costPrice,
-                            primaryColor: editDistForm.primaryColor,
-                            secondaryColor: editDistForm.secondaryColor,
-                          })}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition"
-                        >
-                          저장
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <DistributorsTab
+            distributors={distributors}
+            distributorsLoading={distributorsLoading}
+            allUsers={allUsers}
+            setShowAddDistributorModal={setShowAddDistributorModal}
+            editingDistributor={editingDistributor}
+            setEditingDistributor={setEditingDistributor}
+            editDistForm={editDistForm}
+            setEditDistForm={setEditDistForm}
+            handleUpdateDistributor={handleUpdateDistributor}
+            handleDeleteDistributor={handleDeleteDistributor}
+          />
         )}
 
-        {/* 정산 탭 (superadmin 전용) */}
         {activeTab === 'settlement' && (isSuperAdmin || isAdmin) && (
-          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
-            <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
-              <p className="text-amber-400 text-sm font-medium">정산 안내</p>
-              <p className="text-neutral-300 text-xs mt-1">정산 기간: 매월 1일 ~ 말일 | 입금 일정: 다음 달 1~5일 이내 입금</p>
-            </div>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">정산</h2>
-              <div className="flex items-center gap-2">
-                <input
-                  type="month"
-                  value={settlementMonth}
-                  onChange={(e) => {
-                    setSettlementMonth(e.target.value);
-                    fetchSettlements(e.target.value);
-                  }}
-                  className="px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-amber-500 outline-none"
-                />
-              </div>
-            </div>
-            {settlementLoading ? (
-              <div className="text-center py-12 text-neutral-400">로딩 중...</div>
-            ) : settlements.length === 0 ? (
-              <div className="text-center py-12 text-neutral-600">정산 데이터가 없습니다.</div>
-            ) : (
-              <div className="space-y-4">
-                {settlements.map((s) => (
-                  <div key={s.distributorId} className="p-5 bg-neutral-800 rounded-xl">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-white font-bold text-lg">{s.siteName}</span>
-                        <span className="text-neutral-400 text-sm">({s.username})</span>
-                        {s.isPaid ? (
-                          <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full">입금 완료</span>
-                        ) : (
-                          <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded-full">미입금</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <span className="text-neutral-500 text-xs block">정산 금액</span>
-                          <span className={`font-bold text-xl ${s.settlementAmount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {s.settlementAmount.toLocaleString()}원
-                          </span>
-                        </div>
-                        {isSuperAdmin && (
-                          <button
-                            onClick={async () => {
-                              if (s.isPaid) {
-                                if (!confirm('입금 취소하시겠습니까?')) return;
-                                try {
-                                  const res = await fetch('/api/admin/settlement', {
-                                    method: 'PATCH',
-                                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-                                    body: JSON.stringify({ distributorId: s.distributorId, month: settlementMonth, isPaid: false }),
-                                  });
-                                  if (res.ok) fetchSettlements(settlementMonth);
-                                  else alert('처리에 실패했습니다.');
-                                } catch { alert('오류가 발생했습니다.'); }
-                              } else {
-                                const amountStr = prompt(`${s.siteName}에 입금할 금액을 입력하세요.`, String(s.settlementAmount));
-                                if (amountStr === null) return;
-                                const paidAmount = parseInt(amountStr.replace(/,/g, ''));
-                                if (isNaN(paidAmount) || paidAmount <= 0) { alert('올바른 금액을 입력해주세요.'); return; }
-                                try {
-                                  const res = await fetch('/api/admin/settlement', {
-                                    method: 'PATCH',
-                                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-                                    body: JSON.stringify({ distributorId: s.distributorId, month: settlementMonth, isPaid: true, paidAmount }),
-                                  });
-                                  if (res.ok) fetchSettlements(settlementMonth);
-                                  else alert('처리에 실패했습니다.');
-                                } catch { alert('오류가 발생했습니다.'); }
-                              }
-                            }}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                              s.isPaid
-                                ? 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
-                                : 'bg-emerald-600 text-white hover:bg-emerald-500'
-                            }`}
-                          >
-                            {s.isPaid ? '입금 취소' : '입금 처리'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    {s.isPaid && s.paidAt && (
-                      <div className="mb-3 p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-between">
-                        <span className="text-emerald-400 text-xs">입금 완료: {new Date(s.paidAt).toLocaleDateString('ko-KR')}</span>
-                        <span className="text-emerald-400 text-sm font-bold">{s.paidAmount.toLocaleString()}원 입금</span>
-                      </div>
-                    )}
-
-                    {/* 계좌 정보 */}
-                    <div className="mb-4 p-3 bg-neutral-700/50 rounded-lg">
-                      <span className="text-neutral-400 text-xs">정산 입금 계좌</span>
-                      <p className="text-emerald-400 font-medium mt-1">
-                        {s.bankName && s.accountNumber
-                          ? `${s.bankName} ${s.accountNumber} ${s.accountHolder || ''}`
-                          : '미설정'}
-                      </p>
-                    </div>
-
-                    {/* 정산 상세 */}
-                    <div className="p-3 bg-neutral-700/30 rounded-lg space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-neutral-300">총 판매 인원수</span>
-                        <span className="text-white font-medium">{s.totalSlotCount}건</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-neutral-300">총 판매 금액 (유저 입금)</span>
-                        <span className="text-white">{s.totalSalesAmount.toLocaleString()}원</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-neutral-300">본사 입금액 ({s.costPrice.toLocaleString()}원 × {s.totalSlotCount}건)</span>
-                        <span className="text-red-400">-{s.costToHQ.toLocaleString()}원</span>
-                      </div>
-                      <div className="flex justify-between text-sm pt-2 border-t border-neutral-600">
-                        <span className="text-neutral-300 font-medium">정산 금액 (총판 수익)</span>
-                        <span className={`font-bold ${s.settlementAmount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {s.settlementAmount.toLocaleString()}원
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm pt-1">
-                        <span className="text-neutral-300">소속 유저</span>
-                        <span className="text-neutral-400">{s.userCount}명</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                {/* 전체 합계 */}
-                <div className="p-4 bg-amber-600/10 border border-amber-600/30 rounded-xl">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-neutral-400 text-sm">전체 판매 금액</span>
-                    <span className="text-white font-medium">
-                      {settlements.reduce((sum, s) => sum + s.totalSalesAmount, 0).toLocaleString()}원
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-neutral-400 text-sm">전체 본사 입금액</span>
-                    <span className="text-red-400 font-medium">
-                      -{settlements.reduce((sum, s) => sum + s.costToHQ, 0).toLocaleString()}원
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center pt-2 border-t border-amber-600/30">
-                    <span className="text-amber-400 font-medium">전체 정산 금액</span>
-                    <span className="text-amber-400 font-bold text-2xl">
-                      {settlements.reduce((sum, s) => sum + s.settlementAmount, 0).toLocaleString()}원
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <SettlementTab
+            settlements={settlements}
+            settlementMonth={settlementMonth}
+            setSettlementMonth={setSettlementMonth}
+            settlementLoading={settlementLoading}
+            isSuperAdmin={isSuperAdmin}
+            fetchSettlements={fetchSettlements}
+          />
         )}
 
-        {/* 계좌/판매금액 설정 탭 (admin/총판 전용) */}
         {activeTab === 'bankAccount' && isAdmin && (
-          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6">
-            <h2 className="text-xl font-bold text-white mb-6">총판 설정</h2>
+          <BankAccountTab
+            distBankName={distBankName}
+            setDistBankName={setDistBankName}
+            distAccountNumber={distAccountNumber}
+            setDistAccountNumber={setDistAccountNumber}
+            distAccountHolder={distAccountHolder}
+            setDistAccountHolder={setDistAccountHolder}
+            distSlotPrice={distSlotPrice}
+            setDistSlotPrice={setDistSlotPrice}
+            bankAccountSaving={bankAccountSaving}
+            handleSaveBankAccount={handleSaveBankAccount}
+          />
+        )}
 
-            {/* 입금 계좌 */}
-            <div className="mb-6">
-              <h3 className="text-sm font-medium text-neutral-300 mb-3">입금 계좌</h3>
-              <p className="text-neutral-500 text-xs mb-3">본사에서 정산금을 입금할 계좌를 설정합니다.</p>
-              <div className="space-y-3 max-w-md">
-                <div>
-                  <label className="block text-xs text-neutral-400 mb-1">은행명</label>
-                  <input
-                    type="text"
-                    value={distBankName}
-                    onChange={(e) => setDistBankName(e.target.value)}
-                    placeholder="예: 국민은행"
-                    className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-neutral-400 mb-1">계좌번호</label>
-                  <input
-                    type="text"
-                    value={distAccountNumber}
-                    onChange={(e) => setDistAccountNumber(e.target.value)}
-                    placeholder="예: 123-456-789012"
-                    className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-neutral-400 mb-1">예금주</label>
-                  <input
-                    type="text"
-                    value={distAccountHolder}
-                    onChange={(e) => setDistAccountHolder(e.target.value)}
-                    placeholder="예: 홍길동"
-                    className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
-                  />
-                </div>
-              </div>
-            </div>
+        {activeTab === 'errandTalk' && (
+          <ErrandTalkTab />
+        )}
 
-            {/* 판매 금액 */}
-            <div className="mb-6 pt-6 border-t border-neutral-700">
-              <h3 className="text-sm font-medium text-neutral-300 mb-3">판매 금액</h3>
-              <p className="text-neutral-500 text-xs mb-3">유저에게 인원 판매/연장 시 적용되는 금액입니다.</p>
-              <div className="max-w-md">
-                <label className="block text-xs text-neutral-400 mb-1">판매 금액 (원)</label>
-                <input
-                  type="number"
-                  value={distSlotPrice}
-                  onChange={(e) => setDistSlotPrice(parseInt(e.target.value) || 0)}
-                  placeholder="100000"
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
-                />
-                <p className="text-neutral-500 text-xs mt-1">인원 구매 및 연장에 동일하게 적용됩니다.</p>
-              </div>
-            </div>
+        {activeTab === 'choiceTalk' && (
+          <ChoiceTalkTab />
+        )}
 
-            <button
-              onClick={handleSaveBankAccount}
-              disabled={bankAccountSaving}
-              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
-            >
-              {bankAccountSaving ? '저장 중...' : '저장'}
-            </button>
-          </div>
+        {activeTab === 'package' && (
+          <PackageTab />
+        )}
+
+        {activeTab === 'serviceManage' && isSuperAdmin && (
+          <ServiceManageTab />
         )}
       </main>
 
