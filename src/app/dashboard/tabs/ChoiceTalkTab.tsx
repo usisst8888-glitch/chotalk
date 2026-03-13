@@ -102,7 +102,7 @@ export default function ChoiceTalkTab() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-bold text-white">초이스톡 관리</h2>
-            <p className="text-neutral-400 text-sm mt-1">초이스톡에서 아톡으로 메시지를 전달하는 서비스입니다.</p>
+            <p className="text-neutral-400 text-sm mt-1">초이스톡에서 상황판을 아톡에 메시지를 전달하는 서비스입니다.</p>
           </div>
           <button
             onClick={() => setShowApplyModal(true)}
@@ -136,9 +136,9 @@ export default function ChoiceTalkTab() {
                     <td className="px-4 py-3 text-white">{svc.shop_name}</td>
                     <td className="px-4 py-3 text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        svc.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                        svc.is_active ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
                       }`}>
-                        {svc.is_active ? '활성' : '비활성'}
+                        {svc.is_active ? '이용중' : '입금 확인중'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center text-neutral-400 text-sm">

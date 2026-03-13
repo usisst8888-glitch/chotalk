@@ -136,9 +136,9 @@ export default function ErrandTalkTab() {
                     <td className="px-4 py-3 text-white">{svc.shop_name}</td>
                     <td className="px-4 py-3 text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        svc.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                        svc.is_active ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
                       }`}>
-                        {svc.is_active ? '활성' : '비활성'}
+                        {svc.is_active ? '이용중' : '입금 확인중'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center text-neutral-400 text-sm">

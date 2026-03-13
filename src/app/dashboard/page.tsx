@@ -7,7 +7,7 @@ import BrandedLogo from '@/components/BrandedLogo';
 import { User, Distributor, Settlement, Slot, SHOP_NAMES } from './types';
 import {
   SlotsTab, UsersTab, KakaoIdsTab, EventTimesTab,
-  ExtensionsTab, PurchasesTab, RoomsTab, DistributorsTab,
+  RoomsTab, DistributorsTab,
   SettlementTab, BankAccountTab, ErrandTalkTab, ChoiceTalkTab, PackageTab,
   ServiceManageTab,
 } from './tabs';
@@ -70,12 +70,6 @@ export default function DashboardPage() {
   const [filterUserIds, setFilterUserIds] = useState<string[]>([]);
   const [editingKakaoIdDescription, setEditingKakaoIdDescription] = useState<string | null>(null);
   const [editDescriptionValue, setEditDescriptionValue] = useState('');
-  // 관리자용 연장 요청 관리
-  const [extensionRequests, setExtensionRequests] = useState<Array<{ id: string; username: string; depositor_name: string; slot_count: number; total_amount: number; created_at: string }>>([]);
-  const [extensionsLoading, setExtensionsLoading] = useState(false);
-  // 관리자용 추가 구매 요청 관리
-  const [purchaseRequests, setPurchaseRequests] = useState<Array<{ id: string; username: string; depositor_name: string; slot_count: number; total_amount: number; created_at: string }>>([]);
-  const [purchasesLoading, setPurchasesLoading] = useState(false);
   // 관리자용 가게 관리 (이벤트 시간 + 주소)
   const [eventTimes, setEventTimes] = useState<Array<{ id: string; shop_name: string; start_time: string; end_time: string; is_active: boolean; address: string | null }>>([]);
   const [eventTimesLoading, setEventTimesLoading] = useState(false);
@@ -336,22 +330,6 @@ export default function DashboardPage() {
     }
   };
 
-  // 관리자용: 연장 요청 목록 조회
-  const fetchExtensionRequests = async () => {
-    setExtensionsLoading(true);
-    try {
-      const res = await fetch('/api/admin/extensions');
-      if (res.ok) {
-        const data = await res.json();
-        setExtensionRequests(data.requests || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch extension requests:', error);
-    } finally {
-      setExtensionsLoading(false);
-    }
-  };
-
   // 관리자용: 방상태 조회
   const fetchRooms = async () => {
     setRoomsLoading(true);
@@ -365,64 +343,6 @@ export default function DashboardPage() {
       console.error('Failed to fetch rooms:', error);
     } finally {
       setRoomsLoading(false);
-    }
-  };
-
-  // 관리자용: 연장 요청 승인
-  const handleApproveExtension = async (requestId: string) => {
-    if (!confirm('이 연장 요청을 승인하시겠습니까?')) return;
-    try {
-      const res = await fetch('/api/admin/extensions', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId }),
-      });
-      if (res.ok) {
-        alert('연장이 승인되었습니다.');
-        fetchExtensionRequests();
-      } else {
-        const data = await res.json();
-        alert(data.error || '승인 실패');
-      }
-    } catch {
-      alert('승인 중 오류가 발생했습니다.');
-    }
-  };
-
-  // 관리자용: 추가 구매 요청 목록 조회
-  const fetchPurchaseRequests = async () => {
-    setPurchasesLoading(true);
-    try {
-      const res = await fetch('/api/admin/slot-purchases');
-      if (res.ok) {
-        const data = await res.json();
-        setPurchaseRequests(data.requests || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch purchase requests:', error);
-    } finally {
-      setPurchasesLoading(false);
-    }
-  };
-
-  // 관리자용: 추가 구매 요청 승인
-  const handleApprovePurchase = async (requestId: string) => {
-    if (!confirm('이 구매 요청을 승인하시겠습니까?')) return;
-    try {
-      const res = await fetch('/api/admin/slot-purchases', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId }),
-      });
-      if (res.ok) {
-        alert('구매가 승인되었습니다. 인원이 추가되었습니다.');
-        fetchPurchaseRequests();
-      } else {
-        const data = await res.json();
-        alert(data.error || '승인 실패');
-      }
-    } catch {
-      alert('승인 중 오류가 발생했습니다.');
     }
   };
 
@@ -1478,32 +1398,6 @@ export default function DashboardPage() {
                 </button>
                 <button
                   onClick={() => {
-                    setActiveTab('extensions');
-                    fetchExtensionRequests();
-                  }}
-                  className={`px-4 py-2 rounded-lg font-medium transition ${
-                    activeTab === 'extensions'
-                      ? 'bg-green-600 text-white'
-                      : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
-                  }`}
-                >
-                  연장 요청
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveTab('purchases');
-                    fetchPurchaseRequests();
-                  }}
-                  className={`px-4 py-2 rounded-lg font-medium transition ${
-                    activeTab === 'purchases'
-                      ? 'bg-orange-600 text-white'
-                      : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
-                  }`}
-                >
-                  추가 구매
-                </button>
-                <button
-                  onClick={() => {
                     setActiveTab('rooms');
                     fetchRooms();
                     if (eventTimes.length === 0) fetchEventTimes();
@@ -1669,21 +1563,6 @@ export default function DashboardPage() {
           />
         )}
 
-        {activeTab === 'extensions' && isSuperAdmin && (
-          <ExtensionsTab
-            extensionRequests={extensionRequests}
-            extensionsLoading={extensionsLoading}
-            handleApproveExtension={handleApproveExtension}
-          />
-        )}
-
-        {activeTab === 'purchases' && isSuperAdmin && (
-          <PurchasesTab
-            purchaseRequests={purchaseRequests}
-            purchasesLoading={purchasesLoading}
-            handleApprovePurchase={handleApprovePurchase}
-          />
-        )}
 
         {activeTab === 'rooms' && isSuperAdmin && (
           <RoomsTab
