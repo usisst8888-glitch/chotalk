@@ -63,7 +63,7 @@ export default function ErrandTalkTab() {
       const res = await fetch('/api/aktalk_atok', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shopName }),
+        body: JSON.stringify({ shopName, depositorName: applyForm.depositorName }),
       });
 
       if (res.ok) {

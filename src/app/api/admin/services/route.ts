@@ -1,25 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
-import { verifyToken } from '@/lib/jwt';
-import { cookies } from 'next/headers';
-
-async function verifySuperAdmin() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('token')?.value;
-  if (!token) return null;
-  const payload = verifyToken(token);
-  if (!payload) return null;
-
-  const supabase = getSupabase();
-  const { data: user } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', payload.userId)
-    .single();
-
-  if (user?.role !== 'superadmin') return null;
-  return payload;
-}
+import { checkSuperAdmin } from '@/lib/auth';
 
 function getTableName(type: string) {
   if (type === 'atok') return 'aktalk_atok_services';
@@ -30,8 +11,8 @@ function getTableName(type: string) {
 // 전체 서비스 목록 조회 (superadmin)
 export async function GET(request: NextRequest) {
   try {
-    const payload = await verifySuperAdmin();
-    if (!payload) {
+    const admin = await checkSuperAdmin(request);
+    if (!admin) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
@@ -71,8 +52,8 @@ export async function GET(request: NextRequest) {
 // 상태 변경 (활성/비활성)
 export async function PATCH(request: NextRequest) {
   try {
-    const payload = await verifySuperAdmin();
-    if (!payload) {
+    const admin = await checkSuperAdmin(request);
+    if (!admin) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 
@@ -102,8 +83,8 @@ export async function PATCH(request: NextRequest) {
 // 삭제
 export async function DELETE(request: NextRequest) {
   try {
-    const payload = await verifySuperAdmin();
-    if (!payload) {
+    const admin = await checkSuperAdmin(request);
+    if (!admin) {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
     }
 

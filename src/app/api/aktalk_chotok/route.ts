@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { shopName } = body;
+    const { shopName, depositorName } = body;
 
     if (!shopName?.trim()) {
       return NextResponse.json({ error: '가게명을 입력해주세요.' }, { status: 400 });
@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: payload.userId,
         shop_name: shopName.trim(),
+        depositor_name: depositorName?.trim() || null,
       });
 
     if (error) {

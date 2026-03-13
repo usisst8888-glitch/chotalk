@@ -1437,6 +1437,16 @@ export default function DashboardPage() {
                 >
                   정산
                 </button>
+                <button
+                  onClick={() => setActiveTab('serviceManage')}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    activeTab === 'serviceManage'
+                      ? 'bg-cyan-600 text-white'
+                      : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
+                  }`}
+                >
+                  서비스 관리
+                </button>
               </>
             )}
             {/* admin(총판) 전용 탭 */}
@@ -1464,16 +1474,6 @@ export default function DashboardPage() {
                   }`}
                 >
                   정산
-                </button>
-                <button
-                  onClick={() => setActiveTab('serviceManage')}
-                  className={`px-4 py-2 rounded-lg font-medium transition ${
-                    activeTab === 'serviceManage'
-                      ? 'bg-cyan-600 text-white'
-                      : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
-                  }`}
-                >
-                  서비스 관리
                 </button>
               </>
             )}

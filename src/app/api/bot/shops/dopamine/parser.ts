@@ -371,12 +371,12 @@ export function parseGirlSignals(
   // 이렇게 해야 "다미 3 소영ㅈㅁ 2 ㄲ"에서 다미가 지명으로 잡히지 않음
   const allSignalCodes = ['ㅈㅁㅂㅅㅅ', 'ㅈㅁㅅㅅ', 'ㅎㅅㄱㅈㅈㅎ', 'ㅈㅈㅎ', 'ㅈㅁ', 'ㅇㅈ', 'ㅈㅈ', 'ㄱㅌ', 'ㅋㅌ', 'ㄱㅋ', 'ㄲ', '끝'];
   for (const sig of allSignalCodes) {
-    const regex = new RegExp(`([가-힣]{2,})(${sig.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g');
+    const regex = new RegExp(`([가-힣]{2,})\\s*(${sig.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g');
     afterSection = afterSection.replace(regex, (_match, koreanPart: string, signalPart: string) => {
       if (allGirlNames.includes(koreanPart)) {
-        return koreanPart + signalPart; // 등록된 이름이면 유지
+        return koreanPart + ' ' + signalPart; // 등록된 이름이면 유지
       }
-      return koreanPart; // 미등록 이름이면 신호 제거
+      return koreanPart; // 미등록 이름이면 신호 제거 (띄어쓰기 포함)
     });
   }
 

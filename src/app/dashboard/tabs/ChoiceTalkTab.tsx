@@ -63,7 +63,7 @@ export default function ChoiceTalkTab() {
       const res = await fetch('/api/aktalk_chotok', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shopName }),
+        body: JSON.stringify({ shopName, depositorName: applyForm.depositorName }),
       });
 
       if (res.ok) {

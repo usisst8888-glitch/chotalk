@@ -6,6 +6,7 @@ interface ServiceRecord {
   id: string;
   user_id: string;
   shop_name: string;
+  depositor_name?: string;
   is_active: boolean;
   created_at: string;
   username?: string;
@@ -207,6 +208,7 @@ export default function ServiceManageTab() {
           <tr className="border-b border-neutral-800">
             <th className="text-left px-4 py-3 text-neutral-500 font-medium">회원</th>
             <th className="text-left px-4 py-3 text-neutral-500 font-medium">가게명</th>
+            <th className="text-center px-4 py-3 text-neutral-500 font-medium">입금자명</th>
             <th className="text-center px-4 py-3 text-neutral-500 font-medium">상태</th>
             <th className="text-center px-4 py-3 text-neutral-500 font-medium">신청일</th>
             <th className="text-center px-4 py-3 text-neutral-500 font-medium">관리</th>
@@ -219,6 +221,7 @@ export default function ServiceManageTab() {
                 {svc.nickname || svc.username || '-'}
               </td>
               <td className="px-4 py-3 text-white font-medium">{svc.shop_name}</td>
+              <td className="px-4 py-3 text-center text-yellow-400 font-medium">{svc.depositor_name || '-'}</td>
               <td className="px-4 py-3 text-center">
                 <button
                   onClick={() => toggleActive(type, svc.id, svc.is_active)}
