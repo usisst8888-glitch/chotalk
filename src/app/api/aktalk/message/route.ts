@@ -6,7 +6,7 @@ import { parseGongjiMessage } from '../gongji-parser';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { room, sender, message, receivedAt } = body;
+    const { room, sender, message, hasPhoto, receivedAt } = body;
 
     // 필수 필드 검증
     if (!room || !sender || !message) {
@@ -110,6 +110,9 @@ export async function POST(request: NextRequest) {
 
     if (roomType === '아톡') {
       insertData.team_name = teamName;
+      if (hasPhoto) {
+        insertData.has_photo = true;
+      }
     }
 
     const { data, error } = await supabase
