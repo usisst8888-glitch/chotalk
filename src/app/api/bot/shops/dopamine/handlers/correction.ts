@@ -20,32 +20,44 @@ export async function handleCorrectionWithTime(
   const corrAfterGirl = corrGirlIdx >= 0 ? lineMsg.substring(corrGirlIdx + slot.girl_name.length) : lineMsg;
   const manualTime = extractManualTime(corrAfterGirl, receivedAt, { allowTwoDigit: true });
 
+  // 가장 최근 진행중 세션 찾기 (방번호 무관 - ㅈㅈ로 방번호가 바뀔 수 있으므로)
+  const { data: record } = await supabase
+    .from('status_board')
+    .select('id, room_number')
+    .eq('slot_id', slot.id)
+    .eq('is_in_progress', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!record) {
+    console.log('ㅈㅈ 시작시간 수정 - 진행중 세션 없음:', slot.girl_name);
+    return { type: 'ignored', slotId: slot.id, girlName: slot.girl_name, reason: '수정할 레코드 없음' };
+  }
+
+  const updateFields: Record<string, unknown> = {
+    data_changed: true,
+    updated_at: getKoreanTime(),
+  };
+
   if (manualTime) {
-    const { data: record } = await supabase
+    updateFields.start_time = manualTime;
+  }
+
+  // 방번호 변경
+  if (roomNumber !== record.room_number) {
+    updateFields.room_number = roomNumber;
+    console.log('ㅈㅈ 방번호 변경:', slot.girl_name, record.room_number, '→', roomNumber);
+  }
+
+  if (manualTime || roomNumber !== record.room_number) {
+    await supabase
       .from('status_board')
-      .select('id')
-      .eq('slot_id', slot.id)
-      .eq('room_number', roomNumber)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+      .update(updateFields)
+      .eq('id', record.id);
 
-    if (record) {
-      await supabase
-        .from('status_board')
-        .update({
-          start_time: manualTime,
-          data_changed: true,
-          updated_at: getKoreanTime(),
-        })
-        .eq('id', record.id);
-
-      console.log('ㅈㅈ 시작시간 수정:', slot.girl_name, '방:', roomNumber, '→', manualTime);
-      return { type: 'correction_time', slotId: slot.id, girlName: slot.girl_name, roomNumber, newStartTime: manualTime };
-    } else {
-      console.log('ㅈㅈ 시작시간 수정 - 레코드 없음:', roomNumber);
-      return { type: 'ignored', slotId: slot.id, girlName: slot.girl_name, reason: '수정할 레코드 없음' };
-    }
+    console.log('ㅈㅈ 수정 완료:', slot.girl_name, '방:', roomNumber, manualTime ? `시간→${manualTime}` : '');
+    return { type: 'correction_time', slotId: slot.id, girlName: slot.girl_name, roomNumber, newStartTime: manualTime };
   } else {
     console.log('ㅈㅈ 시간패턴 없음 - 무시:', lineMsg);
     return { type: 'ignored', slotId: slot.id, girlName: slot.girl_name, reason: 'ㅈㅈ 시간패턴 없음' };
@@ -78,25 +90,39 @@ export async function handleCorrectionCatchAll(
     return handleSessionStart(ctx, parsed, lineSignals);
   }
 
-  // 세션 있음 → 정정 (시간패턴 있으면 start_time 수정)
+  // 세션 있음 → 정정
   const corrGirlIdx = lineMsg.lastIndexOf(slot.girl_name);
   const corrAfterGirl = corrGirlIdx >= 0 ? lineMsg.substring(corrGirlIdx + slot.girl_name.length) : lineMsg;
   const manualTime = extractManualTime(corrAfterGirl, receivedAt, { allowTwoDigit: true });
 
+  // 방번호 변경 체크: 새 방번호가 기존과 다르면 업데이트
+  const updateFields: Record<string, unknown> = {
+    data_changed: true,
+    updated_at: getKoreanTime(),
+  };
+
+  let roomChanged = false;
+  if (parsed.roomNumber && parsed.roomNumber !== activeSession.room_number) {
+    updateFields.room_number = parsed.roomNumber;
+    roomChanged = true;
+    console.log('ㅈㅈ 정정 - 방번호 변경:', slot.girl_name, activeSession.room_number, '→', parsed.roomNumber);
+  }
+
   if (manualTime) {
+    updateFields.start_time = manualTime;
+  }
+
+  if (manualTime || roomChanged) {
     await supabase
       .from('status_board')
-      .update({
-        start_time: manualTime,
-        data_changed: true,
-        updated_at: getKoreanTime(),
-      })
+      .update(updateFields)
       .eq('id', activeSession.id);
 
-    console.log('ㅈㅈ 정정 - start_time 수정:', slot.girl_name, '방:', activeSession.room_number, '→', manualTime);
-    return { type: 'correction_time', slotId: slot.id, girlName: slot.girl_name, roomNumber: activeSession.room_number, newStartTime: manualTime };
+    const resultRoom = parsed.roomNumber || activeSession.room_number;
+    console.log('ㅈㅈ 정정 완료:', slot.girl_name, '방:', resultRoom, manualTime ? `시간→${manualTime}` : '');
+    return { type: roomChanged ? 'correction_room' : 'correction_time', slotId: slot.id, girlName: slot.girl_name, roomNumber: resultRoom, newStartTime: manualTime };
   } else {
-    console.log('ㅈㅈ 정정 - 시간패턴 없음, 무시:', slot.girl_name);
-    return { type: 'ignored', slotId: slot.id, girlName: slot.girl_name, reason: 'ㅈㅈ 정정 시간패턴 없음' };
+    console.log('ㅈㅈ 정정 - 변경 없음, 무시:', slot.girl_name);
+    return { type: 'ignored', slotId: slot.id, girlName: slot.girl_name, reason: 'ㅈㅈ 정정 변경사항 없음' };
   }
 }

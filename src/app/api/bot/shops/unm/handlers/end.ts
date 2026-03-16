@@ -24,12 +24,36 @@ export async function handleSessionEnd(
   }
 
   // 기존 레코드에서 start_time 조회
-  const { data: existingRecord } = await supabase
-    .from('status_board')
-    .select('start_time')
-    .eq('slot_id', slot.id)
-    .eq('room_number', parsed.roomNumber)
-    .single();
+  // ㅈㅈ(정정)일 때는 방번호가 변경될 수 있으므로, 진행중 세션을 방번호 무관하게 찾기
+  let existingRecord: { start_time: string; id?: string; room_number?: string } | null = null;
+  if (girlSignals.isCorrection) {
+    const { data } = await supabase
+      .from('status_board')
+      .select('id, start_time, room_number')
+      .eq('slot_id', slot.id)
+      .eq('is_in_progress', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    existingRecord = data;
+
+    // 방번호가 다르면 업데이트
+    if (existingRecord && parsed.roomNumber && existingRecord.room_number !== parsed.roomNumber) {
+      console.log('ㅈㅈ+ㄲ 방번호 변경:', slot.girl_name, existingRecord.room_number, '→', parsed.roomNumber);
+      await supabase
+        .from('status_board')
+        .update({ room_number: parsed.roomNumber, updated_at: new Date().toISOString() })
+        .eq('id', existingRecord.id);
+    }
+  } else {
+    const { data } = await supabase
+      .from('status_board')
+      .select('start_time')
+      .eq('slot_id', slot.id)
+      .eq('room_number', parsed.roomNumber)
+      .single();
+    existingRecord = data;
+  }
 
   const girlStartTime = existingRecord?.start_time || receivedAt;
 
