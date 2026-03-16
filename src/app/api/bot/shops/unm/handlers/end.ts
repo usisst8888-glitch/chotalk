@@ -24,14 +24,16 @@ export async function handleSessionEnd(
   }
 
   // 기존 레코드에서 start_time 조회
-  // ㅈㅈ(정정)일 때는 방번호가 변경될 수 있으므로, 진행중 세션을 방번호 무관하게 찾기
+  // ㅈㅈ+ㄲ(정정+종료)일 때는 가장 최근 종료된 세션의 방번호를 수정
+  // 예: 404 제니 3ㄲ → 503 제니 ㅅㅅ → ㅈㅈ402 제니 3ㄲ → 404(종료)를 402로 변경
   let existingRecord: { start_time: string; id?: string; room_number?: string } | null = null;
   if (girlSignals.isCorrection) {
+    // 가장 최근 종료된(is_in_progress=false) 세션을 찾아서 방번호 수정
     const { data } = await supabase
       .from('status_board')
       .select('id, start_time, room_number')
       .eq('slot_id', slot.id)
-      .eq('is_in_progress', true)
+      .eq('is_in_progress', false)
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
@@ -42,7 +44,7 @@ export async function handleSessionEnd(
       console.log('ㅈㅈ+ㄲ 방번호 변경:', slot.girl_name, existingRecord.room_number, '→', parsed.roomNumber);
       await supabase
         .from('status_board')
-        .update({ room_number: parsed.roomNumber, updated_at: new Date().toISOString() })
+        .update({ room_number: parsed.roomNumber, updated_at: new Date().toISOString(), data_changed: true })
         .eq('id', existingRecord.id);
     }
   } else {
