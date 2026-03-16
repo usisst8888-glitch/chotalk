@@ -31,7 +31,27 @@ export async function handleCorrectionWithTime(
     .single();
 
   if (!record) {
-    console.log('ㅈㅈ 시작시간 수정 - 진행중 세션 없음:', slot.girl_name);
+    // 진행중 세션 없으면 종료된 세션에서 방번호 변경 시도
+    // 예: "ㅈㅈ 502 제니 문주 2ㄲ" → 제니는 ㄲ 없이 correction만 → 종료된 세션의 방번호 변경
+    const { data: endedRecord } = await supabase
+      .from('status_board')
+      .select('id, room_number')
+      .eq('slot_id', slot.id)
+      .eq('is_in_progress', false)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (endedRecord && roomNumber !== endedRecord.room_number) {
+      await supabase
+        .from('status_board')
+        .update({ room_number: roomNumber, data_changed: true, updated_at: getKoreanTime() })
+        .eq('id', endedRecord.id);
+      console.log('ㅈㅈ 종료세션 방번호 변경:', slot.girl_name, endedRecord.room_number, '→', roomNumber);
+      return { type: 'correction_room', slotId: slot.id, girlName: slot.girl_name, roomNumber };
+    }
+
+    console.log('ㅈㅈ 시작시간 수정 - 수정할 세션 없음:', slot.girl_name);
     return { type: 'ignored', slotId: slot.id, girlName: slot.girl_name, reason: '수정할 레코드 없음' };
   }
 
