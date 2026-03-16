@@ -28,24 +28,40 @@ export async function handleSessionEnd(
   // 예: 404 제니 3ㄲ → 503 제니 ㅅㅅ → ㅈㅈ402 제니 3ㄲ → 404(종료)를 402로 변경
   let existingRecord: { start_time: string; id?: string; room_number?: string } | null = null;
   if (girlSignals.isCorrection) {
-    // 가장 최근 종료된(is_in_progress=false) 세션을 찾아서 방번호 수정
-    const { data } = await supabase
+    // 1. 먼저 해당 방번호에 진행중 세션이 있는지 확인
+    const { data: activeAtRoom } = await supabase
       .from('status_board')
       .select('id, start_time, room_number')
       .eq('slot_id', slot.id)
-      .eq('is_in_progress', false)
-      .order('created_at', { ascending: false })
-      .limit(1)
+      .eq('room_number', parsed.roomNumber)
+      .eq('is_in_progress', true)
       .single();
-    existingRecord = data;
 
-    // 방번호가 다르면 업데이트
-    if (existingRecord && parsed.roomNumber && existingRecord.room_number !== parsed.roomNumber) {
-      console.log('ㅈㅈ+ㄲ 방번호 변경:', slot.girl_name, existingRecord.room_number, '→', parsed.roomNumber);
-      await supabase
+    if (activeAtRoom) {
+      // 진행중 세션이 해당 방번호에 있으면 → 일반 종료로 처리 (방번호 변경 아님)
+      console.log('ㅈㅈ+ㄲ 진행중 세션 종료 (일반 종료 플로우):', slot.girl_name, '방:', parsed.roomNumber);
+      existingRecord = activeAtRoom;
+      girlSignals.isCorrection = false; // 일반 종료 플로우로 전환
+    } else {
+      // 2. 진행중 세션이 없으면 → 최근 종료 세션 찾기 (방번호 변경 가능)
+      const { data } = await supabase
         .from('status_board')
-        .update({ room_number: parsed.roomNumber, updated_at: new Date().toISOString(), data_changed: true })
-        .eq('id', existingRecord.id);
+        .select('id, start_time, room_number')
+        .eq('slot_id', slot.id)
+        .eq('is_in_progress', false)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      existingRecord = data;
+
+      // 방번호가 다르면 업데이트
+      if (existingRecord && parsed.roomNumber && existingRecord.room_number !== parsed.roomNumber) {
+        console.log('ㅈㅈ+ㄲ 방번호 변경:', slot.girl_name, existingRecord.room_number, '→', parsed.roomNumber);
+        await supabase
+          .from('status_board')
+          .update({ room_number: parsed.roomNumber, updated_at: new Date().toISOString(), data_changed: true })
+          .eq('id', existingRecord.id);
+      }
     }
   } else {
     const { data } = await supabase
