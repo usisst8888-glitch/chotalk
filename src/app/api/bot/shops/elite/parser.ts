@@ -507,10 +507,10 @@ export function parseGirlSignals(
     result.isDesignated = true;
   }
 
-  // ㅈㅁ방/지명방/순수ㅈㅁ - 정확히 이 3가지 패턴일 때만 시작 차단
-  // ㅈㅁ 뒤에 자음(ㄱ-ㅎ)이 오는 경우(ㅈㅁㅅㅌㅌ, ㅈㅁㄴㄱ, ㅈㅁㅅㅅ 등)는 해당 없음
+  // ㅈㅁ방/지명방/순수ㅈㅁ(끝) - 이 경우만 시작 차단
+  // ㅈㅁ 뒤에 자음이 오면 시작 허용: ㅈㅁㅅㅌㅌ, ㅈㅁㄴㄱ, ㅈㅁ ㄴㄱ ㅅㅌㅌ 등
   // 예: "혜교 ㅈㅁ방" → 차단, "혜교 지명방" → 차단, "혜교 ㅈㅁ" → 차단
-  if (/ㅈㅁ(?![ㄱ-ㅎ])/.test(afterSection) || afterSection.includes('지명방')) {
+  if (/ㅈㅁ방/.test(afterSection) || afterSection.includes('지명방') || /ㅈㅁ\s*$/.test(afterSection)) {
     result.isDesignatedRoom = true;
   }
 
