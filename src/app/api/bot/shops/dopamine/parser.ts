@@ -515,8 +515,8 @@ export function parseGirlSignals(
     result.isDesignatedRoom = true;
   }
 
-  // ㅇㅈ (연장) 신호 확인 - 시작으로 잡으면 안 됨
-  if (hasSignal(afterSection, MESSAGE_SIGNALS.EXTENSION.code)) {
+  // ㅇㅈ / ㅁㅎㅇㅈ (연장/무한연장) 신호 확인 - 시작으로 잡으면 안 됨
+  if (hasSignal(afterSection, MESSAGE_SIGNALS.EXTENSION.code) || afterSection.includes('ㅁㅎㅇㅈ')) {
     result.isExtension = true;
   }
 
