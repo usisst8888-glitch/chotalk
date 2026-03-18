@@ -10,6 +10,7 @@ import {
   RoomsTab, DistributorsTab,
   SettlementTab, BankAccountTab, ErrandTalkTab, ChoiceTalkTab, PackageTab,
   ServiceManageTab,
+  WaiterLineupTab,
 } from './tabs';
 
 export default function DashboardPage() {
@@ -54,7 +55,7 @@ export default function DashboardPage() {
   const [adminExtendDays, setAdminExtendDays] = useState(30);
   const [adminExtendMode, setAdminExtendMode] = useState<'add' | 'set'>('add');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'purchases' | 'rooms' | 'distributors' | 'bankAccount' | 'settlement' | 'errandTalk' | 'choiceTalk' | 'package' | 'serviceManage'>('slots');
+  const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'purchases' | 'rooms' | 'distributors' | 'bankAccount' | 'settlement' | 'errandTalk' | 'choiceTalk' | 'package' | 'serviceManage' | 'waiterLineup'>('slots');
   // 관리자용 회원관리
   const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; nickname: string | null; phone: string; role: string; slot_count: number; parent_id: string | null; domain: string | null; created_at: string }>>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -1447,6 +1448,16 @@ export default function DashboardPage() {
                 >
                   서비스 관리
                 </button>
+                <button
+                  onClick={() => setActiveTab('waiterLineup')}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    activeTab === 'waiterLineup'
+                      ? 'bg-violet-600 text-white'
+                      : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
+                  }`}
+                >
+                  웨이터라인업
+                </button>
               </>
             )}
             {/* admin(총판) 전용 탭 */}
@@ -1634,6 +1645,10 @@ export default function DashboardPage() {
 
         {activeTab === 'serviceManage' && isSuperAdmin && (
           <ServiceManageTab />
+        )}
+
+        {activeTab === 'waiterLineup' && isSuperAdmin && (
+          <WaiterLineupTab />
         )}
       </main>
 

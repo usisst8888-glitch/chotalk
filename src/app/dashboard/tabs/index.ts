@@ -12,3 +12,4 @@ export { default as ErrandTalkTab } from './ErrandTalkTab';
 export { default as ChoiceTalkTab } from './ChoiceTalkTab';
 export { default as PackageTab } from './PackageTab';
 export { default as ServiceManageTab } from './ServiceManageTab';
+export { default as WaiterLineupTab } from './WaiterLineupTab';
