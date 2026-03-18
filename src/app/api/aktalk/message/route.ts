@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
         floor: a.floor,
         name: a.name,
         phone: a.phone,
+        part: a.part,
       }));
 
       const { error: insertError } = await supabase

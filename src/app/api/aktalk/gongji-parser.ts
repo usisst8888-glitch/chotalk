@@ -10,16 +10,26 @@ export interface FloorAssignment {
   floor: number;
   name: string;
   phone: string;
+  part: number; // 1부=1, 2부=2
 }
 
 export function parseGongjiMessage(message: string): FloorAssignment[] {
   const lines = message.split('\n');
   const assignments: FloorAssignment[] = [];
   let currentFloor: number | null = null;
+  let currentPart: number = 1; // 기본값 1부
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
     if (!line) continue;
+
+    // 1부/2부 감지: "1부 라인업", "2부 라인업" 등
+    const partMatch = line.match(/^(\d)부\s*라인업/);
+    if (partMatch) {
+      currentPart = parseInt(partMatch[1]);
+      currentFloor = null;
+      continue;
+    }
 
     // "라인업", "장사", "보조장", "헬퍼" 등 메타 라인 스킵
     if (/^([\d.]+\s*(월|화|수|목|금|토|일)요일|.*라인업|보조장|헬퍼)/.test(line)) {
@@ -35,6 +45,7 @@ export function parseGongjiMessage(message: string): FloorAssignment[] {
         floor: currentFloor,
         name: match1bu[2],
         phone: normalizePhone(match1bu[3]),
+        part: currentPart,
       });
       continue;
     }
@@ -47,6 +58,7 @@ export function parseGongjiMessage(message: string): FloorAssignment[] {
         floor: currentFloor,
         name: match2bu[2],
         phone: normalizePhone(match2bu[3]),
+        part: currentPart,
       });
       continue;
     }
@@ -59,6 +71,7 @@ export function parseGongjiMessage(message: string): FloorAssignment[] {
           floor: currentFloor,
           name: matchIndent[1],
           phone: normalizePhone(matchIndent[2]),
+          part: currentPart,
         });
         continue;
       }
