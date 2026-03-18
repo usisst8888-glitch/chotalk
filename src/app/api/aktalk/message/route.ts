@@ -63,16 +63,21 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: true, stored: false, reason: '라인업 파싱 결과 없음' });
       }
 
-      // 해당 가게 기존 데이터 삭제
-      const { error: deleteError } = await supabase
-        .from('aktalk_gongji')
-        .delete()
-        .eq('shop_name', shopName);
+      // 해당 가게 + 해당 부(part)만 삭제 (1부 오면 1부만, 2부 오면 2부만)
+      const partsInMessage = [...new Set(assignments.map(a => a.part))];
+      for (const part of partsInMessage) {
+        const { error: partDeleteError } = await supabase
+          .from('aktalk_gongji')
+          .delete()
+          .eq('shop_name', shopName)
+          .eq('part', part);
 
-      if (deleteError) {
-        console.error('aktalk_gongji delete error:', deleteError);
-        return NextResponse.json({ error: 'DB 삭제 실패', detail: deleteError.message }, { status: 500 });
+        if (partDeleteError) {
+          console.error(`aktalk_gongji delete error (part ${part}):`, partDeleteError);
+          return NextResponse.json({ error: 'DB 삭제 실패', detail: partDeleteError.message }, { status: 500 });
+        }
       }
+      // 삭제 완료 (part별 개별 처리됨)
 
       // 새 데이터 일괄 INSERT
       const insertRows = assignments.map(a => ({
