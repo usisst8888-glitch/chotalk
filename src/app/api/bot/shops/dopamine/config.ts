@@ -73,7 +73,7 @@ export const MESSAGE_SIGNALS = {
     code: 'ㅈㅈ',
     type: 'correction',
     description: '수정 (방번호 또는 이용시간 변경)',
-    aliases: ['정정'],
+    aliases: ['정정', 'ㅈ ㅈ'],
   },
 
   // 재진행 신호 (종료 → 시작으로 되돌리기)
@@ -104,7 +104,7 @@ export const MESSAGE_SIGNALS = {
     code: 'ㄱㅌ',
     type: 'cancel',
     description: '취소 (해당 세션을 status_board에서 삭제)',
-    aliases: ['ㅋㅌ', 'ㄱㅋ', '걍팅', '팅'],
+    aliases: ['ㅋㅌ', 'ㄱㅋ', '걍팅', '팅', 'ㅌ'],
   },
 
   // 연장 신호 (시작으로 잡으면 안 됨)
@@ -194,7 +194,12 @@ export function hasSignal(message: string, signalCode: string): boolean {
 export function hasSignalWithAliases(message: string, signal: MessageSignal): boolean {
   if (message.includes(signal.code)) return true;
   if (signal.aliases) {
-    return signal.aliases.some(alias => message.includes(alias));
+    return signal.aliases.some(alias => {
+      if (alias === 'ㅌ') {
+        return /(?<![ㄱ-ㅎ])ㅌ(?![ㄱ-ㅎ])/.test(message);
+      }
+      return message.includes(alias);
+    });
   }
   return false;
 }
