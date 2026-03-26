@@ -14,15 +14,8 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 방이름에서 가게명 추출: {가게명}-공지방
-    if (!room.endsWith('-공지방')) {
-      return NextResponse.json({ success: false, reason: '공지방이 아닙니다.' });
-    }
-
-    const shopName = room.slice(0, room.lastIndexOf('-공지방'));
-    if (!shopName) {
-      return NextResponse.json({ error: '가게명을 파싱할 수 없습니다.' }, { status: 400 });
-    }
+    // 방이름 = 가게명 (예: "도파민", "유앤미")
+    const shopName = room;
 
     // 웨이터 파싱
     const assignments = parseWaiterMessage(message);
