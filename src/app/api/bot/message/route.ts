@@ -297,7 +297,13 @@ export async function POST(request: NextRequest) {
 
         } else if (lineSignals.isCorrection && lineParsed.roomNumber) {
           const result = await shop.handleCorrectionWithTime(ctx, lineMsg, lineParsed.roomNumber);
-          results.push({ ...result, logId });
+          // handleCorrectionWithTime이 무시(세션 없음)했으면 CatchAll로 넘겨서 신규 시작 생성
+          if (result.type === 'ignored' && messageStartsWithCorrection) {
+            const fallbackResult = await shop.handleCorrectionCatchAll(ctx, lineMsg, lineParsed, lineSignals);
+            results.push({ ...fallbackResult, logId });
+          } else {
+            results.push({ ...result, logId });
+          }
 
         } else if (messageStartsWithCorrection && lineParsed.roomNumber) {
           const result = await shop.handleCorrectionCatchAll(ctx, lineMsg, lineParsed, lineSignals);
