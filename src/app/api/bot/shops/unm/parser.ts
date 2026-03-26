@@ -122,8 +122,8 @@ export function extractManualTime(message: string, receivedAt: string, options?:
   // (ㄲ이 없는 컨텍스트에서만 안전, usageDuration 혼동 방지)
   // 03 → 03:00, 3 → 3:00 (또는 15:00)
   if (options?.allowTwoDigit) {
-    patterns.push(/(?<!\d)(\d{2})(?!\d)/);  // 03 → 03:00
-    patterns.push(/(?<!\d)(\d)(?!\d)/);     // 3 → 3:00
+    patterns.push(/(?<![ㄱ-ㅎ\d])(\d{2})(?!\d)/);  // 03 → 03:00 (자음 뒤 숫자 제외)
+    patterns.push(/(?<![ㄱ-ㅎ\d])(\d)(?!\d)/);     // 3 → 3:00 (자음 뒤 숫자 제외: ㅃ4 등)
   }
 
   let hour: number | null = null;
