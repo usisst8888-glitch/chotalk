@@ -7,9 +7,9 @@
  * "108 강 ㅃ2 철주"          → room=108, waiter=철주 (담당자 1글자)
  *
  * [ㅌㄹㅅ - 웨이터 이동]
- * "120 망나 119 ㅌㄹㅅ"      → 망나가 119방으로 이동 (웨이터 있음 → upsert)
- * "118 지효 ㅌㄹㅅ 110"      → 지효가 110방으로 이동 (웨이터 있음 → upsert)
- * "221 ㅌㄹㅅ 218"           → 221방 레코드의 방번호를 218로 변경 (웨이터 없음 → room 업데이트)
+ * "120 담당자 119 ㅌㄹㅅ"          → 담당자 무시, 웨이터 없음 → 120방 레코드를 119로 변경
+ * "221 ㅌㄹㅅ 218"                 → 웨이터 없음 → 221방 레코드를 218로 변경
+ * "222 담당자 107 ㅌㄹㅅ 온 알리"  → 두번째 방번호(107) 뒤 이름 = 알리 → 107방에 알리 upsert
  *
  * 규칙:
  * - 정확히 3자리 방번호 (4자리 이상 제외)
@@ -93,17 +93,14 @@ export function parseTransferMessage(message: string): WaiterTransfer[] {
     if (roomMatches.length < 2) continue;
 
     const fromRoom = roomMatches[0][1];
-    const toRoom = roomMatches[roomMatches.length - 1][1];
+    const lastMatch = roomMatches[roomMatches.length - 1];
+    const toRoom = lastMatch[1];
     if (fromRoom === toRoom) continue;
 
-    // fromRoom 끝 ~ 첫 번째 ㅌㄹㅅ 사이 텍스트에서 한글 이름 추출
-    const fromRoomEnd = roomMatches[0].index! + fromRoom.length;
-    const tlsIndex = line.indexOf('ㅌㄹㅅ', fromRoomEnd);
-    const betweenText = tlsIndex > fromRoomEnd
-      ? line.substring(fromRoomEnd, tlsIndex)
-      : line.substring(fromRoomEnd);
-
-    const nameMatches = betweenText.match(/(?<![가-힣])[가-힣]{2,}(?![가-힣])/g);
+    // 두 번째(마지막) 방번호 이후 텍스트에서 웨이터 이름 추출
+    // 방번호 앞/사이 이름은 담당자이므로 무시
+    const afterLastRoom = line.substring(lastMatch.index! + toRoom.length);
+    const nameMatches = afterLastRoom.match(/(?<![가-힣])[가-힣]{2,}(?![가-힣])/g);
 
     if (nameMatches && nameMatches.length > 0) {
       transfers.push({ fromRoom, toRoom, waiterName: nameMatches[0] });
