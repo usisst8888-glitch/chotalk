@@ -10,7 +10,6 @@ import {
   RoomsTab, DistributorsTab,
   SettlementTab, BankAccountTab, ErrandTalkTab, ChoiceTalkTab, PackageTab,
   ServiceManageTab,
-  WaiterLineupTab,
   WaiterListTab,
 } from './tabs';
 
@@ -56,7 +55,7 @@ export default function DashboardPage() {
   const [adminExtendDays, setAdminExtendDays] = useState(30);
   const [adminExtendMode, setAdminExtendMode] = useState<'add' | 'set'>('add');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'purchases' | 'rooms' | 'distributors' | 'bankAccount' | 'settlement' | 'errandTalk' | 'choiceTalk' | 'package' | 'serviceManage' | 'waiterLineup' | 'waiterList'>('slots');
+  const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'purchases' | 'rooms' | 'distributors' | 'bankAccount' | 'settlement' | 'errandTalk' | 'choiceTalk' | 'package' | 'serviceManage' | 'waiterList'>('slots');
   // 관리자용 회원관리
   const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; nickname: string | null; phone: string; role: string; slot_count: number; parent_id: string | null; domain: string | null; created_at: string }>>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -1450,16 +1449,6 @@ export default function DashboardPage() {
                   서비스 관리
                 </button>
                 <button
-                  onClick={() => setActiveTab('waiterLineup')}
-                  className={`px-4 py-2 rounded-lg font-medium transition ${
-                    activeTab === 'waiterLineup'
-                      ? 'bg-violet-600 text-white'
-                      : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
-                  }`}
-                >
-                  웨이터라인업
-                </button>
-                <button
                   onClick={() => setActiveTab('waiterList')}
                   className={`px-4 py-2 rounded-lg font-medium transition ${
                     activeTab === 'waiterList'
@@ -1656,10 +1645,6 @@ export default function DashboardPage() {
 
         {activeTab === 'serviceManage' && isSuperAdmin && (
           <ServiceManageTab />
-        )}
-
-        {activeTab === 'waiterLineup' && isSuperAdmin && (
-          <WaiterLineupTab />
         )}
 
         {activeTab === 'waiterList' && isSuperAdmin && (
