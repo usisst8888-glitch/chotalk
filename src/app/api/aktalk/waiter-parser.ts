@@ -9,7 +9,7 @@
  * [ㅌㄹㅅ - 웨이터 이동]
  * "120 담당자 119 ㅌㄹㅅ"          → 담당자 무시, 웨이터 없음 → 120방 레코드를 119로 변경
  * "221 ㅌㄹㅅ 218"                 → 웨이터 없음 → 221방 레코드를 218로 변경
- * "222 담당자 107 ㅌㄹㅅ 온 알리"  → 두번째 방번호(107) 뒤 이름 = 알리 → 107방에 알리 upsert
+ * "222 담당자 107 ㅌㄹㅅ 웨 알리"  → ㅌㄹㅅ 뒤 "웨 알리" → 107방에 알리 upsert
  *
  * 규칙:
  * - 정확히 3자리 방번호 (4자리 이상 제외)
@@ -97,16 +97,21 @@ export function parseTransferMessage(message: string): WaiterTransfer[] {
     const toRoom = lastMatch[1];
     if (fromRoom === toRoom) continue;
 
-    // 두 번째(마지막) 방번호 이후 텍스트에서 웨이터 이름 추출
-    // 방번호 앞/사이 이름은 담당자이므로 무시
+    // 두 번째(마지막) 방번호 이후에서 "웨" 키워드 찾기
+    // "웨 {웨이터이름}" 형식일 때만 웨이터 등록, 없으면 방번호만 변경
     const afterLastRoom = line.substring(lastMatch.index! + toRoom.length);
-    const nameMatches = afterLastRoom.match(/(?<![가-힣])[가-힣]{2,}(?![가-힣])/g);
+    const weIndex = afterLastRoom.search(/웨\s*/);
 
-    if (nameMatches && nameMatches.length > 0) {
-      transfers.push({ fromRoom, toRoom, waiterName: nameMatches[0] });
-    } else {
-      transfers.push({ fromRoom, toRoom });
+    if (weIndex !== -1) {
+      const afterWe = afterLastRoom.substring(weIndex + 1).trim();
+      const nameMatches = afterWe.match(/^(?<![가-힣])[가-힣]{2,}(?![가-힣])/);
+      if (nameMatches) {
+        transfers.push({ fromRoom, toRoom, waiterName: nameMatches[0] });
+        continue;
+      }
     }
+
+    transfers.push({ fromRoom, toRoom });
   }
 
   return transfers;
