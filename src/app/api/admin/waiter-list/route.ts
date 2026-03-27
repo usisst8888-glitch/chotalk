@@ -16,8 +16,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from('waiter_assignments')
     .select('*')
-    .order('shop_name', { ascending: true })
-    .order('room_number', { ascending: true });
+    .order('updated_at', { ascending: false });
 
   if (shopName) {
     query = query.eq('shop_name', shopName);
