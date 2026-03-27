@@ -8,10 +8,11 @@
  * "910 장서방 ㅃ1  명태"     → room=910, waiter=명태 (담당자 3글자)
  * "907 지효린 2 명태 ㄷㄱ"   → room=907, waiter=명태 (담당자 3글자)
  * "902 정부장 ㅃ1 명태ㄷㅊ"  → room=902, waiter=명태 (자음 붙어있어도 OK)
+ * "108 강 ㅃ2 철주"          → room=108, waiter=철주 (담당자 1글자)
  *
  * 규칙:
  * - 정확히 3자리 방번호 (4자리 이상 제외)
- * - 한글 이름(2글자 이상)이 2개 이상 있어야 함 (담당자 + 웨이터)
+ * - 한글 이름(1글자 이상)이 2개 이상 있어야 함 (담당자 + 웨이터)
  * - 마지막 2글자 한글 이름 = 웨이터
  * - ㄴ.ㄱ / ㅈ.ㅁ 섹션 이후는 무시
  */
@@ -43,8 +44,8 @@ export function parseWaiterMessage(message: string): WaiterAssignment[] {
     const roomNumber = roomMatch[1];
     const afterRoom = line.substring(roomMatch[0].length);
 
-    // 모든 한글 이름 추출 (2글자 이상)
-    const allNames = afterRoom.match(/(?<![가-힣])[가-힣]{2,}(?![가-힣])/g);
+    // 모든 한글 이름 추출 (1글자 이상)
+    const allNames = afterRoom.match(/(?<![가-힣])[가-힣]{1,}(?![가-힣])/g);
 
     // 한글 이름이 2개 이상 있어야 함 (담당자 + 웨이터)
     if (!allNames || allNames.length < 2) continue;
