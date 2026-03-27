@@ -59,14 +59,29 @@ export async function POST(request: NextRequest) {
           console.error('transfer upsert error:', error);
         }
       } else {
-        // 웨이터 이름 없음: fromRoom 레코드의 방번호를 toRoom으로 변경
-        const { error } = await supabase
+        // 웨이터 이름 없음: fromRoom의 웨이터를 조회해서 toRoom에 upsert
+        const { data: fromData } = await supabase
           .from('waiter_assignments')
-          .update({ room_number: t.toRoom, updated_at: kstNow() })
+          .select('waiter_name')
           .eq('shop_name', shopName)
-          .eq('room_number', t.fromRoom);
-        if (error) {
-          console.error('transfer room update error:', error);
+          .eq('room_number', t.fromRoom)
+          .single();
+
+        if (fromData?.waiter_name) {
+          const { error } = await supabase
+            .from('waiter_assignments')
+            .upsert(
+              {
+                shop_name: shopName,
+                room_number: t.toRoom,
+                waiter_name: fromData.waiter_name,
+                updated_at: kstNow(),
+              },
+              { onConflict: 'shop_name,room_number' }
+            );
+          if (error) {
+            console.error('transfer upsert error:', error);
+          }
         }
       }
     }
