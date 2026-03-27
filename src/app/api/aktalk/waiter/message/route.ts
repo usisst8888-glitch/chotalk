@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
             shop_name: shopName,
             room_number: a.roomNumber,
             waiter_name: a.waiterName,
-            updated_at: new Date().toISOString(),
+            updated_at: new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().replace('Z', ''),
           },
           { onConflict: 'shop_name,room_number' }
         );
