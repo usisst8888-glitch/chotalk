@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
-import { parseWaiterMessage } from '../../waiter-parser';
+import { parseWaiterMessage, parseTransferMessage } from '../../waiter-parser';
+
+const kstNow = () =>
+  new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().replace('Z', '');
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,19 +17,11 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 방이름 = 가게명 (예: "도파민", "유앤미")
     const shopName = room;
-
-    // 웨이터 파싱
-    const assignments = parseWaiterMessage(message);
-
-    if (assignments.length === 0) {
-      return NextResponse.json({ success: true, stored: false, reason: '웨이터 파싱 결과 없음' });
-    }
-
     const supabase = getSupabase();
 
-    // upsert: 같은 shop_name + room_number면 waiter_name 업데이트
+    // 1. 일반 웨이터 배정 파싱 및 저장
+    const assignments = parseWaiterMessage(message);
     for (const a of assignments) {
       const { error } = await supabase
         .from('waiter_assignments')
@@ -35,24 +30,60 @@ export async function POST(request: NextRequest) {
             shop_name: shopName,
             room_number: a.roomNumber,
             waiter_name: a.waiterName,
-            updated_at: new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().replace('Z', ''),
+            updated_at: kstNow(),
           },
           { onConflict: 'shop_name,room_number' }
         );
-
       if (error) {
         console.error('waiter_assignments upsert error:', error);
-        return NextResponse.json({ error: 'DB 저장 실패', detail: error.message }, { status: 500 });
       }
     }
 
-    console.log(`웨이터 ${assignments.length}건 저장:`, shopName, assignments);
+    // 2. ㅌㄹㅅ(이동) 파싱 및 처리
+    const transfers = parseTransferMessage(message);
+    for (const t of transfers) {
+      if (t.waiterName) {
+        // 웨이터 이름 있음: toRoom에 upsert (있으면 업데이트, 없으면 신규 등록)
+        const { error } = await supabase
+          .from('waiter_assignments')
+          .upsert(
+            {
+              shop_name: shopName,
+              room_number: t.toRoom,
+              waiter_name: t.waiterName,
+              updated_at: kstNow(),
+            },
+            { onConflict: 'shop_name,room_number' }
+          );
+        if (error) {
+          console.error('transfer upsert error:', error);
+        }
+      } else {
+        // 웨이터 이름 없음: fromRoom 레코드의 방번호를 toRoom으로 변경
+        const { error } = await supabase
+          .from('waiter_assignments')
+          .update({ room_number: t.toRoom, updated_at: kstNow() })
+          .eq('shop_name', shopName)
+          .eq('room_number', t.fromRoom);
+        if (error) {
+          console.error('transfer room update error:', error);
+        }
+      }
+    }
+
+    const totalCount = assignments.length + transfers.length;
+
+    if (totalCount === 0) {
+      return NextResponse.json({ success: true, stored: false, reason: '파싱 결과 없음' });
+    }
+
+    console.log(`웨이터 배정 ${assignments.length}건, ㅌㄹㅅ ${transfers.length}건 처리:`, shopName);
 
     return NextResponse.json({
       success: true,
       stored: true,
-      count: assignments.length,
-      assignments,
+      assignments: { count: assignments.length, data: assignments },
+      transfers: { count: transfers.length, data: transfers },
     });
 
   } catch (error) {
