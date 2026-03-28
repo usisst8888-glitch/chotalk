@@ -33,8 +33,8 @@ export function parseWaiterMessage(message: string): WaiterAssignment[] {
   const assignments: WaiterAssignment[] = [];
 
   for (const rawLine of lines) {
-    // @ 이후는 무시 (예: @WT 스트 010...)
-    const line = rawLine.split('@')[0].trim();
+    // @ 이후는 무시, 트랜스→ㅌㄹㅅ 정규화
+    const line = rawLine.split('@')[0].trim().replace(/트랜스/g, 'ㅌㄹㅅ');
     if (!line) continue;
 
     // ㄴ.ㄱ 또는 ㅈ.ㅁ 섹션 도달하면 파싱 중단
@@ -77,8 +77,8 @@ export function parseTransferMessage(message: string): WaiterTransfer[] {
   const transfers: WaiterTransfer[] = [];
 
   for (const rawLine of lines) {
-    // @ 이후는 무시 (예: @WT 스트 010...)
-    const line = rawLine.split('@')[0].trim();
+    // @ 이후는 무시, 트랜스→ㅌㄹㅅ 정규화
+    const line = rawLine.split('@')[0].trim().replace(/트랜스/g, 'ㅌㄹㅅ');
     if (!line) continue;
 
     // ㄴ.ㄱ 또는 ㅈ.ㅁ 섹션 도달하면 파싱 중단
