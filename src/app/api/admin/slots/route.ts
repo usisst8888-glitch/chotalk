@@ -169,12 +169,20 @@ export async function POST(request: NextRequest) {
           .from('slots')
           .select('*', { count: 'exact', head: true })
           .eq('kakao_id', k.kakao_id);
-        return { ...k, usageCount: count || 0 };
+        const { count: conflictCount } = await supabase
+          .from('slots')
+          .select('*', { count: 'exact', head: true })
+          .eq('kakao_id', k.kakao_id)
+          .eq('target_room', girlName);
+        return { ...k, usageCount: count || 0, hasConflict: (conflictCount || 0) > 0 };
       })
     );
 
-    const availableKakaoId = kakaoIdUsage
-      .sort((a, b) => a.usageCount - b.usageCount)[0];
+    const available = kakaoIdUsage
+      .filter(k => !k.hasConflict)
+      .sort((a, b) => a.usageCount - b.usageCount);
+
+    const availableKakaoId = available.length > 0 ? available[0] : null;
 
     const { data: newSlot, error } = await supabase
       .from('slots')
@@ -183,7 +191,7 @@ export async function POST(request: NextRequest) {
         girl_name: girlName,
         shop_name: shopName || null,
         target_room: girlName,
-        kakao_id: availableKakaoId.kakao_id,
+        kakao_id: availableKakaoId?.kakao_id || null,
         expires_at: toKoreanTimeString(expiresAt),
       })
       .select()

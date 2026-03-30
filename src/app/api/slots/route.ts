@@ -145,20 +145,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '사용 가능한 카카오 초대 ID가 없습니다. 관리자에게 문의해주세요.' }, { status: 400 });
     }
 
-    // 각 카카오 ID별 slots 사용 개수 카운트
+    // 각 카카오 ID별 slots 사용 개수 + target_room 충돌 체크
     const kakaoIdUsage = await Promise.all(
       kakaoIds.map(async (k) => {
         const { count } = await supabase
           .from('slots')
           .select('*', { count: 'exact', head: true })
           .eq('kakao_id', k.kakao_id);
-        return { ...k, usageCount: count || 0 };
+        const { count: conflictCount } = await supabase
+          .from('slots')
+          .select('*', { count: 'exact', head: true })
+          .eq('kakao_id', k.kakao_id)
+          .eq('target_room', girlName);
+        return { ...k, usageCount: count || 0, hasConflict: (conflictCount || 0) > 0 };
       })
     );
 
-    // 사용 횟수가 가장 적은 ID 선택
-    const availableKakaoId = kakaoIdUsage
-      .sort((a, b) => a.usageCount - b.usageCount)[0];
+    // 충돌 없는 kakao_id 중 사용량 가장 적은 것 선택
+    const available = kakaoIdUsage
+      .filter(k => !k.hasConflict)
+      .sort((a, b) => a.usageCount - b.usageCount);
+
+    const availableKakaoId = available.length > 0 ? available[0] : null;
 
     // 슬롯 생성
     const { data: newSlot, error } = await supabase
@@ -168,7 +176,7 @@ export async function POST(request: NextRequest) {
         girl_name: girlName,
         shop_name: shopName || null,
         target_room: girlName,
-        kakao_id: availableKakaoId.kakao_id,
+        kakao_id: availableKakaoId?.kakao_id || null,
         expires_at: toKoreanTimeString(expiresAt),
         domain: user?.domain || 'https://startalkbot.com',
       })

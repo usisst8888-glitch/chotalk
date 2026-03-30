@@ -373,36 +373,42 @@ export default function SlotsTab({
                       <td className="px-4 py-3 text-center text-neutral-400">{slot.shop_name || '-'}</td>
                       <td className="px-4 py-3 text-center text-neutral-500">{slot.target_room}</td>
                       <td className="px-4 py-3 text-center">
-                        {isSuperAdmin ? (
-                          editingSlotKakaoId === slot.id ? (
-                            <select
-                              defaultValue={slot.kakao_id}
-                              onChange={(e) => handleChangeSlotKakaoId(slot.id, e.target.value)}
-                              onBlur={() => setEditingSlotKakaoId(null)}
-                              autoFocus
-                              className="px-2 py-1 bg-neutral-800 border border-yellow-500 rounded text-white text-sm focus:outline-none"
-                            >
-                              <option value={slot.kakao_id}>{slot.kakao_id}</option>
-                              {kakaoInviteIds
-                                .filter((k) => k.is_active && k.kakao_id !== slot.kakao_id)
-                                .map((k) => (
-                                  <option key={k.id} value={k.kakao_id}>
-                                    {k.kakao_id} {k.description ? `(${k.description})` : ''}
-                                  </option>
-                                ))}
-                            </select>
+                        {slot.kakao_id ? (
+                          isSuperAdmin ? (
+                            editingSlotKakaoId === slot.id ? (
+                              <select
+                                defaultValue={slot.kakao_id}
+                                onChange={(e) => handleChangeSlotKakaoId(slot.id, e.target.value)}
+                                onBlur={() => setEditingSlotKakaoId(null)}
+                                autoFocus
+                                className="px-2 py-1 bg-neutral-800 border border-yellow-500 rounded text-white text-sm focus:outline-none"
+                              >
+                                <option value={slot.kakao_id}>{slot.kakao_id}</option>
+                                {kakaoInviteIds
+                                  .filter((k) => k.is_active && k.kakao_id !== slot.kakao_id)
+                                  .map((k) => (
+                                    <option key={k.id} value={k.kakao_id}>
+                                      {k.kakao_id} {k.description ? `(${k.description})` : ''}
+                                    </option>
+                                  ))}
+                              </select>
+                            ) : (
+                              <span
+                                onClick={() => setEditingSlotKakaoId(slot.id)}
+                                className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
+                                title="클릭하여 수정"
+                              >
+                                {slot.kakao_id}
+                              </span>
+                            )
                           ) : (
-                            <span
-                              onClick={() => setEditingSlotKakaoId(slot.id)}
-                              className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
-                              title="클릭하여 수정"
-                            >
+                            <span className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium">
                               {slot.kakao_id}
                             </span>
                           )
                         ) : (
-                          <span className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium">
-                            {slot.kakao_id}
+                          <span className="px-2.5 py-1 bg-orange-900/30 rounded text-orange-400 font-medium">
+                            배정중
                           </span>
                         )}
                       </td>
@@ -466,24 +472,30 @@ export default function SlotsTab({
                       <td className="px-4 py-3 text-center text-white font-medium">{slot.girl_name}</td>
                       <td className="px-4 py-3 text-center text-neutral-400">{slot.shop_name || '-'}</td>
                       <td className="px-4 py-3 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <span
-                            onClick={() => copyToClipboard(slot.kakao_id)}
-                            className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
-                            title="클릭하여 복사"
-                          >
-                            {slot.kakao_id}
+                        {slot.kakao_id ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <span
+                              onClick={() => copyToClipboard(slot.kakao_id)}
+                              className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
+                              title="클릭하여 복사"
+                            >
+                              {slot.kakao_id}
+                            </span>
+                            <button
+                              onClick={() => copyToClipboard(slot.kakao_id)}
+                              className="p-1 hover:bg-neutral-700 rounded transition"
+                              title="복사"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-amber-400 hover:text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="px-2.5 py-1 bg-orange-900/30 rounded text-orange-400 font-medium">
+                            배정중
                           </span>
-                          <button
-                            onClick={() => copyToClipboard(slot.kakao_id)}
-                            className="p-1 hover:bg-neutral-700 rounded transition"
-                            title="복사"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-amber-400 hover:text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                          </button>
-                        </div>
+                        )}
                       </td>
                       <td className={`px-4 py-3 text-center ${isExpired ? 'text-red-400' : isExpiringSoon ? 'text-yellow-400' : 'text-neutral-500'}`}>
                         {formatDate(slot.expires_at)}
@@ -662,36 +674,42 @@ export default function SlotsTab({
                     </div>
                     <div className="flex border-b border-neutral-800 pb-2 items-center">
                       <span className="text-neutral-600 w-28 flex-shrink-0">초대할 ID</span>
-                      {isSuperAdmin ? (
-                        editingSlotKakaoId === slot.id ? (
-                          <select
-                            defaultValue={slot.kakao_id}
-                            onChange={(e) => handleChangeSlotKakaoId(slot.id, e.target.value)}
-                            onBlur={() => setEditingSlotKakaoId(null)}
-                            autoFocus
-                            className="px-2 py-1 bg-neutral-800 border border-yellow-500 rounded text-white text-sm focus:outline-none"
-                          >
-                            <option value={slot.kakao_id}>{slot.kakao_id}</option>
-                            {kakaoInviteIds
-                              .filter((k) => k.is_active && k.kakao_id !== slot.kakao_id)
-                              .map((k) => (
-                                <option key={k.id} value={k.kakao_id}>
-                                  {k.kakao_id} {k.description ? `(${k.description})` : ''}
-                                </option>
-                              ))}
-                          </select>
+                      {slot.kakao_id ? (
+                        isSuperAdmin ? (
+                          editingSlotKakaoId === slot.id ? (
+                            <select
+                              defaultValue={slot.kakao_id}
+                              onChange={(e) => handleChangeSlotKakaoId(slot.id, e.target.value)}
+                              onBlur={() => setEditingSlotKakaoId(null)}
+                              autoFocus
+                              className="px-2 py-1 bg-neutral-800 border border-yellow-500 rounded text-white text-sm focus:outline-none"
+                            >
+                              <option value={slot.kakao_id}>{slot.kakao_id}</option>
+                              {kakaoInviteIds
+                                .filter((k) => k.is_active && k.kakao_id !== slot.kakao_id)
+                                .map((k) => (
+                                  <option key={k.id} value={k.kakao_id}>
+                                    {k.kakao_id} {k.description ? `(${k.description})` : ''}
+                                  </option>
+                                ))}
+                            </select>
+                          ) : (
+                            <span
+                              onClick={() => setEditingSlotKakaoId(slot.id)}
+                              className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
+                              title="클릭하여 수정"
+                            >
+                              {slot.kakao_id}
+                            </span>
+                          )
                         ) : (
-                          <span
-                            onClick={() => setEditingSlotKakaoId(slot.id)}
-                            className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
-                            title="클릭하여 수정"
-                          >
+                          <span className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium">
                             {slot.kakao_id}
                           </span>
                         )
                       ) : (
-                        <span className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium">
-                          {slot.kakao_id}
+                        <span className="px-2.5 py-1 bg-orange-900/30 rounded text-orange-400 font-medium">
+                          배정중
                         </span>
                       )}
                     </div>
@@ -777,19 +795,27 @@ export default function SlotsTab({
                     </div>
                     <div className="flex border-b border-neutral-800 pb-2 items-center">
                       <span className="text-neutral-600 w-28 flex-shrink-0">초대할 ID</span>
-                      <span
-                        onClick={() => copyToClipboard(slot.kakao_id)}
-                        className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
-                        title="클릭하여 복사"
-                      >
-                        {slot.kakao_id}
-                      </span>
-                      <button
-                        onClick={() => copyToClipboard(slot.kakao_id)}
-                        className="ml-2 px-2 py-1 text-xs bg-neutral-700 hover:bg-neutral-600 text-amber-400 rounded transition"
-                      >
-                        복사
-                      </button>
+                      {slot.kakao_id ? (
+                        <>
+                          <span
+                            onClick={() => copyToClipboard(slot.kakao_id)}
+                            className="px-2.5 py-1 bg-amber-900/30 rounded text-amber-300 font-medium cursor-pointer hover:bg-amber-900/50 transition"
+                            title="클릭하여 복사"
+                          >
+                            {slot.kakao_id}
+                          </span>
+                          <button
+                            onClick={() => copyToClipboard(slot.kakao_id)}
+                            className="ml-2 px-2 py-1 text-xs bg-neutral-700 hover:bg-neutral-600 text-amber-400 rounded transition"
+                          >
+                            복사
+                          </button>
+                        </>
+                      ) : (
+                        <span className="px-2.5 py-1 bg-orange-900/30 rounded text-orange-400 font-medium">
+                          배정중
+                        </span>
+                      )}
                     </div>
                     <div className="flex">
                       <span className="text-neutral-600 w-28 flex-shrink-0">만료일</span>
