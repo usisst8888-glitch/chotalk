@@ -71,6 +71,9 @@ export default function GuidePage() {
             <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-4 mt-3">
               <p className="text-red-400 font-semibold text-sm mb-2">중요 포인트</p>
               <p className="text-red-300 text-sm">봇을 초대후 아가씨 닉네임 입력 1회 꼭 해주셔야 합니다.</p>
+              <p className="text-red-300 text-sm mt-2">초대할 채팅방은 신규채팅방이어야합니다.</p>
+              <p className="text-red-300 text-sm">채팅방 이름은 🔴 아가씨 이름 🔴 으로 만들어주세요.</p>
+              <p className="text-red-300 text-sm">다른 텍스트 없이 오로지 🔴 아가씨 이름 🔴 으로만 만들어주세요!</p>
             </div>
           </div>
         </section>
