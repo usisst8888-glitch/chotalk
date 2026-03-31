@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
         account_number: accountNumber || null,
         account_holder: accountHolder || null,
         slot_price: slotPrice || 100000,
-        extension_price: extensionPrice || 50000,
+        extension_price: extensionPrice || 30000,
         cost_price: costPrice || 20000,
       })
       .select()

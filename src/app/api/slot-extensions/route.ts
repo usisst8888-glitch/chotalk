@@ -3,7 +3,7 @@ import { getSupabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/jwt';
 import { cookies } from 'next/headers';
 
-const EXTENSION_PRICE = 50000; // 1인당 30일 연장 가격
+const EXTENSION_PRICE = 30000; // 1인당 30일 연장 가격
 
 // 연장 신청
 export async function POST(request: NextRequest) {

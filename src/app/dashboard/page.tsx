@@ -104,7 +104,7 @@ export default function DashboardPage() {
   const [distributors, setDistributors] = useState<Distributor[]>([]);
   const [distributorsLoading, setDistributorsLoading] = useState(false);
   const [showAddDistributorModal, setShowAddDistributorModal] = useState(false);
-  const [newDistributor, setNewDistributor] = useState({ userId: '', domain: '', siteName: '', primaryColor: '#4f46e5', secondaryColor: '#7c3aed', bankName: '', accountNumber: '', accountHolder: '', slotPrice: 100000, extensionPrice: 50000 });
+  const [newDistributor, setNewDistributor] = useState({ userId: '', domain: '', siteName: '', primaryColor: '#4f46e5', secondaryColor: '#7c3aed', bankName: '', accountNumber: '', accountHolder: '', slotPrice: 100000, extensionPrice: 30000 });
   const [newDistributorLogo, setNewDistributorLogo] = useState<File | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
   const [editingDistributor, setEditingDistributor] = useState<string | null>(null);
@@ -497,7 +497,7 @@ export default function DashboardPage() {
       });
       if (res.ok) {
         setShowAddDistributorModal(false);
-        setNewDistributor({ userId: '', domain: '', siteName: '', primaryColor: '#4f46e5', secondaryColor: '#7c3aed', bankName: '', accountNumber: '', accountHolder: '', slotPrice: 100000, extensionPrice: 50000 });
+        setNewDistributor({ userId: '', domain: '', siteName: '', primaryColor: '#4f46e5', secondaryColor: '#7c3aed', bankName: '', accountNumber: '', accountHolder: '', slotPrice: 100000, extensionPrice: 30000 });
         setNewDistributorLogo(null);
         fetchDistributors();
       } else {
@@ -1345,7 +1345,7 @@ export default function DashboardPage() {
             >
               초이스톡
             </button>
-            <button
+            {/* <button
               onClick={() => setActiveTab('package')}
               className={`px-4 py-2 rounded-lg font-medium transition ${
                 activeTab === 'package'
@@ -1354,7 +1354,7 @@ export default function DashboardPage() {
               }`}
             >
               패키지
-            </button>
+            </button> */}
             {/* superadmin 전용 탭들 */}
             {isSuperAdmin && (
               <>
@@ -1639,9 +1639,9 @@ export default function DashboardPage() {
           <ChoiceTalkTab />
         )}
 
-        {activeTab === 'package' && (
+        {/* {activeTab === 'package' && (
           <PackageTab />
-        )}
+        )} */}
 
         {activeTab === 'serviceManage' && isSuperAdmin && (
           <ServiceManageTab />
@@ -1805,7 +1805,7 @@ export default function DashboardPage() {
                   type="button"
                   onClick={() => {
                     setShowAddDistributorModal(false);
-                    setNewDistributor({ userId: '', domain: '', siteName: '', primaryColor: '#4f46e5', secondaryColor: '#7c3aed', bankName: '', accountNumber: '', accountHolder: '', slotPrice: 100000, extensionPrice: 50000 });
+                    setNewDistributor({ userId: '', domain: '', siteName: '', primaryColor: '#4f46e5', secondaryColor: '#7c3aed', bankName: '', accountNumber: '', accountHolder: '', slotPrice: 100000, extensionPrice: 30000 });
                     setNewDistributorLogo(null);
                   }}
                   className="flex-1 px-4 py-3 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl transition"
@@ -2801,7 +2801,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex justify-between items-center mt-1">
                     <span className="text-yellow-400 font-medium">총 금액</span>
-                    <span className="text-yellow-400 font-bold text-lg">{(slots.length * 50000).toLocaleString()}원</span>
+                    <span className="text-yellow-400 font-bold text-lg">{(slots.length * 30000).toLocaleString()}원</span>
                   </div>
                 </div>
               </div>
@@ -2947,7 +2947,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="text-right">
                     <span className="text-xl font-bold text-white">
-                      {(purchaseForm.slotCount * 50000).toLocaleString()}원
+                      {(purchaseForm.slotCount * 30000).toLocaleString()}원
                     </span>
                   </div>
                 </div>
