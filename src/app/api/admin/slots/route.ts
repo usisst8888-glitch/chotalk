@@ -149,9 +149,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 7일 만료
+    // 3일 만료
     const expiresAt = getKoreanTimeDate();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    expiresAt.setDate(expiresAt.getDate() + 3);
 
     // 카카오 초대 ID 자동 배정 (사용량 가장 적은 것)
     const { data: kakaoIds } = await supabase
