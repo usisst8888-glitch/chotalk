@@ -19,10 +19,10 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 초톡 메시지 패턴 확인: ➖➖ 구분선 + (ㄴㄱ/ㅈㅁ/출근자)
+    // 초톡 메시지 패턴 확인: ➖➖ 구분선 + 날짜 패턴 (월/일)
     const hasDash = /➖➖/.test(message);
-    const hasSection = /ㄴ.?ㄱ|ㅈ.?ㅁ|출.?근.?자/.test(message);
-    if (!hasDash || !hasSection) {
+    const hasDate = /\d{1,2}\.?\d{0,2}월\s*\d{1,2}\.?\d{0,2}일/.test(message);
+    if (!hasDash || !hasDate) {
       return NextResponse.json({
         success: true,
         stored: false,
