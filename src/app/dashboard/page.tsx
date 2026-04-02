@@ -55,6 +55,11 @@ export default function DashboardPage() {
   const [adminExtendDays, setAdminExtendDays] = useState(30);
   const [adminExtendMode, setAdminExtendMode] = useState<'add' | 'set'>('add');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ current: '', new: '', confirm: '' });
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState({ current: false, new: false, confirm: false });
   const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'purchases' | 'rooms' | 'distributors' | 'bankAccount' | 'settlement' | 'errandTalk' | 'choiceTalk' | 'package' | 'serviceManage' | 'waiterList'>('slots');
   // 관리자용 회원관리
   const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; nickname: string | null; phone: string; role: string; slot_count: number; parent_id: string | null; domain: string | null; header_template: string | null; created_at: string }>>([]);
@@ -1244,6 +1249,12 @@ export default function DashboardPage() {
               사용방법
             </button>
             <button
+              onClick={() => setShowPasswordModal(true)}
+              className="px-3 py-2 text-sm text-neutral-500 hover:text-white hover:bg-neutral-800 rounded-lg transition"
+            >
+              내 정보
+            </button>
+            <button
               onClick={handleLogout}
               className="px-3 py-2 text-sm text-neutral-500 hover:text-white hover:bg-neutral-800 rounded-lg transition"
             >
@@ -1297,6 +1308,15 @@ export default function DashboardPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               사용방법
+            </button>
+            <button
+              onClick={() => { setShowPasswordModal(true); setMobileMenuOpen(false); }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-lg transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              내 정보
             </button>
             <button
               onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
@@ -1651,6 +1671,109 @@ export default function DashboardPage() {
           <WaiterListTab />
         )}
       </main>
+
+      {/* 비밀번호 변경 모달 */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowPasswordModal(false)}>
+          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 w-full max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-white mb-4">비밀번호 변경</h3>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setPasswordError('');
+              if (passwordForm.new !== passwordForm.confirm) {
+                setPasswordError('새 비밀번호가 일치하지 않습니다.');
+                return;
+              }
+              setPasswordSaving(true);
+              const res = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ currentPassword: passwordForm.current, newPassword: passwordForm.new }),
+              });
+              const data = await res.json();
+              setPasswordSaving(false);
+              if (res.ok) {
+                alert('비밀번호가 변경되었습니다.');
+                setShowPasswordModal(false);
+                setPasswordForm({ current: '', new: '', confirm: '' });
+              } else {
+                setPasswordError(data.error || '변경에 실패했습니다.');
+              }
+            }} className="space-y-4">
+              <div>
+                <label className="block text-sm text-neutral-400 mb-1">현재 비밀번호</label>
+                <div className="relative">
+                  <input
+                    type={showPassword.current ? 'text' : 'password'}
+                    value={passwordForm.current}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 pr-10 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                  <button type="button" onClick={() => setShowPassword({ ...showPassword, current: !showPassword.current })} className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white transition">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {showPassword.current ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /> : <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></>}
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-neutral-400 mb-1">새 비밀번호</label>
+                <div className="relative">
+                  <input
+                    type={showPassword.new ? 'text' : 'password'}
+                    value={passwordForm.new}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, new: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 pr-10 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                  <button type="button" onClick={() => setShowPassword({ ...showPassword, new: !showPassword.new })} className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white transition">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {showPassword.new ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /> : <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></>}
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-neutral-400 mb-1">새 비밀번호 확인</label>
+                <div className="relative">
+                  <input
+                    type={showPassword.confirm ? 'text' : 'password'}
+                    value={passwordForm.confirm}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 pr-10 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                  <button type="button" onClick={() => setShowPassword({ ...showPassword, confirm: !showPassword.confirm })} className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white transition">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {showPassword.confirm ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /> : <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></>}
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              {passwordError && (
+                <p className="text-red-400 text-sm">{passwordError}</p>
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowPasswordModal(false); setPasswordForm({ current: '', new: '', confirm: '' }); setPasswordError(''); }}
+                  className="px-4 py-2 text-sm bg-neutral-700 hover:bg-neutral-600 text-neutral-300 rounded-lg transition"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  disabled={passwordSaving}
+                  className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition disabled:opacity-50"
+                >
+                  {passwordSaving ? '변경 중...' : '변경'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* 총판 추가 모달 */}
       {showAddDistributorModal && (
