@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
           message,
           sender: sender || null,
           data_changed: true,
-          updated_at: new Date().toISOString(),
+          updated_at: new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().replace('T', ' ').replace('Z', ''),
         })
         .eq('id', existing.id);
 
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
           sender: sender || null,
           message,
           data_changed: true,
-          received_at: receivedAt || new Date().toISOString(),
+          received_at: receivedAt || new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().replace('T', ' ').replace('Z', ''),
         })
         .select('id')
         .single();
