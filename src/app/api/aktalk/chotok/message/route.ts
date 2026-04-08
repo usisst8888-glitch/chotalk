@@ -19,14 +19,13 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 초톡 메시지 패턴 확인: ➖➖ 구분선 + 날짜 패턴 (월/일)
-    const hasDash = /➖➖/.test(message);
-    const hasDate = /\d{1,2}\.?\d{0,2}월\s*\d{1,2}\.?\d{0,2}일/.test(message);
-    if (!hasDash || !hasDate) {
+    // 초톡 메시지 패턴 확인: ➖➖ 구분선이 2줄 이상
+    const dashLineCount = (message.match(/➖➖/g) || []).length;
+    if (dashLineCount < 2) {
       return NextResponse.json({
         success: true,
         stored: false,
-        reason: '초톡 패턴 불일치',
+        reason: '초톡 패턴 불일치 (구분선 2개 미만)',
       });
     }
 
