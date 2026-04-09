@@ -3,10 +3,11 @@ import { getSupabase } from '@/lib/supabase';
 
 /**
  * 주문 메시지 저장 API (orderreader 전용)
- * - 카톡 알림에서 모든 메시지를 받아서 처리
- * - 메시지가 "방번호+요구사항" 패턴(^\d{3}\s*.+)인지 확인
- * - 방 이름에 활성 girl_name이 포함되어 있는지 slots에서 조회
- * - 매칭되면 해당 shop_name으로 aktalk_atok에 저장
+ * - // 트리거로 시작하는 카톡 메시지를 받음
+ * - status_board에서 진행중인 girl(trigger_type=hourly, is_in_progress=true) 조회
+ * - 방 이름에 girl_name이 포함된 row 매칭 → shop_name, room_number 가져옴
+ * - 메시지에 방번호가 없으면 room_number를 앞에 붙임
+ * - starttalk_order 테이블에 저장
  */
 export async function POST(request: NextRequest) {
   try {
@@ -20,47 +21,37 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const trimmed = String(message).trim();
-
-    // 1. 방번호+텍스트 패턴 확인 (예: "108티 파티빅스랑 디제이좀여", "902 술추가요")
-    if (!/^\d{3}\s*.+/.test(trimmed)) {
-      return NextResponse.json({
-        success: true,
-        stored: false,
-        reason: '방번호+텍스트 패턴 불일치',
-      });
-    }
-
     const supabase = getSupabase();
 
-    // 2. 활성 girl_name 목록 조회
-    const { data: slots, error: slotsError } = await supabase
-      .from('slots')
-      .select('girl_name, shop_name')
-      .eq('is_active', true);
+    // 1. status_board에서 진행중인 girl 조회
+    const { data: boards, error: boardsError } = await supabase
+      .from('status_board')
+      .select('girl_name, room_number, shop_name')
+      .eq('trigger_type', 'hourly')
+      .eq('is_in_progress', true);
 
-    if (slotsError) {
-      console.error('slots 조회 실패:', slotsError);
+    if (boardsError) {
+      console.error('status_board 조회 실패:', boardsError);
       return NextResponse.json({
-        error: 'slots 조회 실패',
-        detail: slotsError.message,
+        error: 'status_board 조회 실패',
+        detail: boardsError.message,
       }, { status: 500 });
     }
 
-    if (!slots || slots.length === 0) {
+    if (!boards || boards.length === 0) {
       return NextResponse.json({
         success: true,
         stored: false,
-        reason: '활성 slots 없음',
+        reason: '진행중인 아가씨 없음',
       });
     }
 
-    // 3. 방 이름에 girl_name이 포함되는 것 찾기 (가장 긴 이름 우선)
-    const sortedSlots = [...slots].sort(
+    // 2. 방 이름에 girl_name이 포함된 row 찾기 (긴 이름 우선)
+    const sortedBoards = [...boards].sort(
       (a, b) => (b.girl_name?.length ?? 0) - (a.girl_name?.length ?? 0)
     );
-    const matched = sortedSlots.find(
-      (s) => s.girl_name && room.includes(s.girl_name)
+    const matched = sortedBoards.find(
+      (b) => b.girl_name && room.includes(b.girl_name)
     );
 
     if (!matched) {
@@ -72,12 +63,19 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 4. aktalk_atok에 저장
+    // 3. 메시지에 방번호가 없으면 status_board의 room_number를 앞에 붙임
+    const trimmed = String(message).trim();
+    const hasRoomNumber = /^\d{3}/.test(trimmed);
+    const finalMessage = hasRoomNumber
+      ? trimmed
+      : `${matched.room_number} ${trimmed}`;
+
+    // 4. starttalk_order에 저장
     const insertData: Record<string, unknown> = {
       shop_name: matched.shop_name,
       room_name: room,
       sender,
-      message,
+      message: finalMessage,
       received_at: receivedAt || new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().replace('T', ' ').replace('Z', ''),
       is_sent: false,
       has_photo: hasPhoto === true,
@@ -103,6 +101,8 @@ export async function POST(request: NextRequest) {
       id: data.id,
       shop_name: matched.shop_name,
       girl_name: matched.girl_name,
+      room_number: matched.room_number,
+      message: finalMessage,
     });
 
   } catch (error) {
