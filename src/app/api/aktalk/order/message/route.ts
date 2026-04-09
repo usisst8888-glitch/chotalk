@@ -70,10 +70,11 @@ export async function POST(request: NextRequest) {
 
     // 3. 메시지 방번호 확인
     const trimmed = String(message).trim();
-    const hasRoomNumber = /^\d{3}/.test(trimmed);
+    const roomNumberMatch = trimmed.match(/^(\d{3})/);
+    let roomNumber: string | null = roomNumberMatch ? roomNumberMatch[1] : null;
     let finalMessage = trimmed;
 
-    if (!hasRoomNumber) {
+    if (!roomNumber) {
       // 방번호 없으면 status_board에서 진행중 row 조회
       const { data: boards, error: boardsError } = await supabase
         .from('status_board')
@@ -101,6 +102,7 @@ export async function POST(request: NextRequest) {
       }
 
       finalMessage = `${board.room_number} ${trimmed}`;
+      roomNumber = board.room_number;
       shopName = board.shop_name;
     }
 
@@ -108,6 +110,7 @@ export async function POST(request: NextRequest) {
     const insertData: Record<string, unknown> = {
       shop_name: shopName,
       room_name: room,
+      room_number: roomNumber,
       sender,
       message: finalMessage,
       received_at: receivedAt || new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().replace('T', ' ').replace('Z', ''),
@@ -135,6 +138,7 @@ export async function POST(request: NextRequest) {
       id: data.id,
       shop_name: shopName,
       girl_name: girlName,
+      room_number: roomNumber,
       message: finalMessage,
     });
 
