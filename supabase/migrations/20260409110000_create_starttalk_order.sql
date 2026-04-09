@@ -2,7 +2,6 @@
 CREATE TABLE starttalk_order (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   shop_name TEXT NOT NULL,
-  team_name TEXT NULL,
   room_name TEXT NOT NULL,
   sender TEXT NOT NULL,
   message TEXT NOT NULL,

@@ -75,7 +75,6 @@ export async function POST(request: NextRequest) {
     // 4. aktalk_atok에 저장
     const insertData: Record<string, unknown> = {
       shop_name: matched.shop_name,
-      team_name: null,
       room_name: room,
       sender,
       message,
