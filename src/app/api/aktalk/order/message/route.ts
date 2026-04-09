@@ -80,8 +80,8 @@ export async function POST(request: NextRequest) {
         .from('status_board')
         .select('room_number, shop_name')
         .eq('girl_name', girlName)
-        .eq('trigger_type', 'hourly')
         .eq('is_in_progress', true)
+        .order('updated_at', { ascending: false })
         .limit(1);
 
       if (boardsError) {
