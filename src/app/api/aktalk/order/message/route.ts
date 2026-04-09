@@ -3,11 +3,14 @@ import { getSupabase } from '@/lib/supabase';
 
 /**
  * 주문 메시지 저장 API (orderreader 전용)
- * - // 트리거로 시작하는 카톡 메시지를 받음
- * - status_board에서 진행중인 girl(trigger_type=hourly, is_in_progress=true) 조회
- * - 방 이름에 girl_name이 포함된 row 매칭 → shop_name, room_number 가져옴
- * - 메시지에 방번호가 없으면 room_number를 앞에 붙임
- * - starttalk_order 테이블에 저장
+ *
+ * 흐름:
+ * 1. // 트리거로 시작하는 카톡 메시지 받음
+ * 2. slots에서 활성 girl_name 목록 조회
+ * 3. 카톡방 이름에 포함된 girl_name 찾기 (긴 이름 우선)
+ * 4. 메시지에 방번호 있으면 → 그대로 사용
+ *    없으면 → status_board에서 girl_name으로 진행중 row 조회 → room_number 자동 추가
+ * 5. starttalk_order에 저장
  */
 export async function POST(request: NextRequest) {
   try {
@@ -23,38 +26,37 @@ export async function POST(request: NextRequest) {
 
     const supabase = getSupabase();
 
-    // 1. status_board에서 진행중인 girl 조회
-    const { data: boards, error: boardsError } = await supabase
-      .from('status_board')
-      .select('girl_name, room_number, shop_name')
-      .eq('trigger_type', 'hourly')
-      .eq('is_in_progress', true);
+    // 1. slots에서 활성 girl 목록 조회
+    const { data: slots, error: slotsError } = await supabase
+      .from('slots')
+      .select('girl_name, shop_name')
+      .eq('is_active', true);
 
-    if (boardsError) {
-      console.error('status_board 조회 실패:', boardsError);
+    if (slotsError) {
+      console.error('slots 조회 실패:', slotsError);
       return NextResponse.json({
-        error: 'status_board 조회 실패',
-        detail: boardsError.message,
+        error: 'slots 조회 실패',
+        detail: slotsError.message,
       }, { status: 500 });
     }
 
-    if (!boards || boards.length === 0) {
+    if (!slots || slots.length === 0) {
       return NextResponse.json({
         success: true,
         stored: false,
-        reason: '진행중인 아가씨 없음',
+        reason: '활성 slots 없음',
       });
     }
 
-    // 2. 방 이름에 girl_name이 포함된 row 찾기 (긴 이름 우선)
-    const sortedBoards = [...boards].sort(
+    // 2. 카톡방 이름에 girl_name이 포함된 slot 찾기 (긴 이름 우선)
+    const sortedSlots = [...slots].sort(
       (a, b) => (b.girl_name?.length ?? 0) - (a.girl_name?.length ?? 0)
     );
-    const matched = sortedBoards.find(
-      (b) => b.girl_name && room.includes(b.girl_name)
+    const matchedSlot = sortedSlots.find(
+      (s) => s.girl_name && room.includes(s.girl_name)
     );
 
-    if (!matched) {
+    if (!matchedSlot) {
       return NextResponse.json({
         success: true,
         stored: false,
@@ -63,16 +65,48 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 3. 메시지에 방번호가 없으면 status_board의 room_number를 앞에 붙임
+    const girlName = matchedSlot.girl_name;
+    let shopName = matchedSlot.shop_name;
+
+    // 3. 메시지 방번호 확인
     const trimmed = String(message).trim();
     const hasRoomNumber = /^\d{3}/.test(trimmed);
-    const finalMessage = hasRoomNumber
-      ? trimmed
-      : `${matched.room_number} ${trimmed}`;
+    let finalMessage = trimmed;
+
+    if (!hasRoomNumber) {
+      // 방번호 없으면 status_board에서 진행중 row 조회
+      const { data: boards, error: boardsError } = await supabase
+        .from('status_board')
+        .select('room_number, shop_name')
+        .eq('girl_name', girlName)
+        .eq('trigger_type', 'hourly')
+        .eq('is_in_progress', true)
+        .limit(1);
+
+      if (boardsError) {
+        console.error('status_board 조회 실패:', boardsError);
+        return NextResponse.json({
+          error: 'status_board 조회 실패',
+          detail: boardsError.message,
+        }, { status: 500 });
+      }
+
+      const board = boards?.[0];
+      if (!board) {
+        return NextResponse.json({
+          success: true,
+          stored: false,
+          reason: `${girlName} 진행중 아님 (status_board)`,
+        });
+      }
+
+      finalMessage = `${board.room_number} ${trimmed}`;
+      shopName = board.shop_name;
+    }
 
     // 4. starttalk_order에 저장
     const insertData: Record<string, unknown> = {
-      shop_name: matched.shop_name,
+      shop_name: shopName,
       room_name: room,
       sender,
       message: finalMessage,
@@ -99,9 +133,8 @@ export async function POST(request: NextRequest) {
       success: true,
       stored: true,
       id: data.id,
-      shop_name: matched.shop_name,
-      girl_name: matched.girl_name,
-      room_number: matched.room_number,
+      shop_name: shopName,
+      girl_name: girlName,
       message: finalMessage,
     });
 
