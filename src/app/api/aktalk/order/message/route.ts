@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       room_name: room,
       sender,
       message,
-      received_at: receivedAt || new Date().toISOString(),
+      received_at: receivedAt || new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().replace('T', ' ').replace('Z', ''),
       is_sent: false,
       has_photo: hasPhoto === true,
     };
