@@ -85,13 +85,13 @@ export async function POST(request: NextRequest) {
     };
 
     const { data, error } = await supabase
-      .from('aktalk_atok')
+      .from('starttalk_order')
       .insert(insertData)
       .select('id')
       .single();
 
     if (error) {
-      console.error('aktalk_atok insert error:', error);
+      console.error('starttalk_order insert error:', error);
       return NextResponse.json({
         error: 'DB 저장 실패',
         detail: error.message,
