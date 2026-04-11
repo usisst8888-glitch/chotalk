@@ -223,33 +223,70 @@ export async function POST(
     // 이벤트 여부 자동 체크 (봇과 동일 로직)
     const isEvent = await checkIsEvent(supabase, slotId, slot.shop_name, startTime);
 
-    const { error: insertError } = await supabase
+    // 같은 방번호로 진행중이거나 최근 기록이 있는지 확인
+    const { data: existing } = await supabase
       .from('status_board')
-      .insert({
-        slot_id: slotId,
-        user_id: slot.user_id,
-        girl_name: slot.girl_name,
-        shop_name: slot.shop_name,
-        kakao_id: slot.kakao_id,
-        target_room: slot.target_room,
-        room_number: body.room_number || null,
-        is_in_progress: true,
-        start_time: startTime,
-        end_time: null,
-        usage_duration: null,
-        event_count: null,
-        trigger_type: 'start',
-        is_designated: body.is_designated || false,
-        is_event: isEvent,
-        source_log_id: null,
-        data_changed: true,
-      });
+      .select('*')
+      .eq('slot_id', slotId)
+      .eq('room_number', body.room_number || '')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (insertError) {
-      return NextResponse.json({ error: '세션 추가 실패' }, { status: 500 });
+    if (existing) {
+      // 기존 레코드가 있으면 UPDATE (기존 데이터 유지, 필요한 필드만 변경)
+      const { error: updateError } = await supabase
+        .from('status_board')
+        .update({
+          is_in_progress: true,
+          start_time: startTime,
+          end_time: null,
+          usage_duration: null,
+          trigger_type: 'start',
+          is_designated: body.is_designated || existing.is_designated || false,
+          is_event: isEvent,
+          data_changed: true,
+          updated_at: now,
+          // 기존 값 유지: source_log_id, event_count, start_sent_at, end_sent_at,
+          // hourly_count, last_hourly_sent_at, canceled_sent_at, last_sent_at
+        })
+        .eq('id', existing.id);
+
+      if (updateError) {
+        return NextResponse.json({ error: '세션 업데이트 실패' }, { status: 500 });
+      }
+
+      return NextResponse.json({ message: '기존 세션이 업데이트되었습니다.' });
+    } else {
+      // 기존 레코드 없으면 새로 INSERT
+      const { error: insertError } = await supabase
+        .from('status_board')
+        .insert({
+          slot_id: slotId,
+          user_id: slot.user_id,
+          girl_name: slot.girl_name,
+          shop_name: slot.shop_name,
+          kakao_id: slot.kakao_id,
+          target_room: slot.target_room,
+          room_number: body.room_number || null,
+          is_in_progress: true,
+          start_time: startTime,
+          end_time: null,
+          usage_duration: null,
+          event_count: null,
+          trigger_type: 'start',
+          is_designated: body.is_designated || false,
+          is_event: isEvent,
+          source_log_id: null,
+          data_changed: true,
+        });
+
+      if (insertError) {
+        return NextResponse.json({ error: '세션 추가 실패' }, { status: 500 });
+      }
+
+      return NextResponse.json({ message: '세션이 추가되었습니다.' });
     }
-
-    return NextResponse.json({ message: '세션이 추가되었습니다.' });
   } catch {
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
