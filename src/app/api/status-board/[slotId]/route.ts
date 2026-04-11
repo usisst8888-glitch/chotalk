@@ -167,7 +167,12 @@ export async function PATCH(
     };
 
     if (body.room_number !== undefined) updateData.room_number = body.room_number;
-    if (body.start_time !== undefined) updateData.start_time = body.start_time;
+    if (body.start_time !== undefined) {
+      updateData.start_time = body.start_time;
+      // start_time 변경 시 hourly_count를 0으로 리셋
+      // (앱에서 현재 시점에 맞게 자동으로 점프시킴)
+      updateData.hourly_count = 0;
+    }
     if (body.usage_duration !== undefined) {
       updateData.usage_duration = body.usage_duration;
       updateData.event_count = Math.floor(body.usage_duration);
