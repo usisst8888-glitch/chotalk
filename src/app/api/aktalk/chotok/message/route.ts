@@ -19,13 +19,16 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 초톡 메시지 패턴 확인: ➖➖ 구분선이 2줄 이상
+    // 초톡 메시지 패턴 확인:
+    // 1. ➖➖ 구분선이 2줄 이상
+    // 2. 방번호 패턴(3자리 숫자 + 텍스트)이 포함되어야 함 (ㅈ.ㅁ만 있는 메시지 제외)
     const dashLineCount = (message.match(/➖➖/g) || []).length;
-    if (dashLineCount < 2) {
+    const hasRoomNumber = /\d{3}\s+\S+/.test(message);
+    if (dashLineCount < 2 || !hasRoomNumber) {
       return NextResponse.json({
         success: true,
         stored: false,
-        reason: '초톡 패턴 불일치 (구분선 2개 미만)',
+        reason: dashLineCount < 2 ? '초톡 패턴 불일치 (구분선 2개 미만)' : '방번호 패턴 없음 (출근표 아님)',
       });
     }
 
