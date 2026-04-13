@@ -21,14 +21,15 @@ export async function POST(request: NextRequest) {
 
     // 초톡 메시지 패턴 확인:
     // 1. ➖➖ 구분선이 2줄 이상
-    // 2. 방번호 패턴(3자리 숫자 + 텍스트)이 포함되어야 함 (ㅈ.ㅁ만 있는 메시지 제외)
+    // 2. ㅈ.ㅁ으로 시작하는 메시지는 무시 (ㅈ.ㅁ 파트만 따로 온 경우)
     const dashLineCount = (message.match(/➖➖/g) || []).length;
-    const hasRoomNumber = /\d{3}\s+\S+/.test(message);
-    if (dashLineCount < 2 || !hasRoomNumber) {
+    const trimmedMsg = message.trim();
+    const startsWithJm = /^➖*\s*ㅈ\.?\s*ㅁ/.test(trimmedMsg);
+    if (dashLineCount < 2 || startsWithJm) {
       return NextResponse.json({
         success: true,
         stored: false,
-        reason: dashLineCount < 2 ? '초톡 패턴 불일치 (구분선 2개 미만)' : '방번호 패턴 없음 (출근표 아님)',
+        reason: dashLineCount < 2 ? '초톡 패턴 불일치 (구분선 2개 미만)' : 'ㅈ.ㅁ만 있는 메시지 무시',
       });
     }
 
