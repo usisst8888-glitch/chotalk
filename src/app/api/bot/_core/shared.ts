@@ -131,6 +131,7 @@ export async function updateStatusBoard(
         const triggerTypeChanging = existingBySlot.trigger_type !== expectedTriggerType;
 
         // 기존 레코드 수정 (방번호는 변경하지 않음!)
+        // is_designated: 명시적으로 ㅈㅁ이 있을 때만 true 설정, 없으면 기존 값 유지
         const updateData: Record<string, unknown> = {
           is_in_progress: data.isInProgress,
           end_time: data.endTime,
@@ -138,7 +139,7 @@ export async function updateStatusBoard(
           event_count: data.eventCount,
           trigger_type: expectedTriggerType,
           source_log_id: data.sourceLogId || null,
-          is_designated: data.isDesignated,
+          ...(data.isDesignated ? { is_designated: true } : {}),
           is_event: data.isEvent,
           updated_at: getKoreanTime(),
           data_changed: true,
