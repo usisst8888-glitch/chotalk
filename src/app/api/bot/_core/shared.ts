@@ -215,9 +215,8 @@ export async function updateStatusBoard(
 
         // 종료 처리 (ㄲ) - usageDuration 유무와 관계없이 is_in_progress=false, trigger_type='end'
         // data_changed: 숫자+ㄲ(이용시간 있음)일 때만 true, 단순 ㄲ은 false
-        const { error: updateError } = await supabase
-          .from('status_board')
-          .update({
+        // is_designated: 종료 메시지에 ㅈㅁ이 명시적으로 있으면 true, 없으면 기존 값 유지
+        const updateData: Record<string, unknown> = {
             is_in_progress: false,
             start_time: data.startTime,
             end_time: data.endTime,
@@ -225,11 +224,17 @@ export async function updateStatusBoard(
             event_count: data.eventCount,
             trigger_type: 'end',
             source_log_id: data.sourceLogId || null,
-            is_designated: data.isDesignated,
             is_event: data.isEvent,
             updated_at: getKoreanTime(),
             data_changed: data.usageDuration !== null,
-          })
+        };
+        // ㅈㅁ이 명시적으로 있을 때만 is_designated를 true로 설정, 없으면 기존 값 유지
+        if (data.isDesignated) {
+            updateData.is_designated = true;
+        }
+        const { error: updateError } = await supabase
+          .from('status_board')
+          .update(updateData)
           .eq('id', inProgressRecord.id);
 
         if (updateError) {
