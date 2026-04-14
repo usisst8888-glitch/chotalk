@@ -138,7 +138,7 @@ export async function updateStatusBoard(
           event_count: data.eventCount,
           trigger_type: expectedTriggerType,
           source_log_id: data.sourceLogId || null,
-          is_designated: data.isDesignated,
+          ...(data.isDesignated ? { is_designated: true } : {}),
           is_event: data.isEvent,
           updated_at: getKoreanTime(),
           data_changed: true,
@@ -225,10 +225,11 @@ export async function updateStatusBoard(
             event_count: data.eventCount,
             trigger_type: 'end',
             source_log_id: data.sourceLogId || null,
-            is_designated: data.isDesignated,
+
             is_event: data.isEvent,
             updated_at: getKoreanTime(),
             data_changed: data.usageDuration !== null,
+            ...(data.isDesignated ? { is_designated: true } : {}),
           })
           .eq('id', inProgressRecord.id);
 
