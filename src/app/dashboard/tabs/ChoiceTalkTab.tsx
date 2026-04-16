@@ -217,7 +217,7 @@ export default function ChoiceTalkTab() {
                   <div className="border-t border-neutral-700 my-2 pt-2">
                     <div className="flex justify-between items-center">
                       <span className="text-neutral-500 text-sm">초이스톡 (월)</span>
-                      <span className="text-yellow-400 font-bold">100,000원</span>
+                      <span className="text-yellow-400 font-bold">30,000원</span>
                     </div>
                   </div>
                 </div>

@@ -90,10 +90,13 @@ BEGIN
                 is_designated, event_count, last_hourly_sent_at,
                 canceled_sent_at, data_changed, NOW()
             FROM status_board
-            WHERE slot_id = girl_record.slot_id;
+            WHERE slot_id = girl_record.slot_id
+              AND girl_name = girl_record.girl_name;
 
             -- 원본 삭제
-            DELETE FROM status_board WHERE slot_id = girl_record.slot_id;
+            DELETE FROM status_board
+            WHERE slot_id = girl_record.slot_id
+              AND girl_name = girl_record.girl_name;
 
             -- 통계 업데이트
             total_archived := total_archived + girl_record.session_count;
