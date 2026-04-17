@@ -141,7 +141,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. ㅌㄹㅅ(방이동) 감지 → rooms 테이블 처리
-    const transferResults = await shop.processTransfers(supabase, allLines, room);
+    // "웨" 키워드가 있는 ㅌㄹㅅ 라인은 웨이터 변경이므로 아가씨 방이동 제외
+    const transferLines = allLines.filter((line: string) => !((/ㅁ?ㅌㄹㅅ/).test(line) && /\d{3}\s*웨/.test(line)));
+    const transferResults = await shop.processTransfers(supabase, transferLines, room);
 
     // 5-1. ㅌㄹㅅ 발생 시 status_board 방번호 변경 + transfer_logs 기록
     for (const tr of transferResults) {
