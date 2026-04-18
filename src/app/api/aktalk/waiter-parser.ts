@@ -37,9 +37,6 @@ export function parseWaiterMessage(message: string): WaiterAssignment[] {
     const line = rawLine.split('@')[0].trim().replace(/트랜스/g, 'ㅌㄹㅅ');
     if (!line) continue;
 
-    // ㄴ.ㄱ 또는 ㅈ.ㅁ 섹션 도달하면 파싱 중단
-    if (/ㄴ\.?ㄱ/.test(line) || /ㅈ\.?ㅁ/.test(line)) break;
-
     // ㅌㄹㅅ 라인은 별도 처리
     if (line.includes('ㅌㄹㅅ')) continue;
 
@@ -80,9 +77,6 @@ export function parseTransferMessage(message: string): WaiterTransfer[] {
     // @ 이후는 무시, 트랜스→ㅌㄹㅅ 정규화
     const line = rawLine.split('@')[0].trim().replace(/트랜스/g, 'ㅌㄹㅅ');
     if (!line) continue;
-
-    // ㄴ.ㄱ 또는 ㅈ.ㅁ 섹션 도달하면 파싱 중단
-    if (/ㄴ\.?ㄱ/.test(line) || /ㅈ\.?ㅁ/.test(line)) break;
 
     // ㅌㄹㅅ 없는 라인 스킵
     if (!line.includes('ㅌㄹㅅ')) continue;
