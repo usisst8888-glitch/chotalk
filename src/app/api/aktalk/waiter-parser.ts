@@ -69,6 +69,79 @@ export function parseWaiterMessage(message: string): WaiterAssignment[] {
   return assignments;
 }
 
+/**
+ * 인계 메시지 파싱
+ * "215 인계웨 지니"              → room=215, waiter=지니
+ * "106 113 118 127 인계 웨 순돌" → rooms=106,113,118,127, waiter=순돌
+ * "201,3,7 인계웨 도일"          → rooms=201,203,207, waiter=도일
+ * "125 태양 인계 웨 금보 -> 민동" → room=125, waiter=민동
+ * "220우기명 인계웨 민동 입니다"  → room=220, waiter=민동
+ */
+export function parseHandoverMessage(message: string): WaiterAssignment[] {
+  const lines = message.split('\n');
+  const assignments: WaiterAssignment[] = [];
+
+  for (const rawLine of lines) {
+    const line = rawLine.split('@')[0].trim();
+    if (!line) continue;
+
+    // 인계 키워드 없으면 스킵
+    if (!/인계/.test(line) && !/인수인계/.test(line)) continue;
+
+    // "웨" 뒤에서 웨이터 이름 추출
+    const weMatch = line.match(/웨\s*([가-힣]{2,})/);
+    if (!weMatch) continue;
+
+    let waiterName = weMatch[1];
+
+    // "-> 이름" 패턴이 있으면 마지막 이름이 최종 웨이터
+    const arrowMatch = line.match(/->\s*([가-힣]{2,})/);
+    if (arrowMatch) {
+      waiterName = arrowMatch[1];
+    }
+
+    // "입니다" 제거
+    waiterName = waiterName.replace(/입니다$/, '');
+    if (!waiterName) continue;
+
+    // 방번호 추출: 콤마 축약 (201,3,7 → 201, 203, 207) 또는 공백 구분
+    const beforeIngyae = line.split(/인수?인계/)[0];
+    const rooms: string[] = [];
+
+    // 콤마 축약 패턴: "201,3,7"
+    const commaMatch = beforeIngyae.match(/(\d{3})((?:\s*,\s*\d{1,2})+)/);
+    if (commaMatch) {
+      const baseRoom = commaMatch[1];
+      const prefix = baseRoom.substring(0, baseRoom.length - 1); // 앞 2자리
+      rooms.push(baseRoom);
+      const extras = commaMatch[2].match(/\d{1,2}/g);
+      if (extras) {
+        for (const ext of extras) {
+          if (ext.length === 1) {
+            rooms.push(prefix + ext);
+          } else {
+            rooms.push(baseRoom[0] + ext);
+          }
+        }
+      }
+    } else {
+      // 공백 구분 3자리 방번호
+      const roomMatches = beforeIngyae.match(/(?<!\d)\d{3}(?!\d)/g);
+      if (roomMatches) {
+        rooms.push(...roomMatches);
+      }
+    }
+
+    if (rooms.length === 0) continue;
+
+    for (const room of rooms) {
+      assignments.push({ roomNumber: room, waiterName });
+    }
+  }
+
+  return assignments;
+}
+
 export function parseTransferMessage(message: string): WaiterTransfer[] {
   const lines = message.split('\n');
   const transfers: WaiterTransfer[] = [];

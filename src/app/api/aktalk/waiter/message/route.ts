@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
-import { parseWaiterMessage, parseTransferMessage } from '../../waiter-parser';
+import { parseWaiterMessage, parseTransferMessage, parseHandoverMessage } from '../../waiter-parser';
 
 const kstNow = () =>
   new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().replace('Z', '');
@@ -86,19 +86,39 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const totalCount = assignments.length + transfers.length;
+    // 3. 인계 파싱 및 처리
+    const handovers = parseHandoverMessage(message);
+    for (const h of handovers) {
+      const { error } = await supabase
+        .from('waiter_assignments')
+        .upsert(
+          {
+            shop_name: shopName,
+            room_number: h.roomNumber,
+            waiter_name: h.waiterName,
+            updated_at: kstNow(),
+          },
+          { onConflict: 'shop_name,room_number' }
+        );
+      if (error) {
+        console.error('handover upsert error:', error);
+      }
+    }
+
+    const totalCount = assignments.length + transfers.length + handovers.length;
 
     if (totalCount === 0) {
       return NextResponse.json({ success: true, stored: false, reason: '파싱 결과 없음' });
     }
 
-    console.log(`웨이터 배정 ${assignments.length}건, ㅌㄹㅅ ${transfers.length}건 처리:`, shopName);
+    console.log(`웨이터 배정 ${assignments.length}건, ㅌㄹㅅ ${transfers.length}건, 인계 ${handovers.length}건 처리:`, shopName);
 
     return NextResponse.json({
       success: true,
       stored: true,
       assignments: { count: assignments.length, data: assignments },
       transfers: { count: transfers.length, data: transfers },
+      handovers: { count: handovers.length, data: handovers },
     });
 
   } catch (error) {
