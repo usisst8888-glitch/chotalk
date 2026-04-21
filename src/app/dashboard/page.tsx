@@ -908,7 +908,7 @@ export default function DashboardPage() {
   };
 
   const handleAdminExtend = async () => {
-    if (!selectedSlot || adminExtendDays <= 0) return;
+    if (!selectedSlot || adminExtendDays === 0) return;
     setSubmitting(true);
     try {
       const payload = adminExtendMode === 'add'
@@ -2291,24 +2291,24 @@ export default function DashboardPage() {
                 <input
                   type="number"
                   value={adminExtendDays}
-                  onChange={(e) => setAdminExtendDays(Math.max(1, parseInt(e.target.value) || 1))}
-                  min={1}
+                  onChange={(e) => setAdminExtendDays(parseInt(e.target.value) || 0)}
+
                   className="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-center text-lg font-bold focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
                 />
                 <span className="flex items-center text-neutral-400 font-medium">일</span>
               </div>
               <div className="flex gap-2 mt-2">
-                {[3, 7, 15, 30].map((d) => (
+                {[-7, -3, 3, 7, 15, 30].map((d) => (
                   <button
                     key={d}
                     onClick={() => setAdminExtendDays(d)}
                     className={`flex-1 py-2 text-sm rounded-lg font-medium transition ${
                       adminExtendDays === d
-                        ? 'bg-emerald-600 text-white'
+                        ? (d < 0 ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white')
                         : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-400'
                     }`}
                   >
-                    {d}일
+                    {d > 0 ? `+${d}` : d}일
                   </button>
                 ))}
               </div>
@@ -2320,7 +2320,7 @@ export default function DashboardPage() {
                 disabled={submitting}
                 className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 text-white font-semibold rounded-xl transition"
               >
-                {submitting ? '처리 중...' : adminExtendMode === 'add' ? `${adminExtendDays}일 연장` : `오늘부터 ${adminExtendDays}일 설정`}
+                {submitting ? '처리 중...' : adminExtendMode === 'add' ? (adminExtendDays < 0 ? `${Math.abs(adminExtendDays)}일 차감` : `${adminExtendDays}일 연장`) : `오늘부터 ${adminExtendDays}일 설정`}
               </button>
               <button
                 onClick={() => setShowAdminExtendModal(false)}
