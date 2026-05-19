@@ -11,6 +11,7 @@ import {
   SettlementTab, BankAccountTab, ErrandTalkTab, ChoiceTalkTab, PackageTab,
   ServiceManageTab,
   WaiterListTab,
+  AktalkAtokTab,
 } from './tabs';
 
 export default function DashboardPage() {
@@ -60,7 +61,7 @@ export default function DashboardPage() {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [showPassword, setShowPassword] = useState({ current: false, new: false, confirm: false });
-  const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'purchases' | 'rooms' | 'distributors' | 'bankAccount' | 'settlement' | 'errandTalk' | 'choiceTalk' | 'package' | 'serviceManage' | 'waiterList'>('slots');
+  const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'purchases' | 'rooms' | 'distributors' | 'bankAccount' | 'settlement' | 'errandTalk' | 'choiceTalk' | 'package' | 'serviceManage' | 'waiterList' | 'aktalkAtok'>('slots');
   // 관리자용 회원관리
   const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; nickname: string | null; phone: string; role: string; slot_count: number; parent_id: string | null; domain: string | null; header_template: string | null; created_at: string }>>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -1478,6 +1479,16 @@ export default function DashboardPage() {
                 >
                   웨이터목록
                 </button>
+                <button
+                  onClick={() => setActiveTab('aktalkAtok')}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    activeTab === 'aktalkAtok'
+                      ? 'bg-rose-600 text-white'
+                      : 'bg-neutral-900 text-neutral-500 hover:text-white hover:bg-neutral-800'
+                  }`}
+                >
+                  아톡 발송관리
+                </button>
               </>
             )}
             {/* admin(총판) 전용 탭 */}
@@ -1669,6 +1680,10 @@ export default function DashboardPage() {
 
         {activeTab === 'waiterList' && isSuperAdmin && (
           <WaiterListTab />
+        )}
+
+        {activeTab === 'aktalkAtok' && isSuperAdmin && (
+          <AktalkAtokTab />
         )}
       </main>
 
