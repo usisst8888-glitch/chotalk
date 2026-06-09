@@ -118,6 +118,7 @@ export async function PATCH(
     }
 
     // 강제 종료: 진행 중인 레코드를 종료 처리 (ㄲ 핸들러와 동일)
+    // editOnly=true 면 data_changed 를 건드리지 않아 재발송이 트리거되지 않음
     if (body.forceEnd && body.recordId) {
       const endUpdate: Record<string, unknown> = {
         is_in_progress: false,
@@ -125,9 +126,9 @@ export async function PATCH(
         usage_duration: body.usage_duration ?? null,
         event_count: body.usage_duration ? Math.floor(body.usage_duration) : null,
         trigger_type: 'end',
-        data_changed: true,
         updated_at: getKoreanTime(),
       };
+      if (!body.editOnly) endUpdate.data_changed = true;
       if (body.room_number !== undefined) endUpdate.room_number = body.room_number;
       if (body.start_time !== undefined) endUpdate.start_time = body.start_time;
       if (body.is_designated !== undefined) endUpdate.is_designated = body.is_designated;
@@ -140,7 +141,7 @@ export async function PATCH(
       if (endError) {
         return NextResponse.json({ error: '수정 실패' }, { status: 500 });
       }
-      return NextResponse.json({ message: '수정 완료, 재발송 예정' });
+      return NextResponse.json({ message: body.editOnly ? '수정 완료' : '수정 완료, 재발송 예정' });
     }
 
     // recordId가 있으면 해당 레코드, 없으면 가장 최근 레코드
@@ -161,10 +162,11 @@ export async function PATCH(
     }
 
     // 수정할 필드 구성
+    // editOnly=true 면 data_changed 를 건드리지 않아 재발송이 트리거되지 않음
     const updateData: Record<string, unknown> = {
-      data_changed: true,
       updated_at: getKoreanTime(),
     };
+    if (!body.editOnly) updateData.data_changed = true;
 
     if (body.room_number !== undefined) updateData.room_number = body.room_number;
     if (body.start_time !== undefined) {
@@ -191,7 +193,7 @@ export async function PATCH(
       return NextResponse.json({ error: '수정 실패' }, { status: 500 });
     }
 
-    return NextResponse.json({ message: '수정 완료, 재발송 예정' });
+    return NextResponse.json({ message: body.editOnly ? '수정 완료' : '수정 완료, 재발송 예정' });
   } catch {
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }

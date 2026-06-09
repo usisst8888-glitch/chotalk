@@ -797,7 +797,8 @@ export default function DashboardPage() {
     }
   };
 
-  const handleForceEnd = async () => {
+  // editOnly=true 면 DB 저장만, false 면 저장 + 재발송 트리거 (data_changed=true)
+  const handleForceEnd = async (editOnly: boolean = false) => {
     if (!selectedSlot || !selectedStatusRecord) return;
     setSubmitting(true);
     try {
@@ -822,16 +823,16 @@ export default function DashboardPage() {
         return;
       }
 
-      const hasUsageDuration = !!statusForm.usage_duration;
+      // 수정/재발송 모두 세션 종료(is_in_progress/trigger_type/end_time)는 절대 건드리지 않음.
+      // 필드 수정만 + editOnly=false 면 data_changed=true 로 재발송 트리거.
       const payload: Record<string, unknown> = {
         recordId: selectedStatusRecord.id,
         room_number: statusForm.room_number,
         start_time: selectedStatusRecord.start_time ? selectedStatusRecord.start_time.slice(0, 11) + statusForm.start_time + ':00' : null,
         is_designated: statusForm.is_designated,
+        editOnly,
       };
-      // 이용시간이 있으면 종료 처리 (forceEnd), 없으면 일반 수정
-      if (hasUsageDuration) {
-        payload.forceEnd = true;
+      if (statusForm.usage_duration) {
         payload.usage_duration = parseFloat(statusForm.usage_duration);
       }
       const res = await fetch(`/api/status-board/${selectedSlot.id}`, {
@@ -844,7 +845,7 @@ export default function DashboardPage() {
         setStatusRecords([]);
         setSelectedStatusRecord(null);
         setSelectedSlot(null);
-        alert('수정 완료! 재발송 예정입니다.');
+        alert(editOnly ? '수정 완료!' : '수정 완료! 재발송 예정입니다.');
       } else {
         const data = await res.json();
         alert(data.error || '수정에 실패했습니다.');
@@ -856,7 +857,8 @@ export default function DashboardPage() {
     }
   };
 
-  const handleStatusResend = async () => {
+  // editOnly=true 면 DB 저장만, false 면 저장 + 재발송 트리거 (data_changed=true)
+  const handleStatusResend = async (editOnly: boolean = false) => {
     if (!selectedSlot || !selectedStatusRecord) return;
     setSubmitting(true);
     try {
@@ -870,6 +872,7 @@ export default function DashboardPage() {
           usage_duration: statusForm.usage_duration ? parseFloat(statusForm.usage_duration) : null,
           is_designated: statusForm.is_designated,
           event_count: statusForm.event_count ? parseFloat(statusForm.event_count) : null,
+          editOnly,
         }),
       });
       if (res.ok) {
@@ -877,7 +880,7 @@ export default function DashboardPage() {
         setStatusRecords([]);
         setSelectedStatusRecord(null);
         setSelectedSlot(null);
-        alert('수정 완료! 재발송 예정입니다.');
+        alert(editOnly ? '수정 완료!' : '수정 완료! 재발송 예정입니다.');
       } else {
         const data = await res.json();
         alert(data.error || '수정에 실패했습니다.');
@@ -2718,37 +2721,59 @@ export default function DashboardPage() {
                 </div>
 
                 {/* 버튼 */}
-                <div className="flex gap-3 mt-6">
-                  <button
-                    onClick={() => { setDeleteTargetId(selectedStatusRecord.id); setShowDeleteConfirm(true); }}
-                    disabled={submitting}
-                    className="px-4 py-3 bg-red-900/50 hover:bg-red-800 disabled:bg-neutral-700 text-red-400 font-semibold rounded-xl transition"
-                  >
-                    삭제
-                  </button>
-                  <button
-                    onClick={() => setSelectedStatusRecord(null)}
-                    className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
-                  >
-                    목록으로
-                  </button>
-                  {selectedStatusRecord.is_in_progress ? (
+                <div className="flex flex-col gap-3 mt-6">
+                  <div className="flex gap-3">
                     <button
-                      onClick={handleForceEnd}
+                      onClick={() => { setDeleteTargetId(selectedStatusRecord.id); setShowDeleteConfirm(true); }}
                       disabled={submitting}
-                      className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
+                      className="px-4 py-3 bg-red-900/50 hover:bg-red-800 disabled:bg-neutral-700 text-red-400 font-semibold rounded-xl transition"
                     >
-                      {submitting ? '처리 중...' : '수정 및 재발송'}
+                      삭제
                     </button>
-                  ) : (
                     <button
-                      onClick={handleStatusResend}
-                      disabled={submitting}
-                      className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
+                      onClick={() => setSelectedStatusRecord(null)}
+                      className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
                     >
-                      {submitting ? '처리 중...' : '수정 및 재발송'}
+                      목록으로
                     </button>
-                  )}
+                  </div>
+                  <div className="flex gap-3">
+                    {selectedStatusRecord.is_in_progress ? (
+                      <>
+                        <button
+                          onClick={() => handleForceEnd(true)}
+                          disabled={submitting}
+                          className="flex-1 py-3 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 text-white font-semibold rounded-xl transition"
+                        >
+                          {submitting ? '처리 중...' : '수정'}
+                        </button>
+                        <button
+                          onClick={() => handleForceEnd(false)}
+                          disabled={submitting}
+                          className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
+                        >
+                          {submitting ? '처리 중...' : '재발송'}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleStatusResend(true)}
+                          disabled={submitting}
+                          className="flex-1 py-3 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 text-white font-semibold rounded-xl transition"
+                        >
+                          {submitting ? '처리 중...' : '수정'}
+                        </button>
+                        <button
+                          onClick={() => handleStatusResend(false)}
+                          disabled={submitting}
+                          className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
+                        >
+                          {submitting ? '처리 중...' : '재발송'}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </>
             )}
