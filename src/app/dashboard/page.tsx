@@ -772,6 +772,31 @@ export default function DashboardPage() {
     });
   };
 
+  const handleBulkResend = async () => {
+    if (!selectedSlot) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/status-board/${selectedSlot.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bulkResend: true }),
+      });
+      if (res.ok) {
+        setShowStatusModal(false);
+        setStatusRecords([]);
+        setSelectedSlot(null);
+        alert('전체 재발송 예정입니다.');
+      } else {
+        const data = await res.json();
+        alert(data.error || '재발송 처리에 실패했습니다.');
+      }
+    } catch {
+      alert('서버 오류가 발생했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // 조용한 종료: 카톡 발송 없이 DB만 종료. usage_duration(시간 단위) 입력값으로 end_time 자동 계산.
   const handleEndSession = async () => {
     if (!selectedSlot || !selectedStatusRecord) return;
@@ -2633,6 +2658,15 @@ export default function DashboardPage() {
                   >
                     닫기
                   </button>
+                  {statusRecords.length > 0 && (
+                    <button
+                      onClick={handleBulkResend}
+                      disabled={submitting || statusRecords[0]?.data_changed}
+                      className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 disabled:text-neutral-500 text-white font-semibold rounded-xl transition"
+                    >
+                      {submitting ? '처리 중...' : statusRecords[0]?.data_changed ? '발송 대기중' : '재발송'}
+                    </button>
+                  )}
                 </div>
               </>
             ) : (
