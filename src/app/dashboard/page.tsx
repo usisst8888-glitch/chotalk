@@ -772,23 +772,36 @@ export default function DashboardPage() {
     });
   };
 
-  const handleBulkResend = async () => {
-    if (!selectedSlot) return;
+  // 조용한 종료: 카톡 발송 없이 DB만 종료. usage_duration(시간 단위) 입력값으로 end_time 자동 계산.
+  const handleEndSession = async () => {
+    if (!selectedSlot || !selectedStatusRecord) return;
+    const raw = statusForm.usage_duration?.trim();
+    const hours = raw ? parseFloat(raw) : NaN;
+    if (!raw || isNaN(hours) || hours <= 0) {
+      alert('이용시간(시간 단위)을 입력하세요. 예: 1, 1.5, 2');
+      return;
+    }
+    if (!confirm(`이용시간 ${hours}시간으로 종료 처리하시겠습니까?\n(카톡 발송 없이 DB만 종료됩니다)`)) return;
     setSubmitting(true);
     try {
       const res = await fetch(`/api/status-board/${selectedSlot.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bulkResend: true }),
+        body: JSON.stringify({
+          endSession: true,
+          recordId: selectedStatusRecord.id,
+          usage_duration: hours,
+        }),
       });
       if (res.ok) {
         setShowStatusModal(false);
         setStatusRecords([]);
+        setSelectedStatusRecord(null);
         setSelectedSlot(null);
-        alert('전체 재발송 예정입니다.');
+        alert('종료 처리 완료!');
       } else {
         const data = await res.json();
-        alert(data.error || '재발송 처리에 실패했습니다.');
+        alert(data.error || '종료 처리에 실패했습니다.');
       }
     } catch {
       alert('서버 오류가 발생했습니다.');
@@ -2620,15 +2633,6 @@ export default function DashboardPage() {
                   >
                     닫기
                   </button>
-                  {statusRecords.length > 0 && (
-                    <button
-                      onClick={handleBulkResend}
-                      disabled={submitting || statusRecords[0]?.data_changed}
-                      className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 disabled:text-neutral-500 text-white font-semibold rounded-xl transition"
-                    >
-                      {submitting ? '처리 중...' : statusRecords[0]?.data_changed ? '발송 대기중' : '재발송'}
-                    </button>
-                  )}
                 </div>
               </>
             ) : (
@@ -2748,30 +2752,21 @@ export default function DashboardPage() {
                           {submitting ? '처리 중...' : '수정'}
                         </button>
                         <button
-                          onClick={() => handleForceEnd(false)}
+                          onClick={handleEndSession}
                           disabled={submitting}
-                          className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
+                          className="flex-1 py-3 bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
                         >
-                          {submitting ? '처리 중...' : '재발송'}
+                          {submitting ? '처리 중...' : '종료'}
                         </button>
                       </>
                     ) : (
-                      <>
-                        <button
-                          onClick={() => handleStatusResend(true)}
-                          disabled={submitting}
-                          className="flex-1 py-3 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 text-white font-semibold rounded-xl transition"
-                        >
-                          {submitting ? '처리 중...' : '수정'}
-                        </button>
-                        <button
-                          onClick={() => handleStatusResend(false)}
-                          disabled={submitting}
-                          className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
-                        >
-                          {submitting ? '처리 중...' : '재발송'}
-                        </button>
-                      </>
+                      <button
+                        onClick={() => handleStatusResend(true)}
+                        disabled={submitting}
+                        className="flex-1 py-3 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 text-white font-semibold rounded-xl transition"
+                      >
+                        {submitting ? '처리 중...' : '수정'}
+                      </button>
                     )}
                   </div>
                 </div>

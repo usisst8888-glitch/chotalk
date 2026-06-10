@@ -117,6 +117,60 @@ export async function PATCH(
       return NextResponse.json({ message: '취소 처리 완료' });
     }
 
+    // 조용한 종료: 카톡 발송 없이 DB만 종료 처리 (data_changed 건드리지 않음)
+    // - usage_duration(시간 단위, 소수점 가능)은 사용자가 입력
+    // - end_time = start_time + usage_duration시간 으로 자동 계산
+    if (body.endSession && body.recordId) {
+      // 대상 레코드의 start_time 조회
+      const { data: rec, error: recErr } = await supabase
+        .from('status_board')
+        .select('start_time')
+        .eq('id', body.recordId)
+        .single();
+
+      if (recErr || !rec) {
+        return NextResponse.json({ error: '레코드를 찾을 수 없습니다.' }, { status: 404 });
+      }
+
+      const usageDuration: number | null =
+        typeof body.usage_duration === 'number'
+          ? body.usage_duration
+          : body.usage_duration != null && body.usage_duration !== ''
+            ? parseFloat(body.usage_duration)
+            : null;
+
+      if (usageDuration == null || isNaN(usageDuration) || usageDuration <= 0) {
+        return NextResponse.json({ error: '이용시간(시간 단위)을 입력하세요.' }, { status: 400 });
+      }
+      if (!rec.start_time) {
+        return NextResponse.json({ error: '시작시간이 없는 레코드입니다.' }, { status: 400 });
+      }
+
+      // start_time(timestamp, KST 직렬화 가정) + usage_duration시간
+      const startMs = new Date(rec.start_time).getTime();
+      const endMs = startMs + usageDuration * 60 * 60 * 1000;
+      // ISO + 'Z' 제거 형태(기존 getKoreanTime과 동일 포맷) 유지
+      const endTimeStr = new Date(endMs).toISOString().slice(0, -1);
+
+      const { error: endErr } = await supabase
+        .from('status_board')
+        .update({
+          is_in_progress: false,
+          end_time: endTimeStr,
+          usage_duration: usageDuration,
+          event_count: Math.floor(usageDuration),
+          trigger_type: 'end',
+          updated_at: getKoreanTime(),
+          // data_changed 는 건드리지 않음 → 카톡 재발송 트리거 X
+        })
+        .eq('id', body.recordId);
+
+      if (endErr) {
+        return NextResponse.json({ error: '종료 처리 실패' }, { status: 500 });
+      }
+      return NextResponse.json({ message: '종료 처리 완료' });
+    }
+
     // 강제 종료: 진행 중인 레코드를 종료 처리 (ㄲ 핸들러와 동일)
     // editOnly=true 면 data_changed 를 건드리지 않아 재발송이 트리거되지 않음
     if (body.forceEnd && body.recordId) {
