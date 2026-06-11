@@ -2760,6 +2760,7 @@ export default function DashboardPage() {
 
                 {/* 버튼 */}
                 <div className="flex flex-col gap-3 mt-6">
+                  {/* 삭제 + 목록으로 (보조 액션) */}
                   <div className="flex gap-3">
                     <button
                       onClick={() => { setDeleteTargetId(selectedStatusRecord.id); setShowDeleteConfirm(true); }}
@@ -2775,34 +2776,36 @@ export default function DashboardPage() {
                       목록으로
                     </button>
                   </div>
-                  <div className="flex gap-3">
-                    {selectedStatusRecord.is_in_progress ? (
-                      <>
-                        <button
-                          onClick={() => handleForceEnd(true)}
-                          disabled={submitting}
-                          className="flex-1 py-3 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 text-white font-semibold rounded-xl transition"
-                        >
-                          {submitting ? '처리 중...' : '수정'}
-                        </button>
-                        <button
-                          onClick={handleEndSession}
-                          disabled={submitting}
-                          className="flex-1 py-3 bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 text-white font-semibold rounded-xl transition"
-                        >
-                          {submitting ? '처리 중...' : '종료'}
-                        </button>
-                      </>
-                    ) : (
+
+                  {/* 수정 (편집 저장) */}
+                  <button
+                    onClick={() => selectedStatusRecord.is_in_progress ? handleForceEnd(true) : handleStatusResend(true)}
+                    disabled={submitting}
+                    className="w-full py-3 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 text-white font-semibold rounded-xl transition"
+                  >
+                    {submitting ? '처리 중...' : '수정 저장'}
+                  </button>
+
+                  {/* 이용 종료 처리 (진행 중일 때만, 가장 강조) */}
+                  {selectedStatusRecord.is_in_progress && (
+                    <>
+                      <div className="flex items-center gap-3 mt-2">
+                        <div className="flex-1 h-px bg-neutral-700"></div>
+                        <span className="text-xs text-neutral-500 font-medium">세션 마감</span>
+                        <div className="flex-1 h-px bg-neutral-700"></div>
+                      </div>
                       <button
-                        onClick={() => handleStatusResend(true)}
+                        onClick={handleEndSession}
                         disabled={submitting}
-                        className="flex-1 py-3 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 text-white font-semibold rounded-xl transition"
+                        className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 disabled:bg-neutral-700 text-white rounded-xl transition border-2 border-emerald-400/60 shadow-lg shadow-emerald-900/40"
                       >
-                        {submitting ? '처리 중...' : '수정'}
+                        <div className="font-bold text-base">✓ 이용 종료 처리</div>
+                        <div className="text-xs font-normal text-emerald-100 mt-1">
+                          입력한 이용시간으로 세션을 마감합니다 (카톡 발송 X)
+                        </div>
                       </button>
-                    )}
-                  </div>
+                    </>
+                  )}
                 </div>
               </>
             )}
