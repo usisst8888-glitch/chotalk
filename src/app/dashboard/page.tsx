@@ -2760,31 +2760,29 @@ export default function DashboardPage() {
 
                 {/* 버튼 */}
                 <div className="flex flex-col gap-3 mt-6">
-                  {/* 삭제 + 목록으로 (보조 액션) */}
-                  <div className="flex gap-3">
+                  {/* 삭제 + 목록으로 + 수정 저장 (한 줄) */}
+                  <div className="flex gap-2">
                     <button
                       onClick={() => { setDeleteTargetId(selectedStatusRecord.id); setShowDeleteConfirm(true); }}
                       disabled={submitting}
-                      className="px-4 py-3 bg-red-900/50 hover:bg-red-800 disabled:bg-neutral-700 text-red-400 font-semibold rounded-xl transition"
+                      className="px-3 py-3 bg-red-900/50 hover:bg-red-800 disabled:bg-neutral-700 text-red-400 font-semibold rounded-xl transition text-sm"
                     >
                       삭제
                     </button>
                     <button
                       onClick={() => setSelectedStatusRecord(null)}
-                      className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition"
+                      className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-semibold rounded-xl transition text-sm"
                     >
                       목록으로
                     </button>
+                    <button
+                      onClick={() => selectedStatusRecord.is_in_progress ? handleForceEnd(true) : handleStatusResend(true)}
+                      disabled={submitting}
+                      className="flex-1 py-3 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 text-white font-semibold rounded-xl transition text-sm"
+                    >
+                      {submitting ? '처리 중...' : '수정 저장'}
+                    </button>
                   </div>
-
-                  {/* 수정 (편집 저장) */}
-                  <button
-                    onClick={() => selectedStatusRecord.is_in_progress ? handleForceEnd(true) : handleStatusResend(true)}
-                    disabled={submitting}
-                    className="w-full py-3 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 text-white font-semibold rounded-xl transition"
-                  >
-                    {submitting ? '처리 중...' : '수정 저장'}
-                  </button>
 
                   {/* 이용 종료 처리 (진행 중일 때만, 가장 강조) */}
                   {selectedStatusRecord.is_in_progress && (
