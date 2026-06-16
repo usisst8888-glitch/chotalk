@@ -298,7 +298,11 @@ export async function POST(
       .maybeSingle();
 
     if (existing) {
-      // 기존 레코드가 있으면 UPDATE (기존 데이터 유지, 필요한 필드만 변경)
+      // 기존 레코드가 있으면 UPDATE (필요한 필드 변경 + 발송 상태 초기화)
+      // 발송 상태 필드를 초기화해야 INSERT 와 동일하게 동작:
+      //   trigger_type='start' + start_sent_at=null → start 트리거 잡힘 → 시작 메시지 발송
+      //   → update_start_sent_at 가 trigger_type='hourly' 로 자동 전환
+      //   → 1시간 후부터 hourly 메시지 발송
       const { error: updateError } = await supabase
         .from('status_board')
         .update({
@@ -306,13 +310,20 @@ export async function POST(
           start_time: startTime,
           end_time: null,
           usage_duration: null,
+          event_count: null,
           trigger_type: 'start',
           is_designated: body.is_designated || existing.is_designated || false,
           is_event: isEvent,
           data_changed: true,
           updated_at: now,
-          // 기존 값 유지: source_log_id, event_count, start_sent_at, end_sent_at,
-          // hourly_count, last_hourly_sent_at, canceled_sent_at, last_sent_at
+          // 새 세션이므로 이전 세션의 발송 상태 초기화
+          start_sent_at: null,
+          end_sent_at: null,
+          hourly_count: 0,
+          last_hourly_sent_at: null,
+          canceled_sent_at: null,
+          last_sent_at: null,
+          source_log_id: null,
         })
         .eq('id', existing.id);
 
