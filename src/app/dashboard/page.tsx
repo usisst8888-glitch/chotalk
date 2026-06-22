@@ -27,17 +27,17 @@ export default function DashboardPage() {
   const [showExtendModal, setShowExtendModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [statusRecords, setStatusRecords] = useState<Array<{
-    id: string; room_number: string; girl_name: string; start_time: string;
+    id: string; room_number: string; manager_name: string | null; girl_name: string; start_time: string;
     usage_duration: number | null; is_designated: boolean; event_count: number | null;
     trigger_type: string; is_in_progress: boolean; data_changed: boolean; created_at: string;
   }>>([]);
   const [selectedStatusRecord, setSelectedStatusRecord] = useState<{
-    id: string; room_number: string; girl_name: string; start_time: string;
+    id: string; room_number: string; manager_name: string | null; girl_name: string; start_time: string;
     usage_duration: number | null; is_designated: boolean; event_count: number | null;
     trigger_type: string; is_in_progress: boolean; data_changed: boolean; created_at: string;
   } | null>(null);
   const [statusForm, setStatusForm] = useState({
-    room_number: '', start_time: '', usage_duration: '',
+    room_number: '', manager_name: '', start_time: '', usage_duration: '',
     is_designated: false, event_count: '', is_cancel: false,
   });
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
@@ -764,6 +764,7 @@ export default function DashboardPage() {
     setSelectedStatusRecord(record);
     setStatusForm({
       room_number: record.room_number || '',
+      manager_name: record.manager_name || '',
       start_time: record.start_time ? record.start_time.slice(11, 16) : '',
       usage_duration: record.usage_duration !== null ? String(record.usage_duration) : '',
       is_designated: record.is_designated || false,
@@ -866,6 +867,7 @@ export default function DashboardPage() {
       const payload: Record<string, unknown> = {
         recordId: selectedStatusRecord.id,
         room_number: statusForm.room_number,
+        manager_name: statusForm.manager_name,
         start_time: selectedStatusRecord.start_time ? selectedStatusRecord.start_time.slice(0, 11) + statusForm.start_time + ':00' : null,
         is_designated: statusForm.is_designated,
         editOnly,
@@ -906,6 +908,7 @@ export default function DashboardPage() {
         body: JSON.stringify({
           recordId: selectedStatusRecord.id,
           room_number: statusForm.room_number,
+          manager_name: statusForm.manager_name,
           start_time: selectedStatusRecord.start_time ? selectedStatusRecord.start_time.slice(0, 11) + statusForm.start_time + ':00' : null,
           usage_duration: statusForm.usage_duration ? parseFloat(statusForm.usage_duration) : null,
           is_designated: statusForm.is_designated,
@@ -2531,7 +2534,12 @@ export default function DashboardPage() {
                       className="w-full text-left p-3 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-xl transition"
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-white font-medium">{record.room_number || '-'}호</span>
+                        <span className="text-white font-medium">
+                          {record.room_number || '-'}호
+                          {record.manager_name && (
+                            <span className="ml-2 text-xs font-normal text-purple-300">{record.manager_name}</span>
+                          )}
+                        </span>
                         <span className={`text-xs font-bold px-2 py-0.5 rounded ${
                           record.trigger_type === 'canceled'
                             ? 'bg-yellow-500/20 text-yellow-400'
@@ -2692,6 +2700,18 @@ export default function DashboardPage() {
                       value={statusForm.room_number}
                       onChange={(e) => setStatusForm({ ...statusForm, room_number: e.target.value })}
                       className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                    />
+                  </div>
+
+                  {/* 담당자 */}
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-400 mb-1">담당자</label>
+                    <input
+                      type="text"
+                      value={statusForm.manager_name}
+                      onChange={(e) => setStatusForm({ ...statusForm, manager_name: e.target.value })}
+                      placeholder="예: 하대표"
+                      className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white placeholder-neutral-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
                     />
                   </div>
 

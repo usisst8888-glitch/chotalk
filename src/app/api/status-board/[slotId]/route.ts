@@ -32,7 +32,7 @@ export async function GET(
 
     const { data, error } = await supabase
       .from('status_board')
-      .select('id, room_number, girl_name, start_time, end_time, usage_duration, is_designated, is_event, event_count, trigger_type, is_in_progress, data_changed, created_at')
+      .select('id, room_number, manager_name, girl_name, start_time, end_time, usage_duration, is_designated, is_event, event_count, trigger_type, is_in_progress, data_changed, created_at')
       .eq('slot_id', slotId)
       .order('created_at', { ascending: false });
 
@@ -238,6 +238,10 @@ export async function PATCH(
       updateData.event_count = Math.floor(body.usage_duration);
     }
     if (body.is_designated !== undefined) updateData.is_designated = body.is_designated;
+    if (body.manager_name !== undefined) {
+      const trimmed = typeof body.manager_name === 'string' ? body.manager_name.trim() : '';
+      updateData.manager_name = trimmed === '' ? null : trimmed;
+    }
 
     const { error: updateError } = await supabase
       .from('status_board')
