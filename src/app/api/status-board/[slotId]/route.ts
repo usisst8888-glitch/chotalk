@@ -3,6 +3,7 @@ import { getSupabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/jwt';
 import { cookies } from 'next/headers';
 import { checkIsEvent } from '@/app/api/bot/_core/event';
+import { lookupManagerName } from '@/app/api/bot/_core/shared';
 
 function getKoreanTime(): string {
   return new Date(new Date().getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, -1);
@@ -297,6 +298,8 @@ export async function POST(
       .limit(1)
       .maybeSingle();
 
+    const managerName = await lookupManagerName(supabase, slot.shop_name, body.room_number);
+
     if (existing) {
       // 기존 레코드가 있으면 UPDATE (필요한 필드 변경 + 발송 상태 초기화)
       // 발송 상태 필드를 초기화해야 INSERT 와 동일하게 동작:
@@ -314,6 +317,7 @@ export async function POST(
           trigger_type: 'start',
           is_designated: body.is_designated || existing.is_designated || false,
           is_event: isEvent,
+          manager_name: managerName,
           data_changed: true,
           updated_at: now,
           // 새 세션이므로 이전 세션의 발송 상태 초기화
@@ -352,6 +356,7 @@ export async function POST(
           trigger_type: 'start',
           is_designated: body.is_designated || false,
           is_event: isEvent,
+          manager_name: managerName,
           source_log_id: null,
           data_changed: true,
         });

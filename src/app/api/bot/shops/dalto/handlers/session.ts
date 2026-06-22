@@ -1,6 +1,7 @@
 import { ParsedMessage } from '../parser';
 import { HandlerContext, HandlerResult } from '../types';
 import { getKoreanTime, getOrCreateRoom } from '../shared';
+import { lookupManagerName } from '@/app/api/bot/_core/shared';
 
 // ============================================================
 // 현시간재진행 처리 (ㅎㅅㄱㅈㅈㅎ) - 새 세션 INSERT
@@ -17,6 +18,8 @@ export async function handleNewSession(
 
   // 방 조회 또는 생성
   const roomInfo = await getOrCreateRoom(supabase, parsed.roomNumber!, slot.shop_name, receivedAt);
+
+  const managerName = await lookupManagerName(supabase, slot.shop_name, parsed.roomNumber);
 
   // 새 세션 INSERT (기존 레코드 무시, 무조건 새로 생성)
   const { error: insertError } = await supabase
@@ -37,6 +40,7 @@ export async function handleNewSession(
       trigger_type: 'start',
       source_log_id: logId || null,
       is_designated: girlSignals.isDesignated,
+      manager_name: managerName,
       data_changed: true,
     });
 
