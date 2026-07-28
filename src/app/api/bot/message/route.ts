@@ -209,11 +209,18 @@ export async function POST(request: NextRequest) {
       // 예: "603 태산\n연시 미쭈 1.5ㄲ\n905 이승기\n파이 ㄴㄱㅅㅌㅌ"
       // → 줄0: 603, 줄1: 603(상속), 줄2: 905, 줄3: 905(상속)
       let lastSeenRoom: string | null = null;
+      let lastSeenManager: string | null = null;
       const lineEffectiveRooms: (string | null)[] = [];
+      const lineEffectiveManagers: (string | null)[] = [];
       for (const line of sessionLines) {
         const roomNum = shop.extractRoomNumber(line);
-        if (roomNum) lastSeenRoom = roomNum;
+        if (roomNum) {
+          lastSeenRoom = roomNum;
+          // 방번호가 새로 나온 헤더 라인에서만 담당자 갱신 (없으면 null → 이 방엔 담당자 미기재)
+          lastSeenManager = shop.parseMessage(line, girlNames).managerName ?? null;
+        }
         lineEffectiveRooms.push(lastSeenRoom);
+        lineEffectiveManagers.push(lastSeenManager);
       }
 
       // 아가씨가 포함된 줄의 인덱스와 유효 방번호를 함께 추적 (ㅈ.ㅁ 섹션 제외)
@@ -232,15 +239,15 @@ export async function POST(request: NextRequest) {
 
       // 아가씨가 포함된 줄만 개별 처리 (줄바꿈 시 방번호가 다를 수 있으므로)
       const messagesToProcess = girlLineEntries.length > 0
-        ? girlLineEntries.map(({ line, idx }: { line: string; idx: number }) => ({ line, effectiveRoom: lineEffectiveRooms[idx] }))
-        : [{ line: message, effectiveRoom: parsed.roomNumber }];
+        ? girlLineEntries.map(({ line, idx }: { line: string; idx: number }) => ({ line, effectiveRoom: lineEffectiveRooms[idx], effectiveManager: lineEffectiveManagers[idx] }))
+        : [{ line: message, effectiveRoom: parsed.roomNumber, effectiveManager: parsed.managerName ?? null }];
 
       console.log('Processing', messagesToProcess.length, 'line(s) for', slot.girl_name);
 
       // 핸들러 컨텍스트 생성
       const ctx: HandlerContext = { supabase, slot, receivedAt: messageReceivedAt, logId, keepAliveRooms, sourceRoom: room };
 
-      for (const { line: lineMsg, effectiveRoom } of messagesToProcess) {
+      for (const { line: lineMsg, effectiveRoom, effectiveManager } of messagesToProcess) {
         // ㅌㄹㅅ 라인은 step 5에서 이미 처리됨 → 세션 처리 skip
         if (/ㅁ?ㅌㄹㅅ/.test(lineMsg) && !/ㅁ?ㅌㄹㅅ\s*(ㅊㅅ|취소)/.test(lineMsg)) continue;
 
@@ -250,6 +257,11 @@ export async function POST(request: NextRequest) {
         // 줄에 방번호가 없으면 가장 가까운 이전 줄의 방번호를 상속
         if (!lineParsed.roomNumber && effectiveRoom) {
           lineParsed.roomNumber = effectiveRoom;
+        }
+
+        // 담당자: 이 줄에서 못 뽑았으면 헤더 줄에서 상속
+        if (!lineParsed.managerName && effectiveManager) {
+          lineParsed.managerName = effectiveManager;
         }
 
         // ㅈㅈ(정정) + ㅇㅈ(연장) = ㅈㅈㅎ(재진행)과 동일하게 처리

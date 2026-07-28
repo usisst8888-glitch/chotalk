@@ -101,6 +101,7 @@ export async function handleSessionEnd(
     sourceLogId: logId,
     manualStartTime: manualStartTime,
     isEvent,
+    managerName: parsed.managerName,
   });
 
   // 방 종료 체크 (모든 아가씨가 ㄲ 되었는지 + keepAliveRooms 체크)

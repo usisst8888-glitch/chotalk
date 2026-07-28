@@ -230,28 +230,45 @@ export function findGirlName(message: string, girlNames: string[]): string | nul
  * 메시지 구조: "703 이승기 도아 ㅃ2"
  *              ^^^방번호  ^^^^담당자 ^^아가씨
  */
+// 담당자가 아닌 한글 신호/명령 단어 (방번호 뒤 첫 단어로 와도 담당자로 보지 않음)
+const NON_MANAGER_WORDS = new Set([
+  '재진행', '현시간재진행', '현시간', '지명', '지명방', '연장', '취소', '이동', '방이동',
+]);
+
+/**
+ * 담당자(매니저) 이름 추출
+ *
+ * 규칙: 메시지는 항상 "방번호 담당자 아가씨 ..." 형태.
+ * 방번호 바로 뒤 첫 토큰을 보고 판별한다.
+ *  - 활성 아가씨 이름이면        → 담당자 없음 (예: "703 도아 ㄲ")
+ *  - 숫자/요금/신호(자음)면       → 담당자 없음 (예: "703 1534 도아")
+ *  - 완성형 한글 2자 이상이면     → 그 토큰이 담당자 (예: "703 이승기 도아" → 이승기)
+ */
 export function extractManagerName(
   message: string,
   roomNumber: string | null,
-  girlName: string | null
+  girlNames: string[]
 ): string | null {
-  if (!roomNumber || !girlName) return null;
+  if (!roomNumber) return null;
 
-  // 방 번호 다음, 아가씨 이름 전까지의 텍스트
+  // 방번호(+호) 바로 뒤 텍스트만 취함
   const roomPattern = new RegExp(`${roomNumber}\\s*호?\\s*`);
-  const afterRoom = message.replace(roomPattern, '');
+  const match = message.match(roomPattern);
+  if (!match || match.index === undefined) return null;
+  const afterRoom = message.slice(match.index + match[0].length);
 
-  const girlIndex = afterRoom.indexOf(girlName);
-  if (girlIndex > 0) {
-    const managerPart = afterRoom.substring(0, girlIndex).trim();
-    // 공백으로 구분된 첫 번째 단어가 담당자 이름
-    const words = managerPart.split(/\s+/);
-    if (words.length > 0 && words[0]) {
-      return words[0];
-    }
-  }
+  // 방번호 뒤 첫 토큰
+  const firstToken = afterRoom.trim().split(/\s+/)[0] || '';
+  if (!firstToken) return null;
 
-  return null;
+  // 아가씨 이름이면 담당자 없음
+  if (girlNames.includes(firstToken)) return null;
+  // 완성형 한글 2자 이상만 담당자로 인정 (신호 자음/숫자/요금 자동 배제)
+  if (!/^[가-힣]{2,}$/.test(firstToken)) return null;
+  // 한글이지만 신호/명령 단어면 제외
+  if (NON_MANAGER_WORDS.has(firstToken)) return null;
+
+  return firstToken;
 }
 
 // ============================================================
@@ -272,7 +289,7 @@ export function extractManagerName(
 export function parseMessage(message: string, girlNames: string[]): ParsedMessage {
   const roomNumber = extractRoomNumber(message);
   const girlName = findGirlName(message, girlNames);
-  const managerName = extractManagerName(message, roomNumber, girlName);
+  const managerName = extractManagerName(message, roomNumber, girlNames);
   const isEnd = isEndSignal(message);
   const isCorrection = isCorrectionSignal(message);
   const usageDuration = isEnd ? extractUsageDuration(message) : null;

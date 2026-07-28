@@ -47,4 +47,5 @@ export interface StatusBoardData {
   sourceLogId: string | undefined;
   manualStartTime?: string | null;
   isEvent: boolean;
+  managerName?: string | null;
 }

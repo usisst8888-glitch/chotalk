@@ -46,6 +46,7 @@ export async function handleSessionStart(
     sourceLogId: logId,
     manualStartTime: girlSignals.isCorrection ? manualTime : null,
     isEvent,
+    managerName: parsed.managerName,
   });
 
   return {

@@ -140,6 +140,7 @@ export async function updateStatusBoard(
           source_log_id: data.sourceLogId || null,
           ...(data.isDesignated ? { is_designated: true } : {}),
           is_event: data.isEvent,
+          ...(data.managerName ? { manager_name: data.managerName } : {}),
           updated_at: getKoreanTime(),
           data_changed: true,
         };
@@ -230,6 +231,7 @@ export async function updateStatusBoard(
             updated_at: getKoreanTime(),
             data_changed: data.usageDuration !== null,
             ...(data.isDesignated ? { is_designated: true } : {}),
+            ...(data.managerName ? { manager_name: data.managerName } : {}),
           })
           .eq('id', inProgressRecord.id);
 
@@ -300,6 +302,7 @@ export async function updateStatusBoard(
           source_log_id: data.sourceLogId || null,
           is_designated: data.isDesignated,
           is_event: data.isEvent,
+          manager_name: data.managerName ?? null,
           data_changed: true,
         });
 
