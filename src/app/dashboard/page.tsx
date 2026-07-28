@@ -63,7 +63,7 @@ export default function DashboardPage() {
   const [showPassword, setShowPassword] = useState({ current: false, new: false, confirm: false });
   const [activeTab, setActiveTab] = useState<'slots' | 'users' | 'kakaoIds' | 'eventTimes' | 'extensions' | 'purchases' | 'rooms' | 'distributors' | 'bankAccount' | 'settlement' | 'errandTalk' | 'choiceTalk' | 'package' | 'serviceManage' | 'waiterList' | 'aktalkAtok'>('slots');
   // 관리자용 회원관리
-  const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; nickname: string | null; phone: string; role: string; slot_count: number; parent_id: string | null; domain: string | null; header_template: string | null; created_at: string }>>([]);
+  const [allUsers, setAllUsers] = useState<Array<{ id: string; username: string; nickname: string | null; phone: string; role: string; is_premium: boolean; slot_count: number; parent_id: string | null; domain: string | null; header_template: string | null; created_at: string }>>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   // 관리자용 전체 인원관리
   const [allSlots, setAllSlots] = useState<Array<Slot & { username: string }>>([]);

@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 
 interface UsersTabProps {
-  allUsers: Array<{ id: string; username: string; nickname: string | null; phone: string; role: string; slot_count: number; parent_id: string | null; domain: string | null; header_template: string | null; created_at: string }>;
+  allUsers: Array<{ id: string; username: string; nickname: string | null; phone: string; role: string; is_premium: boolean; slot_count: number; parent_id: string | null; domain: string | null; header_template: string | null; created_at: string }>;
   usersLoading: boolean;
   fetchAllUsers: () => void;
 }
@@ -65,6 +65,7 @@ export default function UsersTab({ allUsers, usersLoading, fetchAllUsers }: User
                 <th className="text-left px-4 py-3 text-neutral-500 font-medium">담당자 닉네임</th>
                 <th className="text-left px-4 py-3 text-neutral-500 font-medium">전화번호</th>
                 <th className="text-center px-4 py-3 text-neutral-500 font-medium">등급</th>
+                <th className="text-center px-4 py-3 text-neutral-500 font-medium">프리미엄</th>
                 <th className="text-center px-4 py-3 text-neutral-500 font-medium">소속 총판</th>
                 <th className="text-left px-4 py-3 text-neutral-500 font-medium">도메인</th>
                 <th className="text-center px-4 py-3 text-neutral-500 font-medium">등록 가능 인원</th>
@@ -106,6 +107,29 @@ export default function UsersTab({ allUsers, usersLoading, fetchAllUsers }: User
                       <option value="admin">총판</option>
                       <option value="superadmin">슈퍼관리자</option>
                     </select>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <button
+                      onClick={async () => {
+                        const res = await fetch('/api/admin/users', {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ userId: u.id, isPremium: !u.is_premium }),
+                        });
+                        if (res.ok) {
+                          fetchAllUsers();
+                        } else {
+                          alert('프리미엄 변경에 실패했습니다.');
+                        }
+                      }}
+                      className={`px-2.5 py-1 text-xs rounded-full transition ${
+                        u.is_premium
+                          ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
+                          : 'bg-neutral-700 text-neutral-500 hover:bg-neutral-600'
+                      }`}
+                    >
+                      {u.is_premium ? '⭐ 프리미엄' : '일반'}
+                    </button>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <select
