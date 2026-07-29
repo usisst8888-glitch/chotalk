@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
   username VARCHAR(100) UNIQUE NOT NULL,
   role VARCHAR(20) DEFAULT 'user' NOT NULL,
   is_premium BOOLEAN DEFAULT false NOT NULL,
+  footer_message TEXT,
   slot_count INTEGER DEFAULT 3,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

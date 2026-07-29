@@ -3,7 +3,7 @@
 import { Slot, SHOP_NAMES } from '../types';
 
 interface SlotsTabProps {
-  user: { id: string; username: string; role: string } | null;
+  user: { id: string; username: string; role: string; is_premium?: boolean } | null;
   isAnyAdmin: boolean;
   isSuperAdmin: boolean;
   slots: Slot[];
@@ -21,6 +21,7 @@ interface SlotsTabProps {
   setShowBatchExtendModal: (show: boolean) => void;
   setShowExtendAllModal: (show: boolean) => void;
   setShowSlotPurchaseModal: (show: boolean) => void;
+  openMsgSettings: () => void;
   setShowAdminAddModal: (show: boolean) => void;
   slotSearch: string;
   setSlotSearch: (search: string) => void;
@@ -69,6 +70,7 @@ export default function SlotsTab({
   setShowBatchExtendModal,
   setShowExtendAllModal,
   setShowSlotPurchaseModal,
+  openMsgSettings,
   setShowAdminAddModal,
   slotSearch,
   setSlotSearch,
@@ -191,6 +193,14 @@ export default function SlotsTab({
                     등록 가능: <span className="text-green-400 font-medium">{slotCount}명</span>
                   </span>
                   <div className="flex gap-2">
+                    {user?.is_premium && (
+                      <button
+                        onClick={openMsgSettings}
+                        className="px-3 py-1 text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded transition"
+                      >
+                        ⭐ 발송 문구 설정
+                      </button>
+                    )}
                     <button
                       onClick={() => setShowExtendAllModal(true)}
                       disabled={slots.length === 0}
@@ -216,7 +226,15 @@ export default function SlotsTab({
                     등록 가능: <span className="text-green-400 font-medium">{slotCount}명</span>
                   </span>
                 </div>
-                <div className="flex gap-2 mt-3">
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {user?.is_premium && (
+                    <button
+                      onClick={openMsgSettings}
+                      className="px-3 py-1.5 text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded transition"
+                    >
+                      ⭐ 발송 문구 설정
+                    </button>
+                  )}
                   <button
                     onClick={() => setShowExtendAllModal(true)}
                     disabled={slots.length === 0}

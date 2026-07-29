@@ -47,6 +47,9 @@ export default function DashboardPage() {
   const [submitting, setSubmitting] = useState(false);
   const [showSlotPurchaseModal, setShowSlotPurchaseModal] = useState(false);
   const [showExtendAllModal, setShowExtendAllModal] = useState(false);
+  const [showMsgSettingsModal, setShowMsgSettingsModal] = useState(false);
+  const [msgSettings, setMsgSettings] = useState({ headerTemplate: '', footerMessage: '' });
+  const [msgSettingsSaving, setMsgSettingsSaving] = useState(false);
   const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
   const [inlineNewSlot, setInlineNewSlot] = useState({ girlName: '', shopName: '', customShopName: '', customClosingTime: '', targetRoom: '' });
   const [purchaseForm, setPurchaseForm] = useState({ depositorName: '', slotCount: 1 });
@@ -183,6 +186,34 @@ export default function DashboardPage() {
       console.error('Failed to fetch user:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openMsgSettings = () => {
+    setMsgSettings({
+      headerTemplate: user?.header_template || '',
+      footerMessage: user?.footer_message || '',
+    });
+    setShowMsgSettingsModal(true);
+  };
+
+  const saveMsgSettings = async () => {
+    setMsgSettingsSaving(true);
+    try {
+      const res = await fetch('/api/user/message-settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(msgSettings),
+      });
+      if (res.ok) {
+        await fetchUser();
+        setShowMsgSettingsModal(false);
+      } else {
+        const d = await res.json().catch(() => ({}));
+        alert(d.error || '저장에 실패했습니다.');
+      }
+    } finally {
+      setMsgSettingsSaving(false);
     }
   };
 
@@ -1586,6 +1617,7 @@ export default function DashboardPage() {
             setShowBatchExtendModal={setShowBatchExtendModal}
             setShowExtendAllModal={setShowExtendAllModal}
             setShowSlotPurchaseModal={setShowSlotPurchaseModal}
+            openMsgSettings={openMsgSettings}
             setShowAdminAddModal={setShowAdminAddModal}
             slotSearch={slotSearch}
             setSlotSearch={setSlotSearch}
@@ -3061,6 +3093,46 @@ export default function DashboardPage() {
               >
                 닫기
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 발송 문구 설정 모달 (프리미엄 전용) */}
+      {showMsgSettingsModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowMsgSettingsModal(false)}>
+          <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-white mb-1">발송 문구 설정</h3>
+            <p className="text-xs text-neutral-500 mb-4">헤더와 하단 멘트를 직접 설정할 수 있어요. (프리미엄 전용)</p>
+
+            {/* 헤더 템플릿 */}
+            <label className="text-sm text-neutral-300 font-medium">헤더</label>
+            <div className="flex gap-2 my-2">
+              <button onClick={() => setMsgSettings(s => ({ ...s, headerTemplate: s.headerTemplate + '{가게명}' }))} className="px-2.5 py-1 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition">{'{가게명}'}</button>
+              <button onClick={() => setMsgSettings(s => ({ ...s, headerTemplate: s.headerTemplate + '{날짜}' }))} className="px-2.5 py-1 text-xs bg-green-600 hover:bg-green-500 text-white rounded-lg transition">{'{날짜}'}</button>
+              <button onClick={() => setMsgSettings(s => ({ ...s, headerTemplate: s.headerTemplate + '{아가씨이름}' }))} className="px-2.5 py-1 text-xs bg-pink-600 hover:bg-pink-500 text-white rounded-lg transition">{'{아가씨이름}'}</button>
+            </div>
+            <textarea
+              value={msgSettings.headerTemplate}
+              onChange={(e) => setMsgSettings({ ...msgSettings, headerTemplate: e.target.value })}
+              placeholder="예: 💜 {가게명} {날짜} 💜"
+              rows={3}
+              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-indigo-500 resize-none"
+            />
+
+            {/* 하단 멘트 */}
+            <label className="text-sm text-neutral-300 font-medium mt-4 block">하단 멘트</label>
+            <textarea
+              value={msgSettings.footerMessage}
+              onChange={(e) => setMsgSettings({ ...msgSettings, footerMessage: e.target.value })}
+              placeholder="발송 문구 맨 아래에 붙는 문구"
+              rows={3}
+              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-indigo-500 resize-none mt-2"
+            />
+
+            <div className="flex justify-end gap-2 mt-5">
+              <button onClick={() => setShowMsgSettingsModal(false)} className="px-4 py-2 text-sm bg-neutral-700 hover:bg-neutral-600 text-neutral-300 rounded-lg transition">취소</button>
+              <button onClick={saveMsgSettings} disabled={msgSettingsSaving} className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition disabled:opacity-50">{msgSettingsSaving ? '저장 중...' : '저장'}</button>
             </div>
           </div>
         </div>

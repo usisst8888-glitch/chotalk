@@ -5,6 +5,9 @@ export interface User {
   created_at: string;
   parent_id?: string | null;
   bank_account?: string | null;
+  is_premium?: boolean;
+  header_template?: string | null;
+  footer_message?: string | null;
 }
 
 export interface Distributor {
