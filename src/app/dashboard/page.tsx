@@ -48,6 +48,7 @@ export default function DashboardPage() {
   const [showSlotPurchaseModal, setShowSlotPurchaseModal] = useState(false);
   const [showExtendAllModal, setShowExtendAllModal] = useState(false);
   const [showMsgSettingsModal, setShowMsgSettingsModal] = useState(false);
+  const [showPremiumNotice, setShowPremiumNotice] = useState(false);
   const [msgSettings, setMsgSettings] = useState({ headerTemplate: '', footerMessage: '' });
   const [msgSettingsSaving, setMsgSettingsSaving] = useState(false);
   const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
@@ -195,6 +196,15 @@ export default function DashboardPage() {
       footerMessage: user?.footer_message || '',
     });
     setShowMsgSettingsModal(true);
+  };
+
+  // 프리미엄이면 설정 모달, 아니면 안내 팝업
+  const handleMsgSettingsClick = () => {
+    if (user?.is_premium) {
+      openMsgSettings();
+    } else {
+      setShowPremiumNotice(true);
+    }
   };
 
   const saveMsgSettings = async () => {
@@ -1617,7 +1627,7 @@ export default function DashboardPage() {
             setShowBatchExtendModal={setShowBatchExtendModal}
             setShowExtendAllModal={setShowExtendAllModal}
             setShowSlotPurchaseModal={setShowSlotPurchaseModal}
-            openMsgSettings={openMsgSettings}
+            onMsgSettingsClick={handleMsgSettingsClick}
             setShowAdminAddModal={setShowAdminAddModal}
             slotSearch={slotSearch}
             setSlotSearch={setSlotSearch}
@@ -3134,6 +3144,26 @@ export default function DashboardPage() {
               <button onClick={() => setShowMsgSettingsModal(false)} className="px-4 py-2 text-sm bg-neutral-700 hover:bg-neutral-600 text-neutral-300 rounded-lg transition">취소</button>
               <button onClick={saveMsgSettings} disabled={msgSettingsSaving} className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition disabled:opacity-50">{msgSettingsSaving ? '저장 중...' : '저장'}</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 프리미엄 안내 팝업 (비프리미엄이 발송 문구 설정 누를 때) */}
+      {showPremiumNotice && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowPremiumNotice(false)}>
+          <div className="bg-neutral-900 border border-amber-500/30 rounded-2xl p-6 w-full max-w-sm text-center" onClick={(e) => e.stopPropagation()}>
+            <div className="text-4xl mb-3">⭐</div>
+            <h3 className="text-lg font-bold text-white mb-2">프리미엄 전용 기능</h3>
+            <p className="text-neutral-300 text-sm leading-relaxed">
+              프리미엄 회원만 사용이 가능합니다.<br />
+              담당자에게 문의 주세요.
+            </p>
+            <button
+              onClick={() => setShowPremiumNotice(false)}
+              className="mt-5 w-full px-4 py-2.5 text-sm font-bold text-black bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 rounded-lg transition"
+            >
+              확인
+            </button>
           </div>
         </div>
       )}

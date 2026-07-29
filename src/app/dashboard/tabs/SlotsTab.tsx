@@ -21,7 +21,7 @@ interface SlotsTabProps {
   setShowBatchExtendModal: (show: boolean) => void;
   setShowExtendAllModal: (show: boolean) => void;
   setShowSlotPurchaseModal: (show: boolean) => void;
-  openMsgSettings: () => void;
+  onMsgSettingsClick: () => void;
   setShowAdminAddModal: (show: boolean) => void;
   slotSearch: string;
   setSlotSearch: (search: string) => void;
@@ -70,7 +70,7 @@ export default function SlotsTab({
   setShowBatchExtendModal,
   setShowExtendAllModal,
   setShowSlotPurchaseModal,
-  openMsgSettings,
+  onMsgSettingsClick,
   setShowAdminAddModal,
   slotSearch,
   setSlotSearch,
@@ -103,10 +103,26 @@ export default function SlotsTab({
     <>
         {/* 스타트톡 설명 */}
         <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 mb-6">
-          <div className="mb-6">
-            <h2 className="text-xl font-bold text-white">스타트톡 관리</h2>
-            <p className="text-neutral-400 text-sm mt-1">아가씨별 인원을 등록하고 스타트 시간, 끝나는 시간, 연장 등등 카카오톡으로 자동 발송하는 서비스입니다.</p>
+          <div className="mb-6 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-white">스타트톡 관리</h2>
+              <p className="text-neutral-400 text-sm mt-1">아가씨별 인원을 등록하고 스타트 시간, 끝나는 시간, 연장 등등 카카오톡으로 자동 발송하는 서비스입니다.</p>
+            </div>
+            {/* PC 우상단: 발송 문구 설정 (강조) */}
+            <button
+              onClick={onMsgSettingsClick}
+              className="hidden md:inline-flex shrink-0 items-center gap-1.5 px-4 py-2.5 text-sm font-bold text-black bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 rounded-xl shadow-lg shadow-amber-500/30 transition"
+            >
+              ⭐ 발송 문구 설정
+            </button>
           </div>
+          {/* 모바일: 발송 문구 설정 (풀폭, 잘 보이게) */}
+          <button
+            onClick={onMsgSettingsClick}
+            className="md:hidden w-full mb-5 inline-flex items-center justify-center gap-1.5 px-4 py-3 text-sm font-bold text-black bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 rounded-xl shadow-lg shadow-amber-500/30 transition"
+          >
+            ⭐ 발송 문구 설정
+          </button>
           {isAnyAdmin ? (
             // 관리자: 전체 인원 표시
             <>
@@ -193,14 +209,6 @@ export default function SlotsTab({
                     등록 가능: <span className="text-green-400 font-medium">{slotCount}명</span>
                   </span>
                   <div className="flex gap-2">
-                    {user?.is_premium && (
-                      <button
-                        onClick={openMsgSettings}
-                        className="px-3 py-1 text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded transition"
-                      >
-                        ⭐ 발송 문구 설정
-                      </button>
-                    )}
                     <button
                       onClick={() => setShowExtendAllModal(true)}
                       disabled={slots.length === 0}
@@ -227,14 +235,6 @@ export default function SlotsTab({
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-3">
-                  {user?.is_premium && (
-                    <button
-                      onClick={openMsgSettings}
-                      className="px-3 py-1.5 text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded transition"
-                    >
-                      ⭐ 발송 문구 설정
-                    </button>
-                  )}
                   <button
                     onClick={() => setShowExtendAllModal(true)}
                     disabled={slots.length === 0}
