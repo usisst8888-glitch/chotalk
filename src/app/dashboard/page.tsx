@@ -104,7 +104,7 @@ export default function DashboardPage() {
   const [adminNewSlot, setAdminNewSlot] = useState({ userId: '', girlName: '', shopName: '', customShopName: '' });
   // 상황판 새 세션 추가 폼
   const [showAddSessionForm, setShowAddSessionForm] = useState(false);
-  const [addSessionForm, setAddSessionForm] = useState({ room_number: '', start_hour: '', start_minute: '', start_ampm: 'PM' as 'AM' | 'PM', is_designated: false });
+  const [addSessionForm, setAddSessionForm] = useState({ room_number: '', manager_name: '', start_hour: '', start_minute: '', start_ampm: 'PM' as 'AM' | 'PM', is_designated: false });
   // 상황판 초기화 확인 팝업
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   // 상황판 개별 삭제 확인 팝업
@@ -702,13 +702,14 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           room_number: addSessionForm.room_number || null,
+          manager_name: addSessionForm.manager_name.trim() || null,
           start_time: startTime,
           is_designated: addSessionForm.is_designated,
         }),
       });
       if (res.ok) {
         setShowAddSessionForm(false);
-        setAddSessionForm({ room_number: '', start_hour: '', start_minute: '', start_ampm: 'PM', is_designated: false });
+        setAddSessionForm({ room_number: '', manager_name: '', start_hour: '', start_minute: '', start_ampm: 'PM', is_designated: false });
         // 목록 새로고침
         const updated = await fetch(`/api/status-board/${selectedSlot.id}`);
         if (updated.ok) {
@@ -2652,6 +2653,16 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     </div>
+                    <div>
+                      <label className="block text-xs text-neutral-400 mb-1">담당자</label>
+                      <input
+                        type="text"
+                        value={addSessionForm.manager_name}
+                        onChange={(e) => setAddSessionForm({ ...addSessionForm, manager_name: e.target.value })}
+                        placeholder="예: 조정석 (비워두면 담당자 없음)"
+                        className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                      />
+                    </div>
                     <div className="flex items-center gap-2">
                       <label className="text-xs text-neutral-400">지명</label>
                       <button
@@ -2664,7 +2675,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => { setShowAddSessionForm(false); setAddSessionForm({ room_number: '', start_hour: '', start_minute: '', start_ampm: 'PM', is_designated: false }); }}
+                        onClick={() => { setShowAddSessionForm(false); setAddSessionForm({ room_number: '', manager_name: '', start_hour: '', start_minute: '', start_ampm: 'PM', is_designated: false }); }}
                         className="flex-1 py-2 bg-neutral-700 hover:bg-neutral-600 text-neutral-400 text-sm font-medium rounded-lg transition"
                       >
                         취소

@@ -3,7 +3,6 @@ import { getSupabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/jwt';
 import { cookies } from 'next/headers';
 import { checkIsEvent } from '@/app/api/bot/_core/event';
-import { lookupManagerName } from '@/app/api/bot/_core/shared';
 
 function getKoreanTime(): string {
   return new Date(new Date().getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, -1);
@@ -292,7 +291,10 @@ export async function POST(
     // 이벤트 여부 자동 체크 (봇과 동일 로직)
     const isEvent = await checkIsEvent(supabase, slotId, slot.shop_name, startTime);
 
-    const managerName = await lookupManagerName(supabase, slot.shop_name, body.room_number);
+    // 담당자: 수동 입력값을 status_board.manager_name에 직접 저장 (aktalk_chotok_managers 조회 안 함)
+    const managerName = typeof body.manager_name === 'string' && body.manager_name.trim()
+      ? body.manager_name.trim()
+      : null;
 
     // 항상 새 레코드로 INSERT
     // (같은 방번호에 진행 중인 세션이 있어도 덮어쓰지 않고 별도 세션으로 추가 → 동시 진행 지원)

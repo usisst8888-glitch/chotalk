@@ -12,30 +12,6 @@ export function getKoreanTime(): string {
 }
 
 // ============================================================
-// 초톡 담당자 조회
-// ============================================================
-
-// aktalk_chotok_managers에서 (가게+방번호)로 담당자 이름 조회. 없으면 null.
-export async function lookupManagerName(
-  supabase: ReturnType<typeof getSupabase>,
-  shopName: string | null | undefined,
-  roomNumber: string | null | undefined
-): Promise<string | null> {
-  if (!shopName || !roomNumber) return null;
-  const { data, error } = await supabase
-    .from('aktalk_chotok_managers')
-    .select('manager_name')
-    .eq('shop_name', shopName)
-    .eq('room_number', roomNumber)
-    .maybeSingle();
-  if (error) {
-    console.error('lookupManagerName error:', error);
-    return null;
-  }
-  return data?.manager_name ?? null;
-}
-
-// ============================================================
 // 방(Room) 관리 함수
 // ============================================================
 
@@ -310,7 +286,7 @@ export async function updateStatusBoard(
         return;
       }
       console.log('Inserting new status_board record...');
-      const managerName = await lookupManagerName(supabase, data.shopName, data.roomNumber);
+      const managerName: string | null = null; // aktalk_chotok_managers 조회 제거됨 (이 경로는 미사용)
       const { error: insertError } = await supabase
         .from('status_board')
         .insert({
