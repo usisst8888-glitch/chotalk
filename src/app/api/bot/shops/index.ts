@@ -6,6 +6,7 @@ import * as unm from './unm';
 import * as dalto from './dalto';
 import * as perfect from './perfect';
 import * as elite from './elite';
+import * as aura from './aura';
 
 export type ShopModule = typeof dopamine;
 
@@ -15,6 +16,7 @@ const shopMap: Record<string, ShopModule> = {
   '달토': dalto,
   '퍼펙트': perfect,
   '엘리트': elite,
+  '아우라': aura,
 };
 
 export function getShop(shopName: string): ShopModule {

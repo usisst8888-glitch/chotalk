@@ -12,7 +12,8 @@
  * "222 담당자 107 ㅌㄹㅅ 웨 알리"  → ㅌㄹㅅ 뒤 "웨 알리" → 107방에 알리 upsert
  *
  * 규칙:
- * - 정확히 3자리 방번호 (4자리 이상 제외)
+ * - 정확히 3자리 방번호 (4자리 이상 제외), 또는 v1/v2/v3 (V1/V2/V3 포함, 소문자로 저장)
+ *   그 외 형식(a1, v4, v10, 'v 1' 등)은 모두 제외
  * - ㄴ.ㄱ / ㅈ.ㅁ 섹션 이후는 무시
  * - ㅌㄹㅅ취소는 무시
  */
@@ -45,10 +46,11 @@ export function parseWaiterMessage(message: string): WaiterAssignment[] {
     if (/출\.?근\.?자/.test(line)) continue;
 
     // 정확히 3자리 방번호로 시작하는 라인만 처리 (4자리 이상 제외)
-    const roomMatch = line.match(/^(\d{3})(?!\d)/);
+    const roomMatch = line.match(/^(\d{3}|[vV][123])(?!\d)/);
     if (!roomMatch) continue;
 
-    const roomNumber = roomMatch[1];
+    // V1/V2/V3는 v1/v2/v3와 같은 방 → 소문자로 통일
+    const roomNumber = roomMatch[1].toLowerCase();
     const afterRoom = line.substring(roomMatch[0].length);
 
     // 모든 한글 이름 추출 (1글자 이상)

@@ -48,9 +48,9 @@ export async function POST(request: NextRequest) {
 
     const supabase = getSupabase();
 
-    // 아톡: 3자리 방번호+텍스트 패턴만 저장 (예: "301 홍길동 1.5시간")
+    // 아톡: 3자리 방번호 또는 v1/v2/v3 + 텍스트 패턴만 저장 (예: "301 홍길동 1.5시간", "v1 얼재요")
     if (roomType === '아톡') {
-      if (!/^\d{3}\s*.+/.test(message.trim())) {
+      if (!/^(?:\d{3}|[vV][123](?!\d))\s*.+/.test(message.trim())) {
         return NextResponse.json({ success: true, stored: false, reason: '방번호+텍스트 패턴 불일치' });
       }
     }

@@ -63,4 +63,4 @@ export interface Slot {
 }
 
 // 가게명 프리셋
-export const SHOP_NAMES = ['도파민', '유앤미', '달토', '퍼펙트', '엘리트'];
+export const SHOP_NAMES = ['도파민', '유앤미', '달토', '퍼펙트', '엘리트', '아우라'];
