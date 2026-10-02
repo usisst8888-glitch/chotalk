@@ -650,9 +650,14 @@ export default function SlotsTab({
                 <div key={slot.id} className={`bg-neutral-900 border border-neutral-800 rounded-2xl p-4 ${!slot.is_active ? 'opacity-50' : ''}`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <div className={`w-12 h-6 rounded-full ${slot.is_active ? 'bg-green-500' : 'bg-neutral-700'}`}>
-                        <span className={`block w-4 h-4 bg-white rounded-full relative top-1 ${slot.is_active ? 'ml-auto mr-1' : 'ml-1'}`} />
-                      </div>
+                      <button
+                        onClick={() => toggleSlotActive(slot.id, slot.is_active, slot.expires_at)}
+                        className={`w-12 h-6 rounded-full transition-colors flex items-center px-1 ${
+                          slot.is_active ? 'bg-green-500 justify-end' : 'bg-neutral-700 justify-start'
+                        }`}
+                      >
+                        <span className="block w-4 h-4 bg-white rounded-full" />
+                      </button>
                       <span className="text-sm text-neutral-500">{slot.is_active ? '활성화' : '비활성화'}</span>
                     </div>
                     {(isExpired || isExpiringSoon) && (
