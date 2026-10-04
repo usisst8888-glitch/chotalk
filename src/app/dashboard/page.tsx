@@ -198,9 +198,9 @@ export default function DashboardPage() {
     setShowMsgSettingsModal(true);
   };
 
-  // 프리미엄이면 설정 모달, 아니면 안내 팝업
+  // 프리미엄 또는 관리자면 설정 모달, 아니면 안내 팝업
   const handleMsgSettingsClick = () => {
-    if (user?.is_premium) {
+    if (user?.is_premium || user?.role === 'superadmin' || user?.role === 'admin') {
       openMsgSettings();
     } else {
       setShowPremiumNotice(true);

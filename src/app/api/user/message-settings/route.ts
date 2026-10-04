@@ -4,7 +4,7 @@ import { verifyToken } from '@/lib/jwt';
 
 // ============================================================
 // 회원 본인의 발송 문구 설정 (헤더 템플릿 + 하단 멘트) 수정
-// 프리미엄 회원만 가능. 관리자 대시보드와 별개로 회원이 자기 걸 직접 편집.
+// 프리미엄 회원과 관리자만 가능. 관리자 대시보드와 별개로 회원이 자기 걸 직접 편집.
 // ============================================================
 export async function PATCH(request: NextRequest) {
   try {
@@ -19,17 +19,18 @@ export async function PATCH(request: NextRequest) {
 
     const supabase = getSupabase();
 
-    // 본인 프리미엄 여부 확인
+    // 본인 프리미엄/관리자 여부 확인
     const { data: me, error: meError } = await supabase
       .from('users')
-      .select('is_premium')
+      .select('is_premium, role')
       .eq('id', payload.userId)
       .single();
 
     if (meError || !me) {
       return NextResponse.json({ error: '사용자를 찾을 수 없습니다.' }, { status: 404 });
     }
-    if (!me.is_premium) {
+    const isAdmin = me.role === 'superadmin' || me.role === 'admin';
+    if (!me.is_premium && !isAdmin) {
       return NextResponse.json({ error: '프리미엄 회원만 발송 문구를 설정할 수 있습니다.' }, { status: 403 });
     }
 
