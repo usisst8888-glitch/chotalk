@@ -252,7 +252,8 @@ export function extractManagerName(
   if (!roomNumber) return null;
 
   // 방번호(+호) 바로 뒤 텍스트만 취함
-  const roomPattern = new RegExp(`${roomNumber}\\s*호?\\s*`);
+  // '호'는 뒤에 공백/끝이 올 때만 방번호 접미사로 본다 ("111 호재"의 '호'를 먹지 않도록)
+  const roomPattern = new RegExp(`${roomNumber}(?:\\s*호(?=\\s|$))?\\s*`);
   const match = message.match(roomPattern);
   if (!match || match.index === undefined) return null;
   const afterRoom = message.slice(match.index + match[0].length);
