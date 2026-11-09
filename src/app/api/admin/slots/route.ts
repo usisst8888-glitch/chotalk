@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
 import { checkAdminOrSuperAdmin } from '@/lib/auth';
+import { validateGirlName } from '@/lib/girl-name';
 
 function getKoreanTimeDate(): Date {
   const now = new Date();
@@ -104,6 +105,11 @@ export async function POST(request: NextRequest) {
 
     if (!userId || !girlName) {
       return NextResponse.json({ error: '유저와 아가씨 닉네임을 입력해주세요.' }, { status: 400 });
+    }
+
+    const nameError = validateGirlName(girlName);
+    if (nameError) {
+      return NextResponse.json({ error: nameError }, { status: 400 });
     }
 
     const supabase = getSupabase();

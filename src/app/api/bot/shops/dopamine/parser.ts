@@ -216,7 +216,14 @@ export function checkAllSignals(message: string): { [key: string]: boolean } {
  * 메시지에서 아가씨 이름 찾기 (슬롯 목록과 매칭)
  */
 export function findGirlName(message: string, girlNames: string[]): string | null {
-  for (const name of girlNames) {
+  // 숫자만으로 된 이름은 매칭 대상에서 제외한다.
+  // 부분 문자열 탐색이라 girl_name "3"이 방번호 "803"에 걸려버린다(2026-11-09 상황판 오염).
+  // 긴 이름 우선: "오월"이 "오월ushsz"에게 갈 메시지를 가로채지 않도록.
+  const candidates = girlNames
+    .filter((name): name is string => !!name && !/^\d+$/.test(name))
+    .sort((a, b) => b.length - a.length);
+
+  for (const name of candidates) {
     if (message.includes(name)) {
       return name;
     }

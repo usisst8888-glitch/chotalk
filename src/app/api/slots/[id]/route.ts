@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
 import { verifyToken } from '@/lib/jwt';
 import { cookies } from 'next/headers';
+import { validateGirlName } from '@/lib/girl-name';
 
 // ISO 문자열 변환 (Z 제거) - 기존 값 연장용
 function toTimestampString(date: Date): string {
@@ -161,6 +162,10 @@ export async function PATCH(
     const { girlName, shopName } = body;
     const updateData: Record<string, string | null> = {};
     if (girlName) {
+      const nameError = validateGirlName(girlName);
+      if (nameError) {
+        return NextResponse.json({ error: nameError }, { status: 400 });
+      }
       updateData.girl_name = girlName;
       updateData.target_room = girlName;
     }
@@ -195,6 +200,24 @@ export async function PATCH(
 
     if (error) {
       return NextResponse.json({ error: '슬롯 수정 실패' }, { status: 500 });
+    }
+
+    // 이름을 바꿨으면 상황판에도 반영한다.
+    // status_board는 girl_name을 복사해 들고 있고, 아톡 라우트가 slot_id가 아니라
+    // girl_name으로 진행중 세션을 찾는다. 전파하지 않으면 개명 전 행이 고아가 되어
+    // 그 아가씨의 방번호 자동 추가가 조용히 멈춘다.
+    if (updateData.girl_name) {
+      const { error: boardError } = await supabase
+        .from('status_board')
+        .update({
+          girl_name: updateData.girl_name,
+          target_room: updateData.target_room,
+        })
+        .eq('slot_id', id);
+
+      if (boardError) {
+        console.error('status_board girl_name 전파 실패:', boardError);
+      }
     }
 
     return NextResponse.json({ message: '슬롯이 수정되었습니다.', slot: updatedSlot });

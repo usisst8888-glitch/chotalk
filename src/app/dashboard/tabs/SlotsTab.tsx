@@ -1,6 +1,7 @@
 'use client';
 
 import { Slot, SHOP_NAMES } from '../types';
+import { isValidGirlName, sanitizeGirlName, GIRL_NAME_RULE_MESSAGE } from '@/lib/girl-name';
 
 interface SlotsTabProps {
   user: { id: string; username: string; role: string; is_premium?: boolean } | null;
@@ -562,8 +563,10 @@ export default function SlotsTab({
                           <input
                             type="text"
                             value={inlineNewSlot.girlName}
-                            onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, girlName: e.target.value })}
-                            placeholder="아가씨 닉네임"
+                            onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, girlName: sanitizeGirlName(e.target.value) })}
+                            placeholder="한글 2글자"
+                            maxLength={2}
+                            title={GIRL_NAME_RULE_MESSAGE}
                             className="w-full px-2 py-1 bg-neutral-800 border border-neutral-700 rounded text-white text-sm focus:outline-none focus:border-indigo-500"
                           />
                         </td>
@@ -594,7 +597,7 @@ export default function SlotsTab({
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => handleInlineAddSlot(index)}
-                              disabled={submitting}
+                              disabled={submitting || !isValidGirlName(inlineNewSlot.girlName)}
                               className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-500 disabled:bg-neutral-700 text-white rounded-lg font-medium transition"
                             >
                               {submitting ? '저장중...' : '저장'}
@@ -883,12 +886,16 @@ export default function SlotsTab({
                       <p className="text-yellow-400 text-xs">
                         초톡 단톡방에 있는 정확한 아가씨 닉네임을 입력해주세요.
                       </p>
+                      <p className="text-yellow-500/80 text-xs mt-1">
+                        {GIRL_NAME_RULE_MESSAGE}
+                      </p>
                     </div>
                     <input
                       type="text"
                       value={inlineNewSlot.girlName}
-                      onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, girlName: e.target.value })}
-                      placeholder="아가씨 닉네임"
+                      onChange={(e) => setInlineNewSlot({ ...inlineNewSlot, girlName: sanitizeGirlName(e.target.value) })}
+                      placeholder="한글 2글자"
+                      maxLength={2}
                       className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
                     />
                     <div>
@@ -918,7 +925,7 @@ export default function SlotsTab({
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleInlineAddSlot(index)}
-                        disabled={submitting}
+                        disabled={submitting || !isValidGirlName(inlineNewSlot.girlName)}
                         className="flex-1 py-2 text-sm bg-green-600 hover:bg-green-500 disabled:bg-neutral-700 text-white rounded-lg font-medium transition"
                       >
                         {submitting ? '저장중...' : '저장'}
