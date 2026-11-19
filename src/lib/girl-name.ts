@@ -30,8 +30,12 @@ export function validateGirlName(name: unknown): string | null {
 
 /**
  * 입력값에서 규칙에 맞지 않는 문자를 즉시 걷어낸다.
- * 완성형 한글만 남기고 2글자로 자른다 — 입력란에 숫자를 아예 못 치게 하는 용도.
+ * 한글(완성형 + 자모)만 남기고 2글자로 자른다 — 입력란에 숫자를 아예 못 치게 하는 용도.
+ *
+ * 자모(ㄷ, ㅏ)를 남기는 이유: 한글 키보드는 조합 중인 글자를 "ㄷ" → "다" 순으로 입력란에
+ * 넘긴다. 완성형만 남기면 첫 자음 "ㄷ"이 즉시 지워져 한글이 아예 안 써진다(특히 모바일).
+ * 최종 저장은 isValidGirlName(완성형 2글자)으로 따로 막는다.
  */
 export function sanitizeGirlName(input: string): string {
-  return input.replace(/[^가-힣]/g, '').slice(0, 2);
+  return input.replace(/[^가-힣ㄱ-ㅎㅏ-ㅣ]/g, '').slice(0, 2);
 }
