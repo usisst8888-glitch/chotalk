@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
-import { getShop } from '../shops';
+import { getShop, getDesignatedMarker } from '../shops';
 import { getKoreanTime } from '../_core/shared';
 import { HandlerContext } from '../_core/types';
 
@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
 
     // 가게 모듈 로드 (room = 카카오톡 방 이름 = shop_name)
     const shop = getShop(room);
+    const designatedMarker = getDesignatedMarker(room);
 
     // 활성화된 슬롯 가져오기 (해당 가게의 슬롯만)
     const { data: slots, error: slotsError } = await supabase
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
     console.log('Active slots found:', slots.length, 'names:', slots.map(s => s.girl_name));
 
     // ㅈ.ㅁ(지명) 섹션 감지 → message_logs 무조건 저장 + designated_notices 업데이트
-    if (message.includes('ㅈ.ㅁ')) {
+    if (message.includes(designatedMarker)) {
       await shop.processDesignatedSection(room, sender, message, messageReceivedAt);
     }
 
@@ -202,7 +203,7 @@ export async function POST(request: NextRequest) {
 
       // ㅈ.ㅁ(지명) 섹션 이후 라인은 세션 처리에서 제외
       // ㅈ.ㅁ 섹션에 등록된 아가씨 이름이 있으면 시작/종료 등 트리거로 잡히면 안 됨
-      const jmSectionIdx = lines.findIndex((l: string) => l.includes('ㅈ.ㅁ'));
+      const jmSectionIdx = lines.findIndex((l: string) => l.includes(designatedMarker));
       const sessionLines = jmSectionIdx >= 0 ? lines.slice(0, jmSectionIdx) : lines;
 
       // 각 줄의 유효 방번호 계산 (이전 줄에서 방번호 상속)

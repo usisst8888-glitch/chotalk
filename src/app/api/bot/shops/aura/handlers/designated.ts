@@ -61,7 +61,8 @@ export async function processDesignatedSection(
   const { data: slots, error: slotsError } = await supabase
     .from('slots')
     .select('id, user_id, girl_name, target_room, kakao_id, shop_name, expires_at')
-    .eq('is_active', true);
+    .eq('is_active', true)
+    .neq('shop_name', '시그넷'); // 시그넷 지명은 시그넷 게시판이 따로 관리
 
   if (slotsError || !slots) {
     console.error('ㅈ.ㅁ slots query error:', slotsError);
@@ -82,7 +83,8 @@ export async function processDesignatedSection(
   // 기존 DB 레코드 가져오기 (제거 로직은 newGirlNames가 비어도 실행해야 함)
   const { data: currentNotices, error: currentError } = await supabase
     .from('designated_notices')
-    .select('*');
+    .select('*')
+    .neq('shop_name', '시그넷'); // 시그넷 지명 기록을 지우지 않도록
 
   if (currentError) {
     console.error('ㅈ.ㅁ designated_notices 조회 에러:', currentError);
